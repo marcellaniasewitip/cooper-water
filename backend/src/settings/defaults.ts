@@ -41,10 +41,6 @@ export const SETTING_DEFAULTS = {
   'driver.location_stale_sec': 120,
 
   'otp.ttl_sec': 300,
-  /** Channel tried first for sign-in codes when WhatsApp is configured (WHATSAPP_PROVIDER). SMS is always the fallback. */
-  'otp.primary_channel': 'whatsapp' as 'whatsapp' | 'sms',
-  /** Re-send the code by SMS if WhatsApp hasn't confirmed delivery within this many seconds. */
-  'otp.whatsapp_fallback_sec': 45,
   'otp.max_attempts': 5,
   'otp.max_sends_per_phone_per_hour': 5,
   /** High because of carrier-grade NAT on PNG mobile networks. */
@@ -77,7 +73,6 @@ export function validateSetting(key: string, value: unknown): string | null {
     'commission.type': ['percent', 'flat'],
     'commission.deduct_at': ['acceptance', 'completion'],
     'payment.cellmoney.fee_bearer': ['customer', 'driver', 'platform'],
-    'otp.primary_channel': ['whatsapp', 'sms'],
     'order.customer_cancel_free_until': ['SEARCHING', 'ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED'],
   };
   if (enums[key] && !enums[key].includes(value as string)) return `${key} must be one of ${enums[key].join(', ')}`;
@@ -92,7 +87,6 @@ export function validateSetting(key: string, value: unknown): string | null {
     'depot.geofence_radius_m',
     'driver.location_stale_sec',
     'otp.ttl_sec',
-    'otp.whatsapp_fallback_sec',
     'otp.max_attempts',
     'otp.max_sends_per_phone_per_hour',
     'otp.max_sends_per_ip_per_hour',

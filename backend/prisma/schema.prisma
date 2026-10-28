@@ -156,7 +156,6 @@ enum DisputeStatus {
 enum NotificationChannel {
   push
   sms
-  whatsapp
 }
 
 enum NotificationStatus {
@@ -671,24 +670,19 @@ model NotificationTemplate {
 }
 
 model Notification {
-  id                String              @id @default(uuid()) @db.Uuid
-  userId            String?             @map("user_id") @db.Uuid
-  phone             String?
-  channel           NotificationChannel
-  template          String
-  payload           Json
-  status            NotificationStatus  @default(queued)
-  attempts          Int                 @default(0)
-  lastError         String?             @map("last_error")
-  sentAt            DateTime?           @map("sent_at")
-  // WhatsApp: Meta message id and its latest delivery status (sent | delivered | read | failed).
-  providerMessageId String?             @unique @map("provider_message_id")
-  deliveryStatus    String?             @map("delivery_status")
-  // Set once an undelivered WhatsApp message has been re-sent by SMS.
-  fallbackAt        DateTime?           @map("fallback_at")
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  user              User?               @relation(fields: [userId], references: [id])
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String?             @map("user_id") @db.Uuid
+  phone     String?
+  channel   NotificationChannel
+  template  String
+  payload   Json
+  status    NotificationStatus  @default(queued)
+  attempts  Int                 @default(0)
+  lastError String?             @map("last_error")
+  sentAt    DateTime?           @map("sent_at")
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+  user      User?               @relation(fields: [userId], references: [id])
 
   @@index([userId, createdAt])
   @@index([status])

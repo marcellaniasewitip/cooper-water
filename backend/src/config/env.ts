@@ -42,17 +42,6 @@ export interface Env {
   s3Endpoint?: string;
   s3ForcePathStyle: boolean;
   smsProvider: string;
-  /** none | mock | meta — WhatsApp delivery of sign-in codes (SMS stays the fallback). */
-  whatsappProvider: string;
-  whatsapp: {
-    accessToken: string;
-    phoneNumberId: string;
-    appSecret: string;
-    verifyToken: string;
-    templateName: string;
-    templateLanguage: string;
-    apiVersion: string;
-  };
   pushProvider: string;
   fcmServiceAccountB64?: string;
   mockCellmoneyWebhookSecret: string;
@@ -89,16 +78,6 @@ export function loadEnv(): Env {
     s3Endpoint: process.env.S3_ENDPOINT?.trim() || undefined,
     s3ForcePathStyle: bool('S3_FORCE_PATH_STYLE', false),
     smsProvider: str('SMS_PROVIDER', 'mock'),
-    whatsappProvider: str('WHATSAPP_PROVIDER', 'none'),
-    whatsapp: {
-      accessToken: process.env.WHATSAPP_ACCESS_TOKEN?.trim() ?? '',
-      phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID?.trim() ?? '',
-      appSecret: process.env.WHATSAPP_APP_SECRET?.trim() || (isProd ? '' : 'dev-whatsapp-app-secret'),
-      verifyToken: process.env.WHATSAPP_VERIFY_TOKEN?.trim() || (isProd ? '' : 'dev-whatsapp-verify-token'),
-      templateName: str('WHATSAPP_OTP_TEMPLATE', 'cooper_waters_otp'),
-      templateLanguage: str('WHATSAPP_OTP_LANGUAGE', 'en'),
-      apiVersion: str('WHATSAPP_API_VERSION', 'v21.0'),
-    },
     pushProvider: str('PUSH_PROVIDER', 'mock'),
     fcmServiceAccountB64: process.env.FCM_SERVICE_ACCOUNT_B64?.trim() || undefined,
     mockCellmoneyWebhookSecret: str('MOCK_CELLMONEY_WEBHOOK_SECRET', devDefault('dev-webhook-secret')),
@@ -108,9 +87,6 @@ export function loadEnv(): Env {
   };
   if (isProd && cached.mockCellmoneyWebhookSecret === 'dev-webhook-secret') {
     throw new Error('Refusing to start in production with the dev webhook secret');
-  }
-  if (isProd && cached.whatsappProvider === 'mock') {
-    throw new Error('Refusing to start in production with WHATSAPP_PROVIDER=mock');
   }
   if (isProd && cached.smsProvider === 'mock') {
     // eslint-disable-next-line no-console

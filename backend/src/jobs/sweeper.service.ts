@@ -91,11 +91,6 @@ export class SweeperService implements OnModuleInit {
     });
     counts.drivers_auto_offline = offline.count;
 
-    // Sign-in codes are kept on notifications only while they can be used or re-sent; then removed.
-    counts.otp_codes_redacted = await this.prisma.$executeRaw`
-      UPDATE notifications SET payload = payload - 'code'
-      WHERE template = 'auth.otp' AND payload ? 'code' AND created_at < ${new Date(now.getTime() - 30 * 60_000)}`;
-
     // Idempotency records are only needed for retries; keep a week.
     const purged = await this.prisma.idempotencyRecord.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - 7 * 24 * 3600_000) } } });
     counts.idempotency_purged = purged.count;

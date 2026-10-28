@@ -26,10 +26,6 @@
     <string name="login_phone_hint">e.g. 7123 4567</string>
     <string name="login_send_code">Send code</string>
     <string name="login_code_sent">We sent a 6-digit code by SMS to %1$s.</string>
-    <string name="login_code_sent_whatsapp">We sent a 6-digit code to %1$s on WhatsApp.</string>
-    <string name="login_code_sent_sms_too">We also sent the code by SMS. It can take a minute to arrive.</string>
-    <string name="login_send_by_sms">No WhatsApp? Send the code by SMS</string>
-    <string name="login_phone_support">We\'ll send your sign-in code on WhatsApp, or by SMS.</string>
     <string name="login_code_label">6-digit code</string>
     <string name="login_verify">Sign in</string>
     <string name="login_resend">Send a new code</string>

@@ -8,4 +8,3 @@ process.env.S3_BUCKET = 'test-bucket';
 process.env.S3_REGION = 'ap-southeast-2';
 process.env.AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID ?? 'test';
 process.env.AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY ?? 'test';
-process.env.WHATSAPP_PROVIDER = 'mock';

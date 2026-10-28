@@ -3672,7 +3672,7 @@
       "post": {
         "operationId": "AuthController_requestOtp",
         "summary": "",
-        "description": "Send a one-time code: WhatsApp first when enabled (falls back to SMS), otherwise SMS. Response says which.",
+        "description": "Send a one-time code by SMS.",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3680,32 +3680,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RequestOtpDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/v1/auth/otp/resend-sms": {
-      "post": {
-        "operationId": "AuthController_resendOtpSms",
-        "summary": "",
-        "description": "Re-send the current code by SMS (e.g. the number isn't on WhatsApp). Sent at most once per code.",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResendOtpDto"
               }
             }
           }
@@ -4817,27 +4791,6 @@
           "phone": {
             "type": "string",
             "description": "Phone number; PNG numbers may omit +675.",
-            "minLength": 7,
-            "maxLength": 20
-          },
-          "channel": {
-            "type": "string",
-            "description": "Force a channel. Default: WhatsApp when enabled on the server, otherwise SMS.",
-            "enum": [
-              "whatsapp",
-              "sms"
-            ]
-          }
-        },
-        "required": [
-          "phone"
-        ]
-      },
-      "ResendOtpDto": {
-        "type": "object",
-        "properties": {
-          "phone": {
-            "type": "string",
             "minLength": 7,
             "maxLength": 20
           }

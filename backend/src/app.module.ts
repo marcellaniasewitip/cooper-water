@@ -15,7 +15,6 @@ import { HealthController } from './health/health.controller';
 import { CustomerController } from './customers/customer.controller';
 import { DriverController } from './drivers/driver.controller';
 import { WebhooksController } from './payments/webhooks.controller';
-import { WhatsAppWebhookController } from './notifications/whatsapp-webhook.controller';
 import {
   AdminAccessController,
   AdminCatalogueController,
@@ -75,7 +74,6 @@ import { IdempotencyInterceptor } from './common/idempotency';
     CustomerController,
     DriverController,
     WebhooksController,
-    WhatsAppWebhookController,
     AdminDashboardController,
     AdminOrdersController,
     AdminCustomersController,

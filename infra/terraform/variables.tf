@@ -108,22 +108,6 @@ variable "log_retention_days" {
   default = 30
 }
 
-variable "whatsapp_provider" {
-  description = "Sign-in codes over WhatsApp: none (SMS only) or meta. Fill the WHATSAPP_* secrets before setting meta."
-  type        = string
-  default     = "none"
-  validation {
-    condition     = contains(["none", "meta"], var.whatsapp_provider)
-    error_message = "whatsapp_provider must be none or meta."
-  }
-}
-
-variable "whatsapp_otp_template" {
-  description = "Name of the approved WhatsApp authentication template."
-  type        = string
-  default     = "cooper_waters_otp"
-}
-
 variable "sms_provider" {
   description = "SMS adapter (mock until the PNG SMS gateway is chosen). [CONFIRM]"
   type        = string

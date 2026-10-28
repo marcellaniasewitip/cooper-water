@@ -19,10 +19,6 @@ interface AuthApi {
     @POST("auth/otp/request")
     suspend fun requestOtp(@Body body: OtpRequest): OtpRequestResponse
 
-    /** Re-send the current code by SMS (number not on WhatsApp, or the message didn't arrive). */
-    @POST("auth/otp/resend-sms")
-    suspend fun resendOtpBySms(@Body body: OtpResendSmsRequest): OtpRequestResponse
-
     @POST("auth/otp/verify")
     suspend fun verifyOtp(@Body body: OtpVerifyRequest): AuthResponse
 
