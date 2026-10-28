@@ -46,6 +46,17 @@ describe('auth, RBAC, onboarding, notifications, reports (integration)', () => {
       expect((await h.http().post('/api/v1/auth/otp/verify').send({ phone, code: code2, app: 'customer' })).body.error.code).toBe('otp_expired');
     });
 
+    it('tells the user when the SMS gateway permanently refuses the number', async () => {
+      MockSmsProvider.failNextPermanent = 1;
+      const r = await h.http().post('/api/v1/auth/otp/request').send({ phone: nextPhone() });
+      expect(r.status).toBe(422);
+      expect(r.body.error.code).toBe('sms_undeliverable');
+      const n = await h.prisma.notification.findFirstOrThrow({ where: { template: 'auth.otp' }, orderBy: { createdAt: 'desc' } });
+      expect(n.status).toBe('failed');
+      expect(n.attempts).toBe(1); // not retried
+      expect(h.jobs.scheduled.filter((j) => j.name === 'notifications.send')).toHaveLength(0);
+    });
+
     it('rate-limits OTP sends per phone', async () => {
       const phone = nextPhone();
       for (let i = 0; i < 5; i++) await h.http().post('/api/v1/auth/otp/request').send({ phone }).expect(200);

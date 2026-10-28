@@ -6,7 +6,7 @@ Nothing below needs a code change — change the setting in **Admin → Settings
 | --- | --- | --- | --- |
 | 1 | Cell money provider, API, sandbox, merchant account | `manual` adapter (admin matches payments by order code) | setting `payment.cellmoney.adapter`; implement `backend/src/payments/provider-name-cellmoney.provider.ts`; webhook `POST /api/v1/webhooks/cellmoney/<name>` |
 | 2 | Cell money fee bearer / fee % | `platform`, 0 % | `payment.cellmoney.fee_bearer`, `payment.cellmoney.fee_percent` |
-| 3 | SMS/OTP gateway | `mock` (OTP only in logs!) | env `SMS_PROVIDER`; implement `GatewaySmsProvider` in `notifications/sms.provider.ts` |
+| 3 | SMS/OTP gateway | **ClickSend** chosen (adapter built, see `docs/sms-clicksend.md`); `mock` until credentials are added | env `SMS_PROVIDER=clicksend` + `CLICKSEND_*` secrets; Terraform `sms_provider`, `clicksend_from` |
 | 4 | Map provider | OpenStreetMap tiles (admin), osmdroid (apps) | admin tile URL config; Android `MapView` wrapper |
 | 5 | Commission type / value / when deducted | 10 %, at completion | `commission.type`, `commission.value`, `commission.deduct_at` |
 | 6 | Minimum wallet balance | K50 (5000 toea) | `wallet.min_balance_toea` |

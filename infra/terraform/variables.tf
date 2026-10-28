@@ -109,9 +109,19 @@ variable "log_retention_days" {
 }
 
 variable "sms_provider" {
-  description = "SMS adapter (mock until the PNG SMS gateway is chosen). [CONFIRM]"
+  description = "SMS adapter for sign-in codes and alerts: mock (codes only in logs) or clicksend. Fill the CLICKSEND_* secrets before setting clicksend."
   type        = string
   default     = "mock"
+  validation {
+    condition     = contains(["mock", "clicksend"], var.sms_provider)
+    error_message = "sms_provider must be mock or clicksend."
+  }
+}
+
+variable "clicksend_from" {
+  description = "ClickSend sender ID (alphanumeric, max 11 characters, or a dedicated number). Empty = ClickSend's shared number. Check with ClickSend which sender types PNG networks accept."
+  type        = string
+  default     = ""
 }
 
 variable "push_provider" {

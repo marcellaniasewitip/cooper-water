@@ -10,7 +10,7 @@
    │                                   │  S3 uploads (presigned PUT/GET) · Secrets Manager · CW logs │
    └───────────────────────────────────┴─────────────────────────────────────────────────────────────┘
  Cell money provider ── webhook ──► POST /api/v1/webhooks/cellmoney/:provider
- SMS gateway / FCM ◄── NotificationService (push first, SMS for OTP + critical events)
+ ClickSend SMS / FCM ◄── NotificationService (push first, SMS for OTP + critical events)
 ```
 
 ## Backend modules (`backend/src`)
@@ -25,7 +25,7 @@
 | `wallet/ledger.service.ts` | Append-only ledger; cached balance updated in the same transaction; idempotency key per entry. |
 | `wallet/wallet.service.ts` | Top-ups (bank/manual approval), payouts (reserve at request, manual pay-out), adjustments. |
 | `payments/*` | `PaymentProvider` interface; `ManualCellMoneyProvider`, `MockCellMoneyProvider`, `ProviderNameCellMoneyProvider` stub; webhooks → job; polling + timeout; refunds. |
-| `notifications/*` | `SmsProvider` (mock + gateway stub), FCM push, DB templates, queued retries with backoff, push→SMS fallback. |
+| `notifications/*` | `SmsProvider` (mock + ClickSend), FCM push, DB templates, queued retries with backoff, push→SMS fallback. |
 | `jobs/*` | BullMQ wrapper + minute sweeper that re-runs any job a lost timer would have handled. |
 | `realtime/*` | Socket.IO `/realtime` namespace; Redis adapter (API) + Redis emitter (worker) so events reach every instance. |
 | `auth/*` | Phone OTP → JWT + rotating refresh tokens (reuse detection); admin email/password + TOTP; permission-based RBAC; global fail-closed guard. |

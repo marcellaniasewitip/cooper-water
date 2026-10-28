@@ -15,7 +15,7 @@
 | Webhook errors | Admin → Webhook events shows the raw payload and error; failed processing is retried by the sweeper every 2 min. Bad signatures are stored with `signature_ok = false`. |
 | Driver can't go online | `wallet_below_minimum` (top up), `not_at_depot` (must be inside a depot geofence when `depot.online_gated`), or not approved. |
 | Driver shows offline unexpectedly | Drivers whose app stops sending location for 10 min are set offline by the sweeper. |
-| OTP not arriving | Check SMS gateway status; Notifications table rows with `status=failed` and `last_error`. Per-phone limit is `otp.max_sends_per_phone_per_hour`. |
+| OTP not arriving | Check ClickSend credit and delivery report (dashboard), and see `docs/sms-clicksend.md`; Notifications table rows with `status=failed` and `last_error`. Per-phone limit is `otp.max_sends_per_phone_per_hour`. |
 | Wallet balance looks wrong | Ledger is the source of truth: `SELECT sum(amount_toea) FROM ledger_entries WHERE wallet_id=…` must equal `wallets.balance_toea`. Correct with an *Adjustment* (never edit entries — the DB rejects it). |
 
 ## Money reconciliation (daily)

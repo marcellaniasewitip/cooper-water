@@ -79,6 +79,7 @@ locals {
     { name = "S3_BUCKET", value = aws_s3_bucket.uploads.bucket },
     { name = "S3_REGION", value = var.region },
     { name = "SMS_PROVIDER", value = var.sms_provider },
+    { name = "CLICKSEND_FROM", value = var.clicksend_from },
     { name = "PUSH_PROVIDER", value = var.push_provider },
     { name = "REDIS_PREFIX", value = "cw-${var.environment}" },
     { name = "LOG_LEVEL", value = "info" },

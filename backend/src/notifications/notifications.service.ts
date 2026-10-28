@@ -57,6 +57,12 @@ export class NotificationsService implements OnModuleInit {
       await this.deliver(n.id);
     } catch {
       await this.jobs.enqueue('notifications', 'notifications.send', { notificationId: n.id }, { jobId: `notif-${n.id}` });
+      return;
+    }
+    // A permanent refusal (e.g. ClickSend INVALID_RECIPIENT) won't be retried: tell the user now.
+    const after = await this.prisma.notification.findUnique({ where: { id: n.id }, select: { status: true } });
+    if (after?.status === 'failed') {
+      throw Errors.invalid('sms_undeliverable', "We couldn't send a code to this number. Check it and try again.");
     }
   }
 
@@ -97,7 +103,7 @@ export class NotificationsService implements OnModuleInit {
       });
     } catch (err: any) {
       const attempts = n.attempts + 1;
-      const giveUp = attempts >= MAX_ATTEMPTS || (n.channel === 'push' && isPermanentPushError(err));
+      const giveUp = attempts >= MAX_ATTEMPTS || (n.channel === 'push' && isPermanentPushError(err)) || err?.permanent === true;
       await this.prisma.notification.update({
         where: { id: n.id },
         data: { attempts, lastError: String(err?.message ?? err).slice(0, 500), status: giveUp ? 'failed' : 'queued' },

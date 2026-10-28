@@ -28,7 +28,11 @@ locals {
     MOCK_CELLMONEY_WEBHOOK_SECRET = random_password.webhook.result
   }
   # Filled in after apply (aws secretsmanager put-secret-value ...).
-  external_secrets = ["FCM_SERVICE_ACCOUNT_B64", "SENTRY_DSN", "SEED_ADMIN_PASSWORD"]
+  external_secrets = [
+    "FCM_SERVICE_ACCOUNT_B64", "SENTRY_DSN", "SEED_ADMIN_PASSWORD",
+    # ClickSend SMS (sign-in codes and alerts); see docs/sms-clicksend.md
+    "CLICKSEND_USERNAME", "CLICKSEND_API_KEY",
+  ]
 }
 
 resource "aws_secretsmanager_secret" "generated" {

@@ -8,7 +8,7 @@ import { SMS_PROVIDER, createSmsProvider } from './sms.provider';
 @Module({
   providers: [
     NotificationsService,
-    { provide: SMS_PROVIDER, useFactory: () => createSmsProvider(loadEnv().smsProvider) },
+    { provide: SMS_PROVIDER, useFactory: () => createSmsProvider(loadEnv().smsProvider, loadEnv().clicksend) },
     { provide: PUSH_PROVIDER, useFactory: () => createPushProvider(loadEnv().pushProvider, loadEnv().fcmServiceAccountB64) },
   ],
   exports: [NotificationsService],

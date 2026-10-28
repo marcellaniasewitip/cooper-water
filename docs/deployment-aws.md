@@ -72,7 +72,7 @@ releases of the Android apps only after the final domain is in place, because th
 
 ## Before go-live checklist
 
-- [ ] `SMS_PROVIDER` is a real gateway (mock only writes OTPs to logs) — §16 #3
+- [ ] `sms_provider = "clicksend"` with credentials and credit (mock only writes OTPs to logs) — see `docs/sms-clicksend.md`
 - [ ] Cell money adapter chosen; webhook URL registered with the provider; secrets in Secrets Manager — §16 #1
 - [ ] `push_provider = "fcm"` with the Firebase service account
 - [ ] HTTPS certificates attached; API reachable only over HTTPS
