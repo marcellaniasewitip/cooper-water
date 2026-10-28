@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Ip, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AdminOnly, CurrentAdmin, Public } from './decorators';
-import { AdminLoginDto, AdminTotpVerifyDto, RefreshDto, RequestOtpDto, TotpCodeDto, VerifyOtpDto } from './auth.dto';
+import { AdminLoginDto, AdminTotpVerifyDto, RefreshDto, RequestOtpDto, ResendOtpDto, TotpCodeDto, VerifyOtpDto } from './auth.dto';
 import { UserAuthService } from './user-auth.service';
 import { AdminAuthService } from './admin-auth.service';
 import { TokensService } from './tokens.service';
@@ -22,13 +22,22 @@ export class AuthController {
     private readonly tokens: TokensService,
   ) {}
 
-  /** Send a one-time code by SMS. */
+  /** Send a one-time code: WhatsApp first when enabled (falls back to SMS), otherwise SMS. Response says which. */
   @Public()
   @Post('otp/request')
   @HttpCode(200)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   requestOtp(@Body() dto: RequestOtpDto, @Ip() ip: string) {
-    return this.users.requestOtp(dto.phone, ip ?? null);
+    return this.users.requestOtp(dto.phone, ip ?? null, dto.channel);
+  }
+
+  /** Re-send the current code by SMS (e.g. the number isn't on WhatsApp). Sent at most once per code. */
+  @Public()
+  @Post('otp/resend-sms')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  resendOtpSms(@Body() dto: ResendOtpDto) {
+    return this.users.resendOtpBySms(dto.phone);
   }
 
   /** Verify the code; registers the account on first sign-in. */

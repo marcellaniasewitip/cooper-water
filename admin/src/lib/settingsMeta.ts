@@ -36,6 +36,8 @@ export const SETTING_META: Record<string, SettingKind> = {
   'driver.required_documents': { kind: 'stringList' },
   'driver.location_stale_sec': { kind: 'integer', min: 0, unit: 's' },
   'otp.ttl_sec': { kind: 'integer', min: 0, unit: 's' },
+  'otp.primary_channel': { kind: 'enum', options: ['whatsapp', 'sms'] },
+  'otp.whatsapp_fallback_sec': { kind: 'integer', min: 0, unit: 's' },
   'otp.max_attempts': { kind: 'integer', min: 0 },
   'otp.max_sends_per_phone_per_hour': { kind: 'integer', min: 0 },
   'otp.max_sends_per_ip_per_hour': { kind: 'integer', min: 0 },

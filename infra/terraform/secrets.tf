@@ -28,7 +28,11 @@ locals {
     MOCK_CELLMONEY_WEBHOOK_SECRET = random_password.webhook.result
   }
   # Filled in after apply (aws secretsmanager put-secret-value ...).
-  external_secrets = ["FCM_SERVICE_ACCOUNT_B64", "SENTRY_DSN", "SEED_ADMIN_PASSWORD"]
+  external_secrets = [
+    "FCM_SERVICE_ACCOUNT_B64", "SENTRY_DSN", "SEED_ADMIN_PASSWORD",
+    # Meta WhatsApp Cloud API (sign-in codes); see docs/whatsapp-otp.md
+    "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN",
+  ]
 }
 
 resource "aws_secretsmanager_secret" "generated" {

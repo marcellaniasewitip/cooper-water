@@ -5,6 +5,17 @@ export class RequestOtpDto {
   @IsString()
   @Length(7, 20)
   phone: string;
+
+  /** Force a channel. Default: WhatsApp when enabled on the server, otherwise SMS. */
+  @IsOptional()
+  @IsIn(['whatsapp', 'sms'])
+  channel?: 'whatsapp' | 'sms';
+}
+
+export class ResendOtpDto {
+  @IsString()
+  @Length(7, 20)
+  phone: string;
 }
 
 export class VerifyOtpDto {

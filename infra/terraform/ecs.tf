@@ -79,6 +79,8 @@ locals {
     { name = "S3_BUCKET", value = aws_s3_bucket.uploads.bucket },
     { name = "S3_REGION", value = var.region },
     { name = "SMS_PROVIDER", value = var.sms_provider },
+    { name = "WHATSAPP_PROVIDER", value = var.whatsapp_provider },
+    { name = "WHATSAPP_OTP_TEMPLATE", value = var.whatsapp_otp_template },
     { name = "PUSH_PROVIDER", value = var.push_provider },
     { name = "REDIS_PREFIX", value = "cw-${var.environment}" },
     { name = "LOG_LEVEL", value = "info" },

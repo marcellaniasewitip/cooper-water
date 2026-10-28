@@ -15,10 +15,16 @@ export class UserAuthService {
     private readonly tokens: TokensService,
   ) {}
 
-  async requestOtp(phoneInput: string, ip: string | null) {
+  async requestOtp(phoneInput: string, ip: string | null, channel?: 'whatsapp' | 'sms') {
     const phone = normalisePhone(phoneInput);
-    const { ttlSec } = await this.otp.request(phone, ip);
-    return { phone, ttlSec };
+    const sent = await this.otp.request(phone, ip, channel);
+    return { phone, ...sent };
+  }
+
+  async resendOtpBySms(phoneInput: string) {
+    const phone = normalisePhone(phoneInput);
+    const sent = await this.otp.resendBySms(phone);
+    return { phone, ...sent };
   }
 
   /**

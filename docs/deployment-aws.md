@@ -72,7 +72,7 @@ releases of the Android apps only after the final domain is in place, because th
 
 ## Before go-live checklist
 
-- [ ] `SMS_PROVIDER` is a real gateway (mock only writes OTPs to logs) — §16 #3
+- [ ] WhatsApp sign-in codes connected (`docs/whatsapp-otp.md`), and `SMS_PROVIDER` is a real gateway for the backup (mock only writes OTPs to logs) — §16 #3
 - [ ] Cell money adapter chosen; webhook URL registered with the provider; secrets in Secrets Manager — §16 #1
 - [ ] `push_provider = "fcm"` with the Firebase service account
 - [ ] HTTPS certificates attached; API reachable only over HTTPS

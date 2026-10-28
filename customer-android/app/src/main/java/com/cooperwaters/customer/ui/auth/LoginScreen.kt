@@ -34,6 +34,7 @@ import com.cooperwaters.core.android.auth.LoginState
 import com.cooperwaters.core.android.auth.LoginViewModel
 import com.cooperwaters.core.android.ui.ErrorCard
 import com.cooperwaters.core.android.ui.LoadingButton
+import com.cooperwaters.core.net.OtpChannels
 import com.cooperwaters.customer.BuildConfig
 import com.cooperwaters.customer.DebugSettings
 import com.cooperwaters.customer.R
@@ -82,6 +83,7 @@ fun LoginScreen(onSignedIn: (needsName: Boolean) -> Unit) {
                         onValueChange = vm::onPhoneChanged,
                         label = { Text(stringResource(R.string.login_phone_label)) },
                         placeholder = { Text(stringResource(R.string.login_phone_hint)) },
+                        supportingText = { Text(stringResource(R.string.login_phone_support)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -90,7 +92,15 @@ fun LoginScreen(onSignedIn: (needsName: Boolean) -> Unit) {
                     LoadingButton(stringResource(R.string.login_send_code), state.loading, vm::requestCode, Modifier.fillMaxWidth())
                 }
                 LoginState.Step.CODE -> {
-                    Text(stringResource(R.string.login_code_sent, state.normalisedPhone))
+                    Text(
+                        stringResource(
+                            if (state.channel == OtpChannels.WHATSAPP) R.string.login_code_sent_whatsapp else R.string.login_code_sent,
+                            state.normalisedPhone,
+                        ),
+                    )
+                    if (state.smsFallbackSent) {
+                        Text(stringResource(R.string.login_code_sent_sms_too), style = MaterialTheme.typography.bodySmall)
+                    }
                     OutlinedTextField(
                         value = state.code,
                         onValueChange = vm::onCodeChanged,
@@ -101,6 +111,9 @@ fun LoginScreen(onSignedIn: (needsName: Boolean) -> Unit) {
                     )
                     ErrorCard(state.error)
                     LoadingButton(stringResource(R.string.login_verify), state.loading, vm::verify, Modifier.fillMaxWidth())
+                    if (state.canSendBySms) {
+                        TextButton(onClick = vm::sendBySms, enabled = !state.loading) { Text(stringResource(R.string.login_send_by_sms)) }
+                    }
                     TextButton(onClick = vm::requestCode, enabled = state.resendInSec == 0 && !state.loading) {
                         Text(
                             if (state.resendInSec > 0) stringResource(R.string.login_resend_in, state.resendInSec)

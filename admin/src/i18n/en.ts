@@ -381,6 +381,8 @@ export const en = {
       'driver.required_documents': 'Required driver documents',
       'driver.location_stale_sec': 'Driver location is stale after (seconds)',
       'otp.ttl_sec': 'OTP validity (seconds)',
+      'otp.primary_channel': 'Send sign-in codes by (WhatsApp falls back to SMS)',
+      'otp.whatsapp_fallback_sec': 'Re-send by SMS if WhatsApp not delivered after (seconds)',
       'otp.max_attempts': 'OTP max attempts',
       'otp.max_sends_per_phone_per_hour': 'OTP sends per phone per hour',
       'otp.max_sends_per_ip_per_hour': 'OTP sends per IP per hour',

@@ -27,10 +27,27 @@ data class PushTokenRequest(val token: String?)
 // ───────────── Auth ─────────────
 
 @Serializable
-data class OtpRequest(val phone: String)
+data class OtpRequest(
+    val phone: String,
+    /** Force "sms"; null lets the server choose (WhatsApp first when enabled). */
+    val channel: String? = null,
+)
 
 @Serializable
-data class OtpRequestResponse(val phone: String, val ttlSec: Int = 300)
+data class OtpResendSmsRequest(val phone: String)
+
+@Serializable
+data class OtpRequestResponse(
+    val phone: String,
+    val ttlSec: Int = 300,
+    /** Where the code went: "whatsapp" or "sms". */
+    val channel: String = OtpChannels.SMS,
+)
+
+object OtpChannels {
+    const val WHATSAPP = "whatsapp"
+    const val SMS = "sms"
+}
 
 @Serializable
 data class OtpVerifyRequest(

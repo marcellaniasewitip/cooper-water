@@ -64,6 +64,8 @@ export async function resetDb(h: Harness) {
   }
   await h.prisma.wallet.create({ data: { ownerType: 'platform', ownerId: PLATFORM_OWNER_ID } });
   await h.prisma.setting.create({ data: { key: 'otp.max_sends_per_ip_per_hour', value: 100000 } });
+  // Existing suites sign in by SMS; the WhatsApp suite switches this to 'whatsapp'.
+  await h.prisma.setting.create({ data: { key: 'otp.primary_channel', value: 'sms' } });
   const depot = await h.prisma.depot.create({ data: { name: 'Test Depot', ...DEPOT } });
   const pkg = await h.prisma.package.create({ data: { name: '5000 L', volumeLitres: 5000, priceToea: 30000 } });
   return { depot, pkg };

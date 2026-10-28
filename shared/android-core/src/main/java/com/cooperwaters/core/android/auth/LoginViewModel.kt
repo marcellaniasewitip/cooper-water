@@ -8,7 +8,9 @@ import com.cooperwaters.core.net.ApiResult
 import com.cooperwaters.core.net.AuthApi
 import com.cooperwaters.core.net.AuthResponse
 import com.cooperwaters.core.net.ErrorCodes
+import com.cooperwaters.core.net.OtpChannels
 import com.cooperwaters.core.net.OtpRequest
+import com.cooperwaters.core.net.OtpResendSmsRequest
 import com.cooperwaters.core.net.OtpVerifyRequest
 import com.cooperwaters.core.net.apiCall
 import com.cooperwaters.core.R
@@ -27,11 +29,20 @@ data class LoginState(
     val loading: Boolean = false,
     val error: UiText? = null,
     val resendInSec: Int = 0,
+    /** Where the current code was sent: [OtpChannels.WHATSAPP] or [OtpChannels.SMS]. */
+    val channel: String = OtpChannels.SMS,
+    /** The current WhatsApp code was also re-sent by SMS. */
+    val smsFallbackSent: Boolean = false,
 ) {
+    val canSendBySms: Boolean get() = step == Step.CODE && channel == OtpChannels.WHATSAPP && !smsFallbackSent
+
     enum class Step { PHONE, CODE }
 }
 
-/** Phone entry → SMS OTP → tokens. Same flow (with app="driver") in the driver app. */
+/**
+ * Phone entry → one-time code (WhatsApp first when the server has it enabled, else SMS) → tokens.
+ * Same flow (with app="driver") in the driver app.
+ */
 class LoginViewModel(
     private val authApi: AuthApi,
     private val app: String,
@@ -57,8 +68,30 @@ class LoginViewModel(
         viewModelScope.launch {
             when (val r = apiCall { authApi.requestOtp(OtpRequest(phone)) }) {
                 is ApiResult.Success -> _state.update {
-                    it.copy(loading = false, step = LoginState.Step.CODE, normalisedPhone = r.value.phone, code = "", resendInSec = 30)
+                    it.copy(
+                        loading = false,
+                        step = LoginState.Step.CODE,
+                        normalisedPhone = r.value.phone,
+                        code = "",
+                        resendInSec = 30,
+                        channel = r.value.channel,
+                        smsFallbackSent = false,
+                    )
                 }
+                is ApiResult.Failure -> _state.update { it.copy(loading = false, error = r.error.toUiText()) }
+            }
+        }
+    }
+
+    /** "Send by SMS instead": the same code, re-sent by SMS once. */
+    fun sendBySms() {
+        val s = _state.value
+        if (!s.canSendBySms || s.loading) return
+        _state.update { it.copy(loading = true, error = null) }
+        viewModelScope.launch {
+            val phone = s.normalisedPhone.ifBlank { s.phone.replace(" ", "") }
+            when (val r = apiCall { authApi.resendOtpBySms(OtpResendSmsRequest(phone)) }) {
+                is ApiResult.Success -> _state.update { it.copy(loading = false, smsFallbackSent = true) }
                 is ApiResult.Failure -> _state.update { it.copy(loading = false, error = r.error.toUiText()) }
             }
         }
