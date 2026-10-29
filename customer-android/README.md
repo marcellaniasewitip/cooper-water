@@ -35,7 +35,7 @@ echo "sdk.dir=$ANDROID_HOME" > local.properties     # gitignored
 | --- | --- |
 | API base URL (debug) | Gradle property `cw.apiBaseUrl` (default `http://10.0.2.2:3100` = host machine from the emulator). Override: `./gradlew :app:assembleDebug -Pcw.apiBaseUrl=http://192.168.1.20:3100` or in `~/.gradle/gradle.properties`. Do not include `/api/v1`. |
 | API base URL (release) | `cw.apiBaseUrlRelease` |
-| Runtime override | Debug builds show a "Developer: API server" field on the sign-in screen; restart the app after saving. |
+| Server address | Fixed at build time (`-Pcw.apiBaseUrl=...`); the sign-in screen has no server field. |
 | Cleartext HTTP | Allowed in debug only (manifest placeholder `usesCleartextTraffic`). |
 | Push (FCM) | **Optional.** Drop `google-services.json` into `app/` and the google-services plugin is applied automatically. Without it the app builds and runs; push is skipped and the Socket.IO channel is used. The FCM token is registered with `PUT /customer/me/push-token`. |
 | Error tracking | `CrashReporter` interface (core) with a Logcat implementation; see the `TODO(sentry)` in `AppContainer` / `CrashReporter.kt` to plug in Sentry with a DSN from a Gradle property. |

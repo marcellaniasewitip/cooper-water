@@ -24,6 +24,7 @@ export const Errors = {
     new AppError(code, message, HttpStatus.UNPROCESSABLE_ENTITY, details),
   badRequest: (code: string, message: string, details?: unknown) =>
     new AppError(code, message, HttpStatus.BAD_REQUEST, details),
+  unavailable: (code: string, message: string) => new AppError(code, message, HttpStatus.SERVICE_UNAVAILABLE),
   tooMany: (message = 'Too many requests, try again later') =>
     new AppError('rate_limited', message, HttpStatus.TOO_MANY_REQUESTS),
 };

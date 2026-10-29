@@ -38,6 +38,27 @@ describe('ClickSendSmsProvider', () => {
     await expect(new ClickSendSmsProvider({ username: 'u', apiKey: 'k' }, g.fn).send('+67571234567', 'x')).rejects.toBeInstanceOf(PermanentSmsError);
   });
 
+  it('labels a bad number as a recipient problem and other refusals as account problems', async () => {
+    const bad = fakeFetch(200, { ...ok, data: { messages: [{ status: 'INVALID_RECIPIENT' }] } });
+    expect(await new ClickSendSmsProvider({ username: 'u', apiKey: 'k' }, bad.fn).send('+675123', 'x').catch((e) => e.kind)).toBe('recipient');
+    const credit = fakeFetch(200, { ...ok, data: { messages: [{ status: 'COUNTRY_NOT_ENABLED' }] } });
+    expect(await new ClickSendSmsProvider({ username: 'u', apiKey: 'k' }, credit.fn).send('+67571234567', 'x').catch((e) => e.kind)).toBe('account');
+    const auth = fakeFetch(401, { response_code: 'UNAUTHORIZED' });
+    expect(await new ClickSendSmsProvider({ username: 'u', apiKey: 'bad' }, auth.fn).send('+67571234567', 'x').catch((e) => e.kind)).toBe('account');
+  });
+
+  it('retries without the sender ID when ClickSend refuses it', async () => {
+    const calls: any[] = [];
+    const fn = (async (_url: string, init: any) => {
+      const msg = JSON.parse(init.body).messages[0];
+      calls.push(msg);
+      const body = msg.from ? { ...ok, data: { messages: [{ status: 'INVALID_SENDER_ID' }] } } : ok;
+      return { ok: true, status: 200, json: async () => body } as any;
+    }) as unknown as typeof fetch;
+    await expect(new ClickSendSmsProvider({ username: 'u', apiKey: 'k', from: 'CooperWater' }, fn).send('+67571234567', 'hi')).resolves.toEqual({ providerMessageId: 'B2D1A8E0-1234' });
+    expect(calls.map((m) => m.from)).toEqual(['CooperWater', undefined]);
+  });
+
   it('treats bad credentials as permanent and server errors as retryable', async () => {
     const auth = fakeFetch(401, { response_code: 'UNAUTHORIZED' });
     await expect(new ClickSendSmsProvider({ username: 'u', apiKey: 'bad' }, auth.fn).send('+67571234567', 'x')).rejects.toBeInstanceOf(PermanentSmsError);

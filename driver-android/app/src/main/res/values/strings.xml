@@ -36,10 +36,6 @@
     <string name="login_resend">Send a new code</string>
     <string name="login_resend_in">Send a new code in %1$d s</string>
     <string name="login_change_number">Use a different number</string>
-    <string name="debug_server_title">Developer: API server</string>
-    <string name="debug_server_label">Base URL (without /api/v1)</string>
-    <string name="debug_server_save">Save server</string>
-    <string name="debug_server_restart">Saved. Close and reopen the app to use it.</string>
 
     <!-- Profile -->
     <string name="profile_title">Profile</string>
