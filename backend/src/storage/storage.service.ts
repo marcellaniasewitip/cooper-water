@@ -44,6 +44,20 @@ export class StorageService {
     return { key, url, method: 'PUT', headers: { 'Content-Type': contentType }, expiresIn: 600 };
   }
 
+  /**
+   * Server-side upload: the fallback when a phone can't PUT to the presigned URL itself
+   * (captive portals, proxies or carrier networks that interfere with S3 requests).
+   */
+  async putObject(folder: string, ownerId: string, contentType: string, body: Buffer): Promise<{ key: string }> {
+    const ext = ALLOWED_TYPES[contentType];
+    if (!ext) throw Errors.invalid('unsupported_file_type', 'Upload a JPEG, PNG, WebP or PDF file');
+    if (!body?.length) throw Errors.invalid('empty_file', 'The file is empty');
+    if (body.length > MAX_BYTES) throw Errors.invalid('file_too_large', 'Files must be 10 MB or smaller');
+    const key = `${folder}/${ownerId}/${randomUUID()}.${ext}`;
+    await this.s3.send(new PutObjectCommand({ Bucket: this.env.s3Bucket, Key: key, ContentType: contentType, Body: body }));
+    return { key };
+  }
+
   async presignDownload(key: string, expiresIn = 300): Promise<string> {
     return getSignedUrl(this.s3, new GetObjectCommand({ Bucket: this.env.s3Bucket, Key: key }), { expiresIn });
   }

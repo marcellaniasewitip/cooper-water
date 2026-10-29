@@ -2,6 +2,7 @@ import { INestApplication, RequestMethod, ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
+import { raw } from 'express';
 import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/http-exception.filter';
@@ -29,6 +30,8 @@ export function configureApp(app: INestApplication): void {
   app.enableCors({ origin: env.corsOrigins, credentials: true, allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'], exposedHeaders: ['Content-Disposition', 'Idempotent-Replay'] });
   (app as NestExpressApplication).set?.('trust proxy', 1);
   (app as NestExpressApplication).useBodyParser?.('json', { limit: '1mb' });
+  // Raw file bytes for the direct-upload fallback (the JSON parser ignores these content types).
+  app.use('/api/v1/driver/uploads/direct', raw({ type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], limit: '10mb' }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true, transformOptions: { enableImplicitConversion: false } }));
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();

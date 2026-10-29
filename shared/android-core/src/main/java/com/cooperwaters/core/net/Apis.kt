@@ -107,6 +107,14 @@ interface DriverApi {
     @POST("driver/uploads")
     suspend fun requestUpload(@Body body: UploadRequest): UploadTicket
 
+    /** Fallback when the presigned PUT to S3 fails: send the bytes through the API instead. */
+    @POST("driver/uploads/direct")
+    suspend fun uploadDirect(
+        @Query("purpose") purpose: String,
+        @Header("X-Upload-Fallback-Reason") reason: String?,
+        @Body body: okhttp3.RequestBody,
+    ): DirectUploadResult
+
     @POST("driver/documents")
     suspend fun submitDocument(@Body body: SubmitDocumentRequest): DriverDocument
 

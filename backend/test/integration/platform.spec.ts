@@ -1,3 +1,4 @@
+import { StorageService } from '../../src/storage/storage.service';
 import { authenticator } from 'otplib';
 import { Harness, startApp, resetDb, approvedDriver, customer, idem, adminLogin, nextPhone, otpLogin, DEPOT, CUSTOMER_POINT, ADMIN_PASSWORD } from './harness';
 import { MockSmsProvider } from '../../src/notifications/sms.provider';
@@ -164,6 +165,35 @@ describe('auth, RBAC, onboarding, notifications, reports (integration)', () => {
     await h.http().post(`/api/v1/admin/customers/${c.userId}/suspend`).set(bearer(admin)).send().expect(200);
     expect((await h.http().get('/api/v1/customer/me').set(bearer(c.token))).status).toBe(403);
     expect((await h.http().post('/api/v1/auth/refresh').send({ refreshToken: c.refreshToken })).status).toBe(401);
+  });
+
+  it('direct upload fallback stores the file server-side and its key can be submitted', async () => {
+    const d = await otpLogin(h, nextPhone('8'), 'driver', 'Fallback Driver');
+    const driver = await h.prisma.driver.findUniqueOrThrow({ where: { userId: d.userId } });
+    const storage = h.app.get(StorageService);
+    const send = jest.spyOn((storage as any).s3, 'send').mockResolvedValue({} as never);
+    try {
+      const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+      const up = await h.http()
+        .post('/api/v1/driver/uploads/direct?purpose=document')
+        .set(bearer(d.token))
+        .set('Content-Type', 'image/jpeg')
+        .set('X-Upload-Fallback-Reason', 'S3 403 AccessDenied')
+        .send(jpeg)
+        .expect(200);
+      expect(up.body.key).toMatch(new RegExp(`^driver-documents/${driver.id}/.+\\.jpg$`));
+      const put = send.mock.calls[0][0] as any;
+      expect(put.input).toMatchObject({ Key: up.body.key, ContentType: 'image/jpeg' });
+      expect(Buffer.compare(put.input.Body, jpeg)).toBe(0);
+      await h.http().post('/api/v1/driver/documents').set(bearer(d.token)).send({ type: 'drivers_licence', fileKey: up.body.key }).expect(201);
+      expect(await h.prisma.driverDocument.count({ where: { driverId: driver.id } })).toBe(1);
+
+      expect((await h.http().post('/api/v1/driver/uploads/direct?purpose=nope').set(bearer(d.token)).set('Content-Type', 'image/jpeg').send(jpeg)).status).toBe(422);
+      expect((await h.http().post('/api/v1/driver/uploads/direct?purpose=document').set(bearer(d.token)).set('Content-Type', 'text/plain').send('hi')).status).toBe(422);
+      expect((await h.http().post('/api/v1/driver/uploads/direct?purpose=document').set('Content-Type', 'image/jpeg').send(jpeg)).status).toBe(401);
+    } finally {
+      send.mockRestore();
+    }
   });
 
   it('driver onboarding: documents + truck → pending_approval → approve (requires approved docs)', async () => {

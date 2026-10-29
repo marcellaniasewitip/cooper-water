@@ -9,6 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { LedgerService } from '../wallet/ledger.service';
 import { DispatchService } from '../orders/dispatch.service';
+import { logger } from '../common/logger';
 import { Errors } from '../common/errors';
 import { formatKina } from '../common/money';
 import { isValidLatLng } from '../common/geo';
@@ -82,6 +83,13 @@ export class DriversService implements OnModuleInit {
 
   async presignUpload(driverId: string, purpose: keyof typeof UPLOAD_FOLDERS, contentType: string, contentLength: number) {
     return this.storage.presignUpload(UPLOAD_FOLDERS[purpose], driverId, contentType, contentLength);
+  }
+
+  async uploadDirect(driverId: string, purpose: string, contentType: string, body: Buffer, fallbackReason?: string) {
+    if (!(purpose in UPLOAD_FOLDERS)) throw Errors.invalid('invalid_purpose', `purpose must be one of: ${Object.keys(UPLOAD_FOLDERS).join(', ')}`);
+    // Logged so repeated presigned-upload failures (and their S3 error) are visible in CloudWatch.
+    if (fallbackReason) logger.warn({ driverId, purpose, reason: fallbackReason.slice(0, 300) }, 'presigned upload failed; using direct upload');
+    return this.storage.putObject(UPLOAD_FOLDERS[purpose as keyof typeof UPLOAD_FOLDERS], driverId, contentType, body);
   }
 
   async submitDocument(driverId: string, type: string, fileKey: string) {

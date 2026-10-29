@@ -1,6 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { logger } from './logger';
 import * as Sentry from '@sentry/node';
 
@@ -11,9 +11,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (host.getType() !== 'http') throw exception;
     const res = host.switchToHttp().getResponse<Response>();
     const { status, body } = this.render(exception);
+    const req = host.switchToHttp().getRequest<Request>();
+    const where = { method: req?.method, path: req?.originalUrl?.split('?')[0], status };
     if (status >= 500) {
-      logger.error({ err: exception }, 'unhandled error');
+      logger.error({ err: exception, ...where }, 'unhandled error');
       Sentry.captureException(exception);
+    } else if (status !== 401 && status !== 404) {
+      // Client errors are logged (without bodies) so a failing app flow can be traced in CloudWatch.
+      const e = (body as { error?: { code?: string; message?: string } }).error;
+      logger.warn({ ...where, code: e?.code, message: e?.message }, 'request rejected');
     }
     res.status(status).json(body);
   }
