@@ -710,6 +710,45 @@
         ]
       }
     },
+    "/api/v1/driver/uploads/direct": {
+      "post": {
+        "operationId": "DriverController_uploadDirect",
+        "summary": "",
+        "description": "Fallback upload through the API: raw file bytes as the body (Content-Type image/jpeg, png, webp or pdf),\n`?purpose=` as for /uploads. Returns `{ key }` to submit exactly like a presigned upload's key.",
+        "parameters": [
+          {
+            "name": "purpose",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-upload-fallback-reason",
+            "required": false,
+            "in": "header",
+            "description": "Why the presigned PUT failed (logged)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/driver/documents": {
       "post": {
         "operationId": "DriverController_submitDocument",

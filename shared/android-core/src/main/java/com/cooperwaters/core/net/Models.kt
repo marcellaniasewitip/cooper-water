@@ -352,6 +352,9 @@ data class UploadRequest(
 )
 
 @Serializable
+data class DirectUploadResult(val key: String)
+
+@Serializable
 data class UploadTicket(
     val key: String,
     val url: String,

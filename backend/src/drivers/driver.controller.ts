@@ -1,5 +1,6 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import { Request } from 'express';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { UserPrincipal } from '../auth/auth.types';
 import { Idempotent, IdempotencyKey } from '../common/idempotency';
@@ -74,6 +75,24 @@ export class DriverController {
   @HttpCode(200)
   async upload(@CurrentUser() u: UserPrincipal, @Body() dto: UploadRequestDto) {
     return this.drivers.presignUpload(await this.driverId(u), dto.purpose, dto.contentType, dto.contentLength);
+  }
+
+  /**
+   * Fallback upload through the API: raw file bytes as the body (Content-Type image/jpeg, png, webp or pdf),
+   * `?purpose=` as for /uploads. Returns `{ key }` to submit exactly like a presigned upload's key.
+   */
+  @Post('uploads/direct')
+  @HttpCode(200)
+  @ApiHeader({ name: 'x-upload-fallback-reason', required: false, description: 'Why the presigned PUT failed (logged)' })
+  async uploadDirect(
+    @CurrentUser() u: UserPrincipal,
+    @Query('purpose') purpose: string,
+    @Req() req: Request,
+    @Headers('x-upload-fallback-reason') reason?: string,
+  ) {
+    const contentType = String(req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+    const body = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    return this.drivers.uploadDirect(await this.driverId(u), purpose, contentType, body, reason);
   }
 
   @Post('documents')

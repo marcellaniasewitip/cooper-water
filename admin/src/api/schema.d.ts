@@ -318,6 +318,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver/uploads/direct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Fallback upload through the API: raw file bytes as the body (Content-Type image/jpeg, png, webp or pdf),
+         *     `?purpose=` as for /uploads. Returns `{ key }` to submit exactly like a presigned upload's key.
+         */
+        post: operations["DriverController_uploadDirect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver/documents": {
         parameters: {
             query?: never;
@@ -1904,25 +1924,25 @@ export interface components {
             active?: boolean;
         };
         DepotDto: {
+            /** @description GeoJSON Polygon; null clears it */
+            geofencePolygon?: {
+                [key: string]: unknown;
+            } | null;
             name: string;
             lat: number;
             lng: number;
             geofenceRadiusM?: number | null;
-            geofencePolygon: {
-                type?: string;
-                coordinates?: number[][][];
-            };
             active?: boolean;
         };
         UpdateDepotDto: {
+            /** @description GeoJSON Polygon; null clears it */
+            geofencePolygon?: {
+                [key: string]: unknown;
+            } | null;
             name?: string;
             lat?: number;
             lng?: number;
             geofenceRadiusM?: number | null;
-            geofencePolygon: {
-                type?: string;
-                coordinates?: number[][][];
-            };
             active?: boolean;
         };
         PackageDto: {
@@ -1940,8 +1960,8 @@ export interface components {
             sortOrder?: number;
         };
         SettingValueDto: {
-            /** @description JSON value; type must match the setting. */
-            value: Record<string, never>;
+            /** @description Any JSON value (number, string, boolean or list) */
+            value: number | string | boolean | unknown[];
         };
         ReasonDto: {
             reason: string;
@@ -2525,6 +2545,28 @@ export interface operations {
                 "application/json": components["schemas"]["UploadRequestDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DriverController_uploadDirect: {
+        parameters: {
+            query: {
+                purpose: string;
+            };
+            header?: {
+                /** @description Why the presigned PUT failed (logged) */
+                "x-upload-fallback-reason"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
