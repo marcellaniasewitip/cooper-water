@@ -232,4 +232,11 @@
     <string name="earnings_since">Since %1$s</string>
     <string name="history_title">Job history</string>
     <string name="history_empty">No jobs yet.</string>
+    <!-- Bottom navigation -->
+    <string name="tab_jobs">Jobs</string>
+    <string name="tab_wallet">Wallet</string>
+    <string name="tab_earnings">Earnings</string>
+    <string name="tab_history">History</string>
+    <string name="tab_profile">Profile</string>
+    <string name="profile_saved">Saved.</string>
 </resources>

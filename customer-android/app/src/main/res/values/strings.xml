@@ -51,7 +51,7 @@
     <string name="home_order_water">Order water</string>
     <string name="home_active_orders">Current orders</string>
     <string name="home_recent_orders">Recent orders</string>
-    <string name="home_no_active">No current orders.</string>
+    <string name="home_no_active">No orders on the way. Tap Order water to get a delivery.</string>
     <string name="home_cached">Showing saved information. Tap refresh when you are online.</string>
     <string name="home_unsent_order">An order is saved on this phone and will be sent as soon as you are online. You will not be charged twice.</string>
     <string name="order_summary_line">%1$d × %2$s · %3$s</string>
@@ -59,7 +59,7 @@
     <!-- Saved locations -->
     <string name="locations_title">Delivery locations</string>
     <string name="locations_add">Add a location</string>
-    <string name="locations_empty">No saved locations yet.</string>
+    <string name="locations_empty">Save your home or work so ordering takes seconds next time.</string>
     <string name="locations_landmark">Landmark: %1$s</string>
     <string name="locations_delete_title">Delete location?</string>
     <string name="locations_delete_body">Delete \"%1$s\" from your saved locations?</string>
@@ -87,8 +87,8 @@
     <string name="order_step_review">Confirm order</string>
     <string name="order_choose_package">Choose a package</string>
     <string name="order_quantity">Quantity</string>
-    <string name="order_qty_minus">−</string>
-    <string name="order_qty_plus">+</string>
+    <string name="order_qty_minus">Decrease quantity</string>
+    <string name="order_qty_plus">Increase quantity</string>
     <string name="order_max_quantity">Up to %1$d per order.</string>
     <string name="order_fixed_price">Fixed price</string>
     <string name="order_price_estimate">Price (offline estimate)</string>
@@ -168,6 +168,17 @@
     <string name="dispute_submit">Send report</string>
 
     <!-- History -->
-    <string name="history_title">Order history</string>
-    <string name="history_empty">You have not ordered yet.</string>
+    <string name="history_title">Your orders</string>
+    <string name="history_empty">You haven\'t ordered yet. Your past deliveries will show here.</string>
+    <!-- Bottom navigation -->
+    <string name="tab_home">Home</string>
+    <string name="tab_orders">Orders</string>
+    <string name="tab_places">Places</string>
+    <string name="tab_profile">Profile</string>
+    <!-- Home hero -->
+    <string name="home_hero_title">Clean water, delivered</string>
+    <string name="home_hero_title_named">Hi %1$s 👋</string>
+    <string name="home_hero_body">Order a water cart to your door anywhere in Port Moresby. Fixed prices, pay cash or cell money.</string>
+    <string name="order_no_packages">No water packages are available right now. Please try again shortly.</string>
+    <string name="profile_saved">Saved.</string>
 </resources>

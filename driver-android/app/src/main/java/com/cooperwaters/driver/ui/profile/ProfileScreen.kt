@@ -33,23 +33,25 @@ import kotlinx.coroutines.launch
 
 /** Name (needed on first sign-in), phone, rating, sign out. */
 @Composable
-fun ProfileScreen(onboarding: Boolean, onDone: () -> Unit) {
+fun ProfileScreen(onboarding: Boolean, onDone: () -> Unit, bottomBar: (@Composable () -> Unit)? = null) {
     val container = appContainer()
     val user = container.tokenStore.user()
     var name by rememberSaveable { mutableStateOf(user?.name.orEmpty()) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<UiText?>(null) }
+    var saved by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val profile = container.state.profile.value
     LaunchedEffect(Unit) { container.state.refreshProfile() }
 
-    ScreenScaffold(title = stringResource(R.string.profile_title), onBack = if (onboarding) null else onDone) {
+    ScreenScaffold(title = stringResource(R.string.profile_title), onBack = if (onboarding || bottomBar != null) null else onDone, bottomBar = bottomBar) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (onboarding) Text(stringResource(R.string.profile_welcome_body))
-            OutlinedTextField(name, { name = it.take(80); error = null }, label = { Text(stringResource(R.string.profile_name_label)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(name, { name = it.take(80); error = null; saved = false }, label = { Text(stringResource(R.string.profile_name_label)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Text(stringResource(R.string.profile_phone, user?.phone.orEmpty()), style = MaterialTheme.typography.bodyMedium)
             profile?.takeIf { it.ratingCount > 0 }?.let { Text(stringResource(R.string.profile_rating, it.ratingAvg, it.ratingCount)) }
             ErrorCard(error)
+            if (saved) Text(stringResource(R.string.profile_saved), color = MaterialTheme.colorScheme.primary)
             LoadingButton(stringResource(R.string.action_save), saving, {
                 if (name.isBlank()) {
                     error = UiText.res(R.string.profile_name_required)
@@ -61,7 +63,8 @@ fun ProfileScreen(onboarding: Boolean, onDone: () -> Unit) {
                                 user?.let { container.tokenStore.saveUser(it.copy(name = r.value.name)) }
                                 container.state.setProfile(r.value)
                                 saving = false
-                                onDone()
+                                // As a tab there is nowhere to go back to: confirm in place instead.
+                                if (bottomBar == null) onDone() else saved = true
                             }
                             is ApiResult.Failure -> {
                                 saving = false

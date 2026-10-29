@@ -11,6 +11,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cooperwaters.customer.ui.auth.LoginScreen
+import com.cooperwaters.customer.ui.common.MainBottomBar
+import com.cooperwaters.customer.ui.common.MainTab
 import com.cooperwaters.customer.ui.common.appContainer
 import com.cooperwaters.customer.ui.history.HistoryScreen
 import com.cooperwaters.customer.ui.home.HomeScreen
@@ -47,6 +49,23 @@ object Routes {
 
 private fun NavHostController.goHomeClearingStack() = navigate(Routes.HOME) { popUpTo(0) { inclusive = true } }
 
+/** Bottom-bar navigation: one copy of each tab, Back always returns to Home. */
+private fun NavHostController.selectTab(tab: MainTab) {
+    if (tab == MainTab.HOME) {
+        popBackStack(Routes.HOME, inclusive = false)
+        return
+    }
+    val route = when (tab) {
+        MainTab.ORDERS -> Routes.HISTORY
+        MainTab.PLACES -> Routes.LOCATIONS
+        else -> Routes.profile(onboarding = false)
+    }
+    navigate(route) {
+        popUpTo(Routes.HOME)
+        launchSingleTop = true
+    }
+}
+
 @Composable
 fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
     val nav = rememberNavController()
@@ -82,11 +101,14 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
             arguments = listOf(navArgument("onboarding") { type = NavType.BoolType; defaultValue = false }),
         ) { entry ->
             val onboarding = entry.arguments?.getBoolean("onboarding") ?: false
+            val tabBar: (@Composable () -> Unit)? =
+                if (onboarding) null else { { MainBottomBar(MainTab.PROFILE) { nav.selectTab(it) } } }
             ProfileScreen(
                 onboarding = onboarding,
                 onDone = { if (onboarding) nav.goHomeClearingStack() else nav.popBackStack() },
                 showBack = !onboarding,
                 onBack = { nav.popBackStack() },
+                bottomBar = tabBar,
             )
         }
         composable(Routes.HOME) {
@@ -99,15 +121,13 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
                         nav.navigate(Routes.tracking(order.id))
                     }
                 },
-                onLocations = { nav.navigate(Routes.LOCATIONS) },
-                onHistory = { nav.navigate(Routes.HISTORY) },
-                onProfile = { nav.navigate(Routes.profile(onboarding = false)) },
+                bottomBar = { MainBottomBar(MainTab.HOME) { nav.selectTab(it) } },
             )
         }
         composable(Routes.LOCATIONS) {
             LocationsScreen(
-                onBack = { nav.popBackStack() },
                 onEdit = { id -> nav.navigate(Routes.locationEdit(id)) },
+                bottomBar = { MainBottomBar(MainTab.PLACES) { nav.selectTab(it) } },
             )
         }
         composable(
@@ -153,7 +173,11 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
             DisputeScreen(orderId = entry.arguments?.getString("orderId").orEmpty(), onDone = { nav.popBackStack() })
         }
         composable(Routes.HISTORY) {
-            HistoryScreen(onBack = { nav.popBackStack() }, onOpen = { id -> nav.navigate(Routes.tracking(id)) })
+            HistoryScreen(
+                onOpen = { id -> nav.navigate(Routes.tracking(id)) },
+                onNewOrder = { nav.navigate(Routes.NEW_ORDER) },
+                bottomBar = { MainBottomBar(MainTab.ORDERS) { nav.selectTab(it) } },
+            )
         }
     }
 }

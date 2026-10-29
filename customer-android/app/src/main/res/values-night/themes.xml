@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode: deep navy window and system bars, matching CooperWatersTheme (dark). -->
+    <style name="Theme.CooperWaters" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FF0A1622</item>
+        <item name="android:statusBarColor">#FF0A1622</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">#FF0A1622</item>
+    </style>
+</resources>

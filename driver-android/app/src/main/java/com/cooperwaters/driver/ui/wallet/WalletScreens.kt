@@ -62,11 +62,11 @@ fun ledgerTypeLabel(type: String): Int = when (type) {
 }
 
 @Composable
-fun WalletScreen(onBack: () -> Unit, onTopup: () -> Unit, onWithdraw: () -> Unit) {
+fun WalletScreen(onBack: () -> Unit, onTopup: () -> Unit, onWithdraw: () -> Unit, bottomBar: (@Composable () -> Unit)? = null) {
     val vm = containerViewModel { c -> WalletViewModel(c.repository, c.state, c.realtime.events) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.refresh() }
-    ScreenScaffold(title = stringResource(R.string.wallet_title), onBack = onBack) {
+    ScreenScaffold(title = stringResource(R.string.wallet_title), onBack = onBack, bottomBar = bottomBar) {
         if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ui.summary?.let { s ->
