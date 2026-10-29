@@ -30,8 +30,19 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
 
+    signingConfigs {
+        // One shared debug key for every machine and CI run, so test APKs update in place (see shared/test-signing).
+        getByName("debug") {
+            storeFile = rootProject.file("../shared/test-signing/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         debug {
+            signingConfig = signingConfigs.getByName("debug")
             buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
