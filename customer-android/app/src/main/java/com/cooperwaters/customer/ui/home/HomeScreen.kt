@@ -5,15 +5,19 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,6 +49,7 @@ import com.cooperwaters.customer.R
 import com.cooperwaters.customer.data.CustomerRepository
 import com.cooperwaters.customer.ui.common.OrderCard
 import com.cooperwaters.customer.ui.common.ScreenScaffold
+import com.cooperwaters.customer.ui.common.appContainer
 import com.cooperwaters.customer.ui.common.containerViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -99,12 +104,11 @@ class HomeViewModel(
 fun HomeScreen(
     onNewOrder: () -> Unit,
     onOpenOrder: (Order) -> Unit,
-    onLocations: () -> Unit,
-    onHistory: () -> Unit,
-    onProfile: () -> Unit,
+    bottomBar: @Composable () -> Unit,
 ) {
     val vm = containerViewModel { c -> HomeViewModel(c.repository, c.realtime.events, c.pushEvents) }
     val state by vm.state.collectAsStateWithLifecycle()
+    val name = appContainer().tokenStore.user()?.name?.trim()?.substringBefore(' ').orEmpty()
 
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     LaunchedEffect(Unit) {
@@ -116,34 +120,69 @@ fun HomeScreen(
         title = stringResource(R.string.app_name),
         actions = {
             IconButton(onClick = vm::refresh) { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.action_refresh)) }
-            IconButton(onClick = onLocations) { Icon(Icons.Filled.LocationOn, contentDescription = stringResource(R.string.locations_title)) }
-            IconButton(onClick = onHistory) { Icon(Icons.Filled.List, contentDescription = stringResource(R.string.history_title)) }
-            IconButton(onClick = onProfile) { Icon(Icons.Filled.AccountCircle, contentDescription = stringResource(R.string.profile_title)) }
         },
+        bottomBar = bottomBar,
     ) {
         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                Button(onClick = onNewOrder, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_order_water)) }
-            }
+            item { OrderHero(name = name, onNewOrder = onNewOrder) }
             if (state.hasUnsentOrder) {
                 item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                        Text(stringResource(R.string.home_unsent_order), Modifier.padding(16.dp))
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                        Text(
+                            stringResource(R.string.home_unsent_order),
+                            Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
                     }
                 }
             }
             item { ErrorCard(state.error, onRetry = vm::refresh) }
-            if (state.fromCache) item { Text(stringResource(R.string.home_cached), style = MaterialTheme.typography.bodySmall) }
+            if (state.fromCache) {
+                item { Text(stringResource(R.string.home_cached), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
             item { SectionTitle(stringResource(R.string.home_active_orders)) }
-            if (state.active.isEmpty() && !state.loading) item { EmptyState(stringResource(R.string.home_no_active)) }
+            if (state.active.isEmpty() && !state.loading) {
+                item { EmptyState(stringResource(R.string.home_no_active), icon = Icons.Filled.ShoppingCart) }
+            }
             items(state.active, key = { it.id }) { order -> OrderCard(order, onClick = { onOpenOrder(order) }) }
             if (state.recent.isNotEmpty()) {
                 item { SectionTitle(stringResource(R.string.home_recent_orders)) }
                 items(state.recent, key = { "r" + it.id }) { order -> OrderCard(order, onClick = { onOpenOrder(order) }) }
+            }
+        }
+    }
+}
+
+/** Brand card at the top of Home: greeting, one line of value, and the main call to action. */
+@Composable
+private fun OrderHero(name: String, onNewOrder: () -> Unit) {
+    Card(
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                if (name.isBlank()) stringResource(R.string.home_hero_title) else stringResource(R.string.home_hero_title_named, name),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Text(
+                stringResource(R.string.home_hero_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Button(
+                onClick = onNewOrder,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 56.dp),
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.home_order_water), style = MaterialTheme.typography.titleMedium)
             }
         }
     }

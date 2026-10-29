@@ -1,6 +1,7 @@
 package com.cooperwaters.customer.ui.order
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,16 +32,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cooperwaters.core.android.ui.EmptyState
 import com.cooperwaters.core.android.ui.ErrorCard
 import com.cooperwaters.core.android.ui.LabelValue
 import com.cooperwaters.core.android.ui.Labels
 import com.cooperwaters.core.android.ui.LoadingButton
+import com.cooperwaters.core.android.ui.QuantityStepper
 import com.cooperwaters.core.android.ui.SectionTitle
 import com.cooperwaters.core.money.Money
 import com.cooperwaters.customer.R
@@ -114,30 +120,50 @@ private fun PriceBar(state: NewOrderState) {
 @Composable
 private fun PackageStep(state: NewOrderState, vm: NewOrderViewModel) {
     SectionTitle(stringResource(R.string.order_choose_package))
+    if (state.packages.isEmpty() && !state.loading) {
+        EmptyState(
+            stringResource(R.string.order_no_packages),
+            icon = Icons.Filled.ShoppingCart,
+            actionLabel = stringResource(com.cooperwaters.core.R.string.cw_retry),
+            onAction = vm::reload,
+        )
+        return
+    }
     for (p in state.packages) {
         val selected = p.id == state.packageId
         Card(
-            modifier = Modifier.fillMaxWidth().selectable(selected = selected, onClick = { vm.selectPackage(p.id) }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectable(selected = selected, onClick = { vm.selectPackage(p.id) }, role = Role.RadioButton),
             colors = CardDefaults.cardColors(
-                containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
             ),
+            border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         ) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = selected, onClick = { vm.selectPackage(p.id) })
+                RadioButton(selected = selected, onClick = null)
+                Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
                     Text(p.name, style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(com.cooperwaters.core.R.string.cw_litres, p.volumeLitres), style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        stringResource(com.cooperwaters.core.R.string.cw_litres, p.volumeLitres),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Text(Money.format(p.priceToea), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(Money.format(p.priceToea), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
     SectionTitle(stringResource(R.string.order_quantity))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        OutlinedButton(onClick = { vm.setQuantity(state.quantity - 1) }, enabled = state.quantity > 1) { Text(stringResource(R.string.order_qty_minus)) }
-        Text(state.quantity.toString(), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 24.dp))
-        OutlinedButton(onClick = { vm.setQuantity(state.quantity + 1) }, enabled = state.quantity < state.maxQuantity) { Text(stringResource(R.string.order_qty_plus)) }
-    }
+    QuantityStepper(
+        value = state.quantity,
+        onChange = vm::setQuantity,
+        min = 1,
+        max = state.maxQuantity,
+        decreaseLabel = stringResource(R.string.order_qty_minus),
+        increaseLabel = stringResource(R.string.order_qty_plus),
+    )
     Text(stringResource(R.string.order_max_quantity, state.maxQuantity), style = MaterialTheme.typography.bodySmall)
 }
 

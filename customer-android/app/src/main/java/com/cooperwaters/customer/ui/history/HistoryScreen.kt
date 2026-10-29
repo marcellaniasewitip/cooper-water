@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -72,14 +74,23 @@ class HistoryViewModel(private val repo: CustomerRepository) : ViewModel() {
 }
 
 @Composable
-fun HistoryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
+fun HistoryScreen(onOpen: (String) -> Unit, onNewOrder: () -> Unit, bottomBar: @Composable () -> Unit) {
     val vm = containerViewModel { c -> HistoryViewModel(c.repository) }
     val state by vm.state.collectAsStateWithLifecycle()
-    ScreenScaffold(title = stringResource(R.string.history_title), onBack = onBack) {
+    ScreenScaffold(title = stringResource(R.string.history_title), bottomBar = bottomBar) {
         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { ErrorCard(state.error, onRetry = vm::refresh) }
-            if (!state.loading && state.items.isEmpty()) item { EmptyState(stringResource(R.string.history_empty)) }
+            if (!state.loading && state.items.isEmpty()) {
+                item {
+                    EmptyState(
+                        stringResource(R.string.history_empty),
+                        icon = Icons.Filled.List,
+                        actionLabel = stringResource(R.string.home_order_water),
+                        onAction = onNewOrder,
+                    )
+                }
+            }
             items(state.items, key = { it.id }) { o -> OrderCard(o, onClick = { onOpen(o.id) }) }
             if (!state.endReached && state.items.isNotEmpty()) {
                 item {

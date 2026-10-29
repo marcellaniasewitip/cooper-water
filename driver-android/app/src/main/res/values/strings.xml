@@ -47,7 +47,7 @@
     <string name="profile_name_label">Your name</string>
     <string name="profile_name_required">Enter your name.</string>
     <string name="profile_phone">Mobile number: %1$s</string>
-    <string name="profile_rating">Rating %1$.1f ★ (%2$d ratings)</string>
+    <string name="profile_rating">%1$.1f rating (%2$d ratings)</string>
     <string name="profile_sign_out">Sign out</string>
 
     <!-- Onboarding -->
@@ -55,9 +55,11 @@
     <string name="onboarding_intro">Upload clear photos of each document and register your truck. Our team will review them.</string>
     <string name="onboarding_rejected">Your application needs changes: %1$s</string>
     <string name="onboarding_documents">Documents</string>
+    <string name="onboarding_progress">%1$d of %2$d documents uploaded</string>
+    <string name="onboarding_photo_unreadable">We couldn\'t read that photo. Please take it again.</string>
     <string name="onboarding_uploading">Uploading…</string>
-    <string name="photo_take">Take photo</string>
-    <string name="photo_gallery">Choose from gallery</string>
+    <string name="photo_take">Camera</string>
+    <string name="photo_gallery">Gallery</string>
     <string name="doc_drivers_licence">Driver\'s licence</string>
     <string name="doc_vehicle_registration">Vehicle registration</string>
     <string name="doc_national_id">National ID</string>
@@ -68,6 +70,7 @@
     <string name="doc_status_approved">Approved</string>
     <string name="doc_status_rejected">Rejected — upload again</string>
     <string name="truck_title">Your truck</string>
+    <string name="truck_hint">Tell us about the truck you deliver with.</string>
     <string name="truck_plate">Number plate</string>
     <string name="truck_capacity">Tank capacity (litres)</string>
     <string name="truck_photo_optional">Truck photo (optional)</string>
@@ -232,4 +235,11 @@
     <string name="earnings_since">Since %1$s</string>
     <string name="history_title">Job history</string>
     <string name="history_empty">No jobs yet.</string>
+    <!-- Bottom navigation -->
+    <string name="tab_jobs">Jobs</string>
+    <string name="tab_wallet">Wallet</string>
+    <string name="tab_earnings">Earnings</string>
+    <string name="tab_history">History</string>
+    <string name="tab_profile">Profile</string>
+    <string name="profile_saved">Saved.</string>
 </resources>

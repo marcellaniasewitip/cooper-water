@@ -23,3 +23,6 @@ google-services.json
 *.tfvars
 !*.tfvars.example
 dump.rdb
+
+# Shared test-APK debug key (not a release key; see shared/test-signing/README.md)
+!shared/test-signing/debug.keystore

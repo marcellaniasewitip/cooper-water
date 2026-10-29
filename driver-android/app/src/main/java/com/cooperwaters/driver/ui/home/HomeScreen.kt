@@ -14,11 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,11 +60,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     onOpenJob: (String) -> Unit,
-    onWallet: () -> Unit,
     onTopup: () -> Unit,
-    onEarnings: () -> Unit,
-    onHistory: () -> Unit,
-    onProfile: () -> Unit,
+    bottomBar: @Composable () -> Unit,
 ) {
     val vm = containerViewModel { c -> HomeViewModel(c.repository, c.state) }
     val ui by vm.ui.collectAsStateWithLifecycle()
@@ -108,11 +101,8 @@ fun HomeScreen(
         title = stringResource(R.string.app_name),
         actions = {
             IconButton(onClick = vm::refresh) { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.action_refresh)) }
-            IconButton(onClick = onWallet) { Icon(Icons.Filled.ShoppingCart, contentDescription = stringResource(R.string.wallet_title)) }
-            IconButton(onClick = onEarnings) { Icon(Icons.Filled.DateRange, contentDescription = stringResource(R.string.earnings_title)) }
-            IconButton(onClick = onHistory) { Icon(Icons.Filled.List, contentDescription = stringResource(R.string.history_title)) }
-            IconButton(onClick = onProfile) { Icon(Icons.Filled.AccountCircle, contentDescription = stringResource(R.string.profile_title)) }
         },
+        bottomBar = bottomBar,
     ) {
         if (ui.refreshing || ui.togglingOnline) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

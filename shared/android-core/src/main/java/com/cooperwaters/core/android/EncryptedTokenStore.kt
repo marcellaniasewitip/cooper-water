@@ -20,19 +20,8 @@ class EncryptedTokenStore(
     fileName: String = "cw_session",
     crashReporter: CrashReporter = CrashReporter.NoOp,
 ) : TokenStore {
-    private val prefs: SharedPreferences = try {
-        val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
-        EncryptedSharedPreferences.create(
-            context,
-            fileName,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
-    } catch (e: Exception) {
-        crashReporter.recordException(e, mapOf("where" to "encrypted_prefs"))
-        context.getSharedPreferences(fileName + "_plain", Context.MODE_PRIVATE)
-    }
+    private val prefs: SharedPreferences = openEncrypted(context, fileName, crashReporter)
+        ?: context.getSharedPreferences(fileName + "_plain", Context.MODE_PRIVATE)
 
     @Volatile private var cachedAccess: String? = prefs.getString(KEY_ACCESS, null)
 
@@ -67,6 +56,30 @@ class EncryptedTokenStore(
     }
 
     private companion object {
+        /**
+         * The Android Keystore occasionally fails transiently right after boot or an update on some phones.
+         * One retry avoids falling back to an empty store, which would sign the user out for no reason.
+         */
+        fun openEncrypted(context: Context, fileName: String, crashReporter: CrashReporter): SharedPreferences? {
+            repeat(2) { attempt ->
+                try {
+                    val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+                    return EncryptedSharedPreferences.create(
+                        context,
+                        fileName,
+                        masterKey,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+                    )
+                } catch (e: Exception) {
+                    crashReporter.recordException(e, mapOf("where" to "encrypted_prefs", "attempt" to attempt.toString()))
+                    if (attempt == 0) Thread.sleep(150)
+                }
+            }
+            return null
+        }
+
+
         const val KEY_ACCESS = "access"
         const val KEY_REFRESH = "refresh"
         const val KEY_USER = "user"

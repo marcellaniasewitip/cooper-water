@@ -4,12 +4,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
@@ -81,7 +84,7 @@ class LocationsViewModel(private val repo: CustomerRepository) : ViewModel() {
 }
 
 @Composable
-fun LocationsScreen(onBack: () -> Unit, onEdit: (String?) -> Unit) {
+fun LocationsScreen(onEdit: (String?) -> Unit, bottomBar: @Composable () -> Unit) {
     val vm = containerViewModel { c -> LocationsViewModel(c.repository) }
     val state by vm.state.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf<SavedLocation?>(null) }
@@ -89,7 +92,7 @@ fun LocationsScreen(onBack: () -> Unit, onEdit: (String?) -> Unit) {
 
     ScreenScaffold(
         title = stringResource(R.string.locations_title),
-        onBack = onBack,
+        bottomBar = bottomBar,
         actions = {
             IconButton(onClick = { onEdit(null) }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.locations_add)) }
         },
@@ -97,13 +100,19 @@ fun LocationsScreen(onBack: () -> Unit, onEdit: (String?) -> Unit) {
         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         ErrorCard(state.error, Modifier.padding(16.dp), onRetry = vm::refresh)
         if (!state.loading && state.items.isEmpty()) {
-            EmptyState(stringResource(R.string.locations_empty))
-            TextButton(onClick = { onEdit(null) }, modifier = Modifier.padding(horizontal = 16.dp)) { Text(stringResource(R.string.locations_add)) }
+            EmptyState(
+                stringResource(R.string.locations_empty),
+                icon = Icons.Filled.LocationOn,
+                actionLabel = stringResource(R.string.locations_add),
+                onAction = { onEdit(null) },
+            )
         }
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(state.items, key = { it.id }) { loc ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(loc.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Text(loc.addressText, style = MaterialTheme.typography.bodyMedium)

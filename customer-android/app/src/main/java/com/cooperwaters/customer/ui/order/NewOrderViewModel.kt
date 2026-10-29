@@ -76,6 +76,13 @@ class NewOrderViewModel(
         viewModelScope.launch { load() }
     }
 
+    /** Retry loading packages, locations and settings (e.g. after "no packages" or offline). */
+    fun reload() {
+        if (_state.value.loading) return
+        _state.update { it.copy(loading = true, error = null) }
+        viewModelScope.launch { load() }
+    }
+
     private suspend fun load() {
         val config = repo.config()
         val pkgs = repo.packages()

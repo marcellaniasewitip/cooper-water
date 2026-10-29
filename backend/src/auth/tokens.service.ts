@@ -14,6 +14,13 @@ export interface TokenPair {
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
+/**
+ * A rotated refresh token may be presented again within this window without killing the session.
+ * On patchy mobile data the server can rotate a token but the response never reaches the phone, so the
+ * app retries with the old one; treating that as theft would sign the customer out for no reason.
+ */
+export const REFRESH_REUSE_GRACE_MS = 2 * 60_000;
+
 /** JWT access tokens + opaque rotating refresh tokens (stored hashed). */
 @Injectable()
 export class TokensService {
@@ -56,8 +63,14 @@ export class TokensService {
     const row = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
     if (!row || row.subjectType !== typ) throw Errors.unauthorized('Invalid refresh token');
     if (row.revokedAt) {
+      // Rotation leaves expiresAt in the future; logout, suspension and theft response also expire the
+      // token, so only a just-rotated token qualifies for the retry grace.
+      const rotated = row.expiresAt > row.revokedAt;
+      if (rotated && Date.now() - row.revokedAt.getTime() < REFRESH_REUSE_GRACE_MS) {
+        return this.issue(await build(row.subjectId, typ));
+      }
       // Token reuse → likely theft. Kill every session for this subject.
-      await this.prisma.refreshToken.updateMany({ where: { subjectId: row.subjectId, revokedAt: null }, data: { revokedAt: new Date() } });
+      await this.killAll(row.subjectId);
       throw Errors.unauthorized('Refresh token already used');
     }
     if (row.expiresAt < new Date()) throw Errors.unauthorized('Refresh token expired');
@@ -70,10 +83,17 @@ export class TokensService {
   async revoke(presented: string): Promise<void> {
     const raw = presented.split('.', 2)[1];
     if (!raw) return;
-    await this.prisma.refreshToken.updateMany({ where: { tokenHash: sha256(raw), revokedAt: null }, data: { revokedAt: new Date() } });
+    const now = new Date();
+    await this.prisma.refreshToken.updateMany({ where: { tokenHash: sha256(raw), revokedAt: null }, data: { revokedAt: now, expiresAt: now } });
   }
 
   async revokeAll(subjectId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({ where: { subjectId, revokedAt: null }, data: { revokedAt: new Date() } });
+    await this.killAll(subjectId);
+  }
+
+  /** Revoke and expire every token of the subject, including rotated ones still inside the grace window. */
+  private async killAll(subjectId: string): Promise<void> {
+    const now = new Date();
+    await this.prisma.refreshToken.updateMany({ where: { subjectId, expiresAt: { gt: now } }, data: { revokedAt: now, expiresAt: now } });
   }
 }

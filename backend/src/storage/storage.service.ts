@@ -24,6 +24,10 @@ export class StorageService {
     region: this.env.s3Region,
     endpoint: this.env.s3Endpoint,
     forcePathStyle: this.env.s3ForcePathStyle,
+    // Phones PUT straight to the presigned URL. With the SDK default (WHEN_SUPPORTED) the URL carries the
+    // CRC32 of an empty body, so real S3 rejects every upload with BadDigest. Only add checksums when required.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
   });
 
   async presignUpload(folder: string, ownerId: string, contentType: string, contentLength: number) {

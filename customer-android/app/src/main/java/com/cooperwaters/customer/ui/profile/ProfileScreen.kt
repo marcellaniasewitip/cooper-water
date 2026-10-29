@@ -1,6 +1,23 @@
 package com.cooperwaters.customer.ui.profile
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -81,18 +99,51 @@ class ProfileViewModel(private val api: CustomerApi, private val tokenStore: Tok
 }
 
 @Composable
-fun ProfileScreen(onboarding: Boolean, onDone: () -> Unit, showBack: Boolean, onBack: () -> Unit) {
+fun ProfileScreen(
+    onboarding: Boolean,
+    onDone: () -> Unit,
+    showBack: Boolean,
+    onBack: () -> Unit,
+    bottomBar: (@Composable () -> Unit)? = null,
+) {
     val container = appContainer()
     val vm = containerViewModel { c -> ProfileViewModel(c.api.customerApi, c.tokenStore) }
     val state by vm.state.collectAsStateWithLifecycle()
-    LaunchedEffect(state.saved) { if (state.saved) onDone() }
+    // From the tab, saving shows a confirmation instead of leaving the screen.
+    LaunchedEffect(state.saved) { if (state.saved && bottomBar == null) onDone() }
 
     ScreenScaffold(
         title = stringResource(if (onboarding) R.string.profile_welcome_title else R.string.profile_title),
         onBack = if (showBack) onBack else null,
+        bottomBar = bottomBar,
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (onboarding) Text(stringResource(R.string.profile_welcome_body))
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            if (onboarding) Text(stringResource(R.string.profile_welcome_body), style = MaterialTheme.typography.bodyLarge)
+            Card(Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(56.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                initials(state.name),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text(state.name.ifBlank { stringResource(R.string.profile_title) }, style = MaterialTheme.typography.titleMedium)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(state.phone, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
             OutlinedTextField(
                 value = state.name,
                 onValueChange = vm::onName,
@@ -100,14 +151,26 @@ fun ProfileScreen(onboarding: Boolean, onDone: () -> Unit, showBack: Boolean, on
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Text(stringResource(R.string.profile_phone, state.phone), style = MaterialTheme.typography.bodyMedium)
             ErrorCard(state.error)
+            if (state.saved && bottomBar != null) {
+                Text(stringResource(R.string.profile_saved), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+            }
             LoadingButton(stringResource(R.string.action_save), state.saving, vm::save, Modifier.fillMaxWidth())
             if (!onboarding) {
-                OutlinedButton(onClick = { container.signOut() }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { container.signOut() },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.profile_sign_out))
                 }
             }
         }
     }
 }
+
+private fun initials(name: String): String =
+    name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.take(2).joinToString("") { it.first().uppercase() }.ifEmpty { "?" }

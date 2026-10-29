@@ -39,10 +39,10 @@ import com.cooperwaters.driver.ui.common.containerViewModel
 private val PERIODS = listOf("today" to R.string.earnings_today, "week" to R.string.earnings_week, "month" to R.string.earnings_month)
 
 @Composable
-fun EarningsScreen(onBack: () -> Unit) {
+fun EarningsScreen(onBack: () -> Unit, bottomBar: (@Composable () -> Unit)? = null) {
     val vm = containerViewModel { c -> EarningsViewModel(c.repository) }
     val ui by vm.ui.collectAsStateWithLifecycle()
-    ScreenScaffold(title = stringResource(R.string.earnings_title), onBack = onBack) {
+    ScreenScaffold(title = stringResource(R.string.earnings_title), onBack = onBack, bottomBar = bottomBar) {
         TabRow(selectedTabIndex = PERIODS.indexOfFirst { it.first == ui.period }.coerceAtLeast(0)) {
             PERIODS.forEach { (key, label) -> Tab(selected = ui.period == key, onClick = { vm.select(key) }, text = { Text(stringResource(label)) }) }
         }
@@ -72,10 +72,10 @@ fun EarningsScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun JobHistoryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
+fun JobHistoryScreen(onBack: () -> Unit, onOpen: (String) -> Unit, bottomBar: (@Composable () -> Unit)? = null) {
     val vm = containerViewModel { c -> JobHistoryViewModel(c.repository) }
     val ui by vm.ui.collectAsStateWithLifecycle()
-    ScreenScaffold(title = stringResource(R.string.history_title), onBack = onBack) {
+    ScreenScaffold(title = stringResource(R.string.history_title), onBack = onBack, bottomBar = bottomBar) {
         if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { ErrorCard(ui.error, onRetry = vm::refresh) }

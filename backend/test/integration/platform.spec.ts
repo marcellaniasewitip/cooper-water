@@ -78,10 +78,26 @@ describe('auth, RBAC, onboarding, notifications, reports (integration)', () => {
   it('refresh tokens rotate and reuse revokes the session family', async () => {
     const c = await customer(h);
     const r1 = await h.http().post('/api/v1/auth/refresh').send({ refreshToken: c.refreshToken }).expect(200);
+    // Pretend the rotation happened long ago: reuse outside the retry grace is treated as theft.
+    await h.prisma.refreshToken.updateMany({ where: { userId: c.userId, revokedAt: { not: null } }, data: { revokedAt: new Date(Date.now() - 10 * 60_000) } });
     const reuse = await h.http().post('/api/v1/auth/refresh').send({ refreshToken: c.refreshToken });
     expect(reuse.status).toBe(401);
     // Reuse killed the newer token too.
     expect((await h.http().post('/api/v1/auth/refresh').send({ refreshToken: r1.body.refreshToken })).status).toBe(401);
+  });
+
+  it('a refresh retried right after rotation (lost response) keeps the customer signed in', async () => {
+    const c = await customer(h);
+    const r1 = await h.http().post('/api/v1/auth/refresh').send({ refreshToken: c.refreshToken }).expect(200);
+    const retry = await h.http().post('/api/v1/auth/refresh').send({ refreshToken: c.refreshToken }).expect(200);
+    expect(retry.body.refreshToken).not.toBe(r1.body.refreshToken);
+    await h.http().post('/api/v1/auth/refresh').send({ refreshToken: retry.body.refreshToken }).expect(200);
+  });
+
+  it('a logged-out refresh token gets no grace', async () => {
+    const c = await customer(h);
+    await h.http().post('/api/v1/auth/logout').send({ refreshToken: c.refreshToken });
+    expect((await h.http().post('/api/v1/auth/refresh').send({ refreshToken: c.refreshToken })).status).toBe(401);
   });
 
   it('admin TOTP: setup, enable, then login requires the second factor', async () => {
