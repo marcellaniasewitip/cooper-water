@@ -39,7 +39,7 @@ class AppContainer(private val context: Context) {
     // TODO(sentry): swap for a Sentry-backed CrashReporter once a DSN is provisioned.
     val crashReporter: CrashReporter = LogcatCrashReporter("CW-Customer")
 
-    val baseUrl: String = DebugSettings.baseUrlOverride(context) ?: BuildConfig.API_BASE_URL
+    val baseUrl: String = BuildConfig.API_BASE_URL
 
     val tokenStore = EncryptedTokenStore(context, "cw_customer_session", crashReporter)
 
@@ -112,20 +112,5 @@ class AppContainer(private val context: Context) {
         realtime.disconnect()
         _loggedIn.value = false
         appScope.launch { cache.clear() }
-    }
-}
-
-/** Debug-only API base URL override (set from the sign-in screen; takes effect after restarting the app). */
-object DebugSettings {
-    private const val PREFS = "cw_debug"
-    private const val KEY_BASE_URL = "base_url"
-
-    fun baseUrlOverride(context: Context): String? {
-        if (!BuildConfig.DEBUG) return null
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_BASE_URL, null)?.takeIf { it.isNotBlank() }
-    }
-
-    fun setBaseUrlOverride(context: Context, url: String?) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_BASE_URL, url?.trim()).apply()
     }
 }

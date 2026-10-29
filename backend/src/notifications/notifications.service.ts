@@ -10,6 +10,8 @@ import { Errors } from '../common/errors';
 
 const MAX_ATTEMPTS = 5;
 
+type DeliveryOutcome = 'sent' | 'skipped' | 'failed_recipient' | 'failed_account';
+
 /**
  * Push first; SMS for OTP, critical events, or when push isn't delivered (§9).
  * Every send is a Notification row processed by a queued job with exponential backoff.
@@ -24,7 +26,9 @@ export class NotificationsService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.jobs.register('notifications.send', (d) => this.deliver(d.notificationId));
+    this.jobs.register('notifications.send', async (d) => {
+      await this.deliver(d.notificationId);
+    });
   }
 
   /** Notify a user by template. Never throws for delivery problems (business flows must not fail on them). */
@@ -53,27 +57,30 @@ export class NotificationsService implements OnModuleInit {
     const n = await this.prisma.notification.create({
       data: { phone, channel: 'sms', template: 'auth.otp', payload: { code, minutes: Math.ceil(ttlSec / 60) } },
     });
+    let outcome: DeliveryOutcome;
     try {
-      await this.deliver(n.id);
+      outcome = await this.deliver(n.id);
     } catch {
       await this.jobs.enqueue('notifications', 'notifications.send', { notificationId: n.id }, { jobId: `notif-${n.id}` });
       return;
     }
-    // A permanent refusal (e.g. ClickSend INVALID_RECIPIENT) won't be retried: tell the user now.
-    const after = await this.prisma.notification.findUnique({ where: { id: n.id }, select: { status: true } });
-    if (after?.status === 'failed') {
+    // Permanent refusals aren't retried: tell the user now, and only blame the number when it is the number.
+    if (outcome === 'failed_recipient') {
       throw Errors.invalid('sms_undeliverable', "We couldn't send a code to this number. Check it and try again.");
+    }
+    if (outcome === 'failed_account') {
+      throw Errors.unavailable('sms_unavailable', "We can't send sign-in codes right now. Please try again in a few minutes.");
     }
   }
 
   /** Job handler. Throws to trigger BullMQ backoff while attempts remain. */
-  async deliver(notificationId: string): Promise<void> {
+  async deliver(notificationId: string): Promise<DeliveryOutcome> {
     const n = await this.prisma.notification.findUnique({ where: { id: notificationId }, include: { user: true } });
-    if (!n || n.status === 'sent' || n.status === 'skipped') return;
+    if (!n || n.status === 'sent' || n.status === 'skipped') return 'skipped';
     const tpl = await this.template(n.template);
     if (!tpl) {
       await this.prisma.notification.update({ where: { id: n.id }, data: { status: 'skipped', lastError: 'no template' } });
-      return;
+      return 'skipped';
     }
     const vars = (n.payload ?? {}) as Record<string, unknown>;
     try {
@@ -81,7 +88,7 @@ export class NotificationsService implements OnModuleInit {
         const token = n.user?.fcmToken;
         if (!token) {
           await this.prisma.notification.update({ where: { id: n.id }, data: { status: 'skipped', lastError: 'no push token' } });
-          return;
+          return 'skipped';
         }
         await this.push.send({
           token,
@@ -93,7 +100,7 @@ export class NotificationsService implements OnModuleInit {
         const to = n.phone ?? n.user?.phone;
         if (!to || !tpl.smsBody) {
           await this.prisma.notification.update({ where: { id: n.id }, data: { status: 'skipped', lastError: 'no phone/sms body' } });
-          return;
+          return 'skipped';
         }
         await this.sms.send(to, truncateSms(render(tpl.smsBody, vars)));
       }
@@ -101,6 +108,7 @@ export class NotificationsService implements OnModuleInit {
         where: { id: n.id },
         data: { status: 'sent', sentAt: new Date(), attempts: { increment: 1 } },
       });
+      return 'sent';
     } catch (err: any) {
       const attempts = n.attempts + 1;
       const giveUp = attempts >= MAX_ATTEMPTS || (n.channel === 'push' && isPermanentPushError(err)) || err?.permanent === true;
@@ -109,10 +117,15 @@ export class NotificationsService implements OnModuleInit {
         data: { attempts, lastError: String(err?.message ?? err).slice(0, 500), status: giveUp ? 'failed' : 'queued' },
       });
       if (!giveUp) throw err; // BullMQ retries with exponential backoff
+      if (err?.permanent && err?.kind !== 'recipient') {
+        // Gateway setup problem (credentials, credit, country, sender ID): every SMS fails until someone fixes it.
+        logger.error({ notificationId: n.id, channel: n.channel, reason: String(err?.message ?? err) }, 'SMS gateway refused the message; check the provider account');
+      }
       // Push not delivered → fall back to SMS once, if the template has an SMS body (§9).
       if (n.channel === 'push' && tpl.smsBody && n.userId) {
         await this.queue({ userId: n.userId, phone: n.phone, channel: 'sms', template: n.template, payload: vars, dedupe: true });
       }
+      return err?.permanent && err?.kind === 'recipient' ? 'failed_recipient' : 'failed_account';
     }
   }
 

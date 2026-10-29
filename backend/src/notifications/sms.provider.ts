@@ -12,9 +12,18 @@ export interface SmsProvider {
 
 export const SMS_PROVIDER = Symbol('SMS_PROVIDER');
 
-/** A send that will never succeed on retry (bad number, account problem). Notifications stop retrying it. */
+/**
+ * A send that will never succeed on retry. Notifications stop retrying it.
+ * `recipient`: the number itself is bad. `account`: our gateway setup is (credentials, credit, country, sender ID).
+ */
 export class PermanentSmsError extends Error {
   readonly permanent = true;
+  constructor(
+    message: string,
+    readonly kind: 'recipient' | 'account' = 'account',
+  ) {
+    super(message);
+  }
 }
 
 /** Dev/test SMS: logs and keeps an in-memory outbox so tests and the simulator can read OTPs. */
@@ -24,11 +33,16 @@ export class MockSmsProvider implements SmsProvider {
   /** Test hooks: make the next N sends fail (transiently / permanently). */
   static failNext = 0;
   static failNextPermanent = 0;
+  static failNextAccount = 0;
 
   async send(to: string, body: string): Promise<SmsSendResult> {
     if (MockSmsProvider.failNextPermanent > 0) {
       MockSmsProvider.failNextPermanent--;
-      throw new PermanentSmsError('mock INVALID_RECIPIENT');
+      throw new PermanentSmsError('mock INVALID_RECIPIENT', 'recipient');
+    }
+    if (MockSmsProvider.failNextAccount > 0) {
+      MockSmsProvider.failNextAccount--;
+      throw new PermanentSmsError('mock INSUFFICIENT_CREDIT', 'account');
     }
     if (MockSmsProvider.failNext > 0) {
       MockSmsProvider.failNext--;
@@ -72,8 +86,21 @@ export class ClickSendSmsProvider implements SmsProvider {
   ) {}
 
   async send(to: string, body: string): Promise<SmsSendResult> {
+    try {
+      return await this.sendOnce(to, body, this.cfg.from);
+    } catch (err) {
+      // Many networks (PNG included) don't accept alphanumeric sender IDs: fall back to ClickSend's shared number.
+      if (this.cfg.from && err instanceof PermanentSmsError && err.message.includes('INVALID_SENDER_ID')) {
+        logger.warn({ from: this.cfg.from }, 'ClickSend refused the sender ID; sending from the shared number');
+        return this.sendOnce(to, body, undefined);
+      }
+      throw err;
+    }
+  }
+
+  private async sendOnce(to: string, body: string, from: string | undefined): Promise<SmsSendResult> {
     const message: Record<string, string> = { source: 'cooper-waters', to, body };
-    if (this.cfg.from) message.from = this.cfg.from;
+    if (from) message.from = from;
     const res = await this.fetchImpl(ClickSendSmsProvider.endpoint, {
       method: 'POST',
       headers: {
@@ -92,7 +119,8 @@ export class ClickSendSmsProvider implements SmsProvider {
     if (msg?.status === 'SUCCESS' && msg.message_id) return { providerMessageId: String(msg.message_id) };
     const status = String(msg?.status ?? json?.response_code ?? 'UNKNOWN');
     const err = `ClickSend ${status}${json?.response_msg ? `: ${json.response_msg}` : ''}`;
-    throw CLICKSEND_PERMANENT.has(status) ? new PermanentSmsError(err) : new Error(err);
+    if (!CLICKSEND_PERMANENT.has(status)) throw new Error(err);
+    throw new PermanentSmsError(err, status === 'INVALID_RECIPIENT' ? 'recipient' : 'account');
   }
 }
 

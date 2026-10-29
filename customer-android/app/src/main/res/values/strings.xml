@@ -33,10 +33,6 @@
     <string name="login_change_number">Use a different number</string>
 
     <!-- Debug-only server override -->
-    <string name="debug_server_title">Developer: API server</string>
-    <string name="debug_server_label">Base URL (without /api/v1)</string>
-    <string name="debug_server_save">Save server</string>
-    <string name="debug_server_restart">Saved. Close and reopen the app to use it.</string>
 
     <!-- Profile -->
     <string name="profile_title">Profile</string>
