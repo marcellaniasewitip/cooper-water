@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { UserPrincipal } from '../auth/auth.types';
 import { Idempotent, IdempotencyKey } from '../common/idempotency';
@@ -83,6 +83,7 @@ export class DriverController {
    */
   @Post('uploads/direct')
   @HttpCode(200)
+  @ApiHeader({ name: 'x-upload-fallback-reason', required: false, description: 'Why the presigned PUT failed (logged)' })
   async uploadDirect(
     @CurrentUser() u: UserPrincipal,
     @Query('purpose') purpose: string,
