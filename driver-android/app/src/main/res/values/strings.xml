@@ -56,6 +56,7 @@
     <string name="onboarding_rejected">Your application needs changes: %1$s</string>
     <string name="onboarding_documents">Documents</string>
     <string name="onboarding_progress">%1$d of %2$d documents uploaded</string>
+    <string name="onboarding_photo_unreadable">We couldn\'t read that photo. Please take it again.</string>
     <string name="onboarding_uploading">Uploading…</string>
     <string name="photo_take">Camera</string>
     <string name="photo_gallery">Gallery</string>

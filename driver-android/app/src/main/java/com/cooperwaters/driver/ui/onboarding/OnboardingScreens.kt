@@ -163,7 +163,7 @@ fun OnboardingScreen(onStageChanged: (DriverStage) -> Unit, onProfile: () -> Uni
             state.profile?.rejectReason?.takeIf { state.profile?.status == "rejected" }?.let {
                 ErrorCard(com.cooperwaters.core.android.ui.UiText.Res(R.string.onboarding_rejected, listOf(it)))
             }
-            ErrorCard(state.error, onDismiss = null)
+            if (state.failedType == null) ErrorCard(state.error, onDismiss = null)
             SectionTitle(stringResource(R.string.onboarding_documents))
             for (doc in state.documents) {
                 Card(
@@ -178,6 +178,7 @@ fun OnboardingScreen(onStageChanged: (DriverStage) -> Unit, onProfile: () -> Uni
                             DocumentStatusPill(doc.status)
                         }
                         doc.notes?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) }
+                        if (state.failedType == doc.type) ErrorCard(state.error, onDismiss = null)
                         if (state.uploading == doc.type) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
@@ -190,7 +191,7 @@ fun OnboardingScreen(onStageChanged: (DriverStage) -> Unit, onProfile: () -> Uni
                                 onPicked = { uri ->
                                     scope.launch {
                                         val bytes = compressPhoto(context, uri)
-                                        if (bytes != null) vm.uploadDocument(doc.type, bytes)
+                                        if (bytes != null) vm.uploadDocument(doc.type, bytes) else vm.photoUnreadable(doc.type)
                                     }
                                 },
                             )
@@ -233,6 +234,7 @@ fun OnboardingScreen(onStageChanged: (DriverStage) -> Unit, onProfile: () -> Uni
                     PhotoPickerButtons(onPicked = { uri -> scope.launch { compressPhoto(context, uri)?.let(vm::onTruckPhoto) } })
                 }
             }
+            if (state.failedType == OnboardingState.TRUCK) ErrorCard(state.error, onDismiss = null)
             LoadingButton(
                 stringResource(if (state.truckSaved) R.string.truck_saved else R.string.truck_save),
                 state.savingTruck,
