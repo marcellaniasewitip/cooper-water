@@ -57,6 +57,15 @@ describe('auth, RBAC, onboarding, notifications, reports (integration)', () => {
       expect(n.lastError).toContain('INSUFFICIENT_CREDIT');
     });
 
+    it('refused sends do not use up the hourly code limit', async () => {
+      const phone = nextPhone();
+      for (let i = 0; i < 6; i++) {
+        MockSmsProvider.failNextAccount = 1;
+        expect((await h.http().post('/api/v1/auth/otp/request').send({ phone })).status).toBe(503);
+      }
+      await h.http().post('/api/v1/auth/otp/request').send({ phone }).expect(200);
+    });
+
     it('tells the user when the SMS gateway permanently refuses the number', async () => {
       MockSmsProvider.failNextPermanent = 1;
       const r = await h.http().post('/api/v1/auth/otp/request').send({ phone: nextPhone() });
