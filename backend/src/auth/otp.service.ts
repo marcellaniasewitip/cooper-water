@@ -32,10 +32,16 @@ export class OtpService {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     // Only the newest code is valid.
     await this.prisma.otpCode.updateMany({ where: { phone, usedAt: null }, data: { usedAt: new Date() } });
-    await this.prisma.otpCode.create({
+    const otp = await this.prisma.otpCode.create({
       data: { phone, codeHash: hash(phone, code), expiresAt: new Date(Date.now() + ttlSec * 1000), ip },
     });
-    await this.notifications.sendOtp(phone, code, ttlSec);
+    try {
+      await this.notifications.sendOtp(phone, code, ttlSec);
+    } catch (err) {
+      // The SMS was refused, so no code reached the phone: don't count it against the hourly limit.
+      await this.prisma.otpCode.delete({ where: { id: otp.id } }).catch(() => undefined);
+      throw err;
+    }
     return { ttlSec };
   }
 
