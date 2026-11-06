@@ -29,6 +29,8 @@ data class LoginState(
     val resendInSec: Int = 0,
     /** Set when the server is in training mode: shown on screen instead of arriving by SMS. */
     val trainingCode: String? = null,
+    /** How long the code stays valid, from the server. */
+    val ttlSec: Int = 300,
 ) {
     enum class Step { PHONE, CODE }
 }
@@ -65,6 +67,7 @@ class LoginViewModel(
                         normalisedPhone = r.value.phone,
                         code = "",
                         resendInSec = 30,
+                        ttlSec = r.value.ttlSec,
                         trainingCode = r.value.trainingCode?.takeIf { r.value.trainingMode },
                     )
                 }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -32,8 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cooperwaters.core.android.auth.LoginState
@@ -114,25 +119,43 @@ fun LoginScreen(onSignedIn: (needsName: Boolean) -> Unit) {
                         LoadingButton(stringResource(R.string.login_send_code), state.loading, vm::requestCode, Modifier.fillMaxWidth())
                     }
                     LoginState.Step.CODE -> {
-                        Text(stringResource(R.string.login_code_sent, state.normalisedPhone), textAlign = TextAlign.Center)
-                        state.trainingCode?.let { code -> TrainingCodeBanner(code, onUse = { vm.onCodeChanged(code) }) }
-                        OutlinedTextField(
-                            value = state.code,
-                            onValueChange = vm::onCodeChanged,
-                            label = { Text(stringResource(R.string.login_code_label)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        ErrorCard(state.error)
-                        LoadingButton(stringResource(R.string.login_verify), state.loading, vm::verify, Modifier.fillMaxWidth())
-                        TextButton(onClick = vm::requestCode, enabled = state.resendInSec == 0 && !state.loading) {
-                            Text(
-                                if (state.resendInSec > 0) stringResource(R.string.login_resend_in, state.resendInSec)
-                                else stringResource(R.string.login_resend),
-                            )
+                        // Same card as the web sign-in: title, validity, training-mode code (testing), code field, Sign in / Start again.
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Text(stringResource(R.string.login_code_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                                Text(
+                                    stringResource(R.string.login_code_sent, state.normalisedPhone, (state.ttlSec + 59) / 60),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                state.trainingCode?.let { code -> TrainingCodeBanner(code, onUse = { vm.onCodeChanged(code) }) }
+                                OutlinedTextField(
+                                    value = state.code,
+                                    onValueChange = vm::onCodeChanged,
+                                    label = { Text(stringResource(R.string.login_code_label)) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                ErrorCard(state.error)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    LoadingButton(stringResource(R.string.login_verify), state.loading, vm::verify)
+                                    TextButton(onClick = vm::backToPhone) {
+                                        Text(stringResource(R.string.login_change_number), textDecoration = TextDecoration.Underline)
+                                    }
+                                }
+                                TextButton(
+                                    onClick = vm::requestCode,
+                                    enabled = state.resendInSec == 0 && !state.loading,
+                                    contentPadding = PaddingValues(0.dp),
+                                ) {
+                                    Text(
+                                        if (state.resendInSec > 0) stringResource(R.string.login_resend_in, state.resendInSec)
+                                        else stringResource(R.string.login_resend),
+                                    )
+                                }
+                            }
                         }
-                        TextButton(onClick = vm::backToPhone) { Text(stringResource(R.string.login_change_number)) }
                     }
                 }
             }
