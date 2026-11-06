@@ -35,6 +35,7 @@ export const SETTING_META: Record<string, SettingKind> = {
   'depot.online_gated': { kind: 'boolean' },
   'driver.required_documents': { kind: 'stringList' },
   'driver.location_stale_sec': { kind: 'integer', min: 0, unit: 's' },
+  'otp.training_mode': { kind: 'boolean' },
   'otp.ttl_sec': { kind: 'integer', min: 0, unit: 's' },
   'otp.max_attempts': { kind: 'integer', min: 0 },
   'otp.max_sends_per_phone_per_hour': { kind: 'integer', min: 0 },

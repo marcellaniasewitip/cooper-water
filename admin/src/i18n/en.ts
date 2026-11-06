@@ -380,6 +380,7 @@ export const en = {
       'depot.online_gated': 'Drivers must be at a depot to go online',
       'driver.required_documents': 'Required driver documents',
       'driver.location_stale_sec': 'Driver location is stale after (seconds)',
+      'otp.training_mode': 'Training mode: show sign-in codes in the app instead of sending SMS (testing only)',
       'otp.ttl_sec': 'OTP validity (seconds)',
       'otp.max_attempts': 'OTP max attempts',
       'otp.max_sends_per_phone_per_hour': 'OTP sends per phone per hour',

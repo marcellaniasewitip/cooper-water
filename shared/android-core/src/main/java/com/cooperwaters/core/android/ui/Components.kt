@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cooperwaters.core.R
 import com.cooperwaters.core.time.PomTime
 import kotlinx.coroutines.delay
@@ -90,6 +91,25 @@ fun ErrorCard(message: UiText?, modifier: Modifier = Modifier, onRetry: (() -> U
 }
 
 /** Primary button that shows a spinner and is disabled while [loading] (prevents double taps). */
+/** Testing only: shows the sign-in code the server returned in training mode (no SMS sent). */
+@Composable
+fun TrainingCodeBanner(code: String, onUse: () -> Unit, modifier: Modifier = Modifier) {
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        ),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.cw_training_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.cw_training_body), style = MaterialTheme.typography.bodyMedium)
+            Text(code, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
+            TextButton(onClick = onUse, contentPadding = PaddingValues(0.dp)) { Text(stringResource(R.string.cw_training_use)) }
+        }
+    }
+}
+
 @Composable
 fun LoadingButton(
     text: String,

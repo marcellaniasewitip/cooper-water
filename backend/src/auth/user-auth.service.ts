@@ -17,8 +17,8 @@ export class UserAuthService {
 
   async requestOtp(phoneInput: string, ip: string | null) {
     const phone = normalisePhone(phoneInput);
-    const { ttlSec } = await this.otp.request(phone, ip);
-    return { phone, ttlSec };
+    const { ttlSec, trainingCode } = await this.otp.request(phone, ip);
+    return trainingCode ? { phone, ttlSec, trainingMode: true, trainingCode } : { phone, ttlSec };
   }
 
   /**

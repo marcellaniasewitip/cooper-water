@@ -41,6 +41,7 @@ import com.cooperwaters.core.android.auth.LoginViewModel
 import com.cooperwaters.core.android.ui.CwIcons
 import com.cooperwaters.core.android.ui.ErrorCard
 import com.cooperwaters.core.android.ui.LoadingButton
+import com.cooperwaters.core.android.ui.TrainingCodeBanner
 import com.cooperwaters.driver.R
 import com.cooperwaters.driver.ui.common.appContainer
 import com.cooperwaters.driver.ui.common.containerViewModel
@@ -114,6 +115,7 @@ fun LoginScreen(onSignedIn: (needsName: Boolean) -> Unit) {
                     }
                     LoginState.Step.CODE -> {
                         Text(stringResource(R.string.login_code_sent, state.normalisedPhone), textAlign = TextAlign.Center)
+                        state.trainingCode?.let { code -> TrainingCodeBanner(code, onUse = { vm.onCodeChanged(code) }) }
                         OutlinedTextField(
                             value = state.code,
                             onValueChange = vm::onCodeChanged,
