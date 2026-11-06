@@ -57,6 +57,24 @@ describe('auth, RBAC, onboarding, notifications, reports (integration)', () => {
       expect(n.lastError).toContain('INSUFFICIENT_CREDIT');
     });
 
+    it('training mode returns the code instead of sending an SMS', async () => {
+      await h.prisma.setting.update({ where: { key: 'otp.training_mode' }, data: { value: true } });
+      h.settings.invalidate();
+      try {
+        const phone = nextPhone();
+        MockSmsProvider.failNextAccount = 1; // would fail if an SMS were attempted
+        const r = await h.http().post('/api/v1/auth/otp/request').send({ phone }).expect(200);
+        expect(r.body).toMatchObject({ trainingMode: true, trainingCode: expect.stringMatching(/^\d{6}$/) });
+        expect(MockSmsProvider.lastTo(r.body.phone)).toBeUndefined();
+        expect(await h.prisma.notification.count({ where: { phone: r.body.phone } })).toBe(0);
+        await h.http().post('/api/v1/auth/otp/verify').send({ phone, code: r.body.trainingCode, app: 'customer', name: 'Trainee' }).expect(200);
+      } finally {
+        MockSmsProvider.failNextAccount = 0;
+        await h.prisma.setting.update({ where: { key: 'otp.training_mode' }, data: { value: false } });
+        h.settings.invalidate();
+      }
+    });
+
     it('refused sends do not use up the hourly code limit', async () => {
       const phone = nextPhone();
       for (let i = 0; i < 6; i++) {

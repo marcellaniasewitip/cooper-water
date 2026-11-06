@@ -30,7 +30,13 @@ data class PushTokenRequest(val token: String?)
 data class OtpRequest(val phone: String)
 
 @Serializable
-data class OtpRequestResponse(val phone: String, val ttlSec: Int = 300)
+data class OtpRequestResponse(
+    val phone: String,
+    val ttlSec: Int = 300,
+    /** Training mode (testing only): no SMS was sent and the server returns the code for the app to show. */
+    val trainingMode: Boolean = false,
+    val trainingCode: String? = null,
+)
 
 @Serializable
 data class OtpVerifyRequest(

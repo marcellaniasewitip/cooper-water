@@ -92,8 +92,8 @@ async function main() {
 
   async function otp(phone: string, app: 'customer' | 'driver', name: string) {
     const r = await api('POST', '/auth/otp/request', { body: { phone } });
-    const body = MockSmsProvider.lastTo(r.phone)!;
-    const code = /(\d{6})/.exec(body)![1];
+    // Training mode returns the code directly; otherwise read it from the mock SMS outbox.
+    const code = (r.trainingCode as string | undefined) ?? /(\d{6})/.exec(MockSmsProvider.lastTo(r.phone)!)![1];
     const v = await api('POST', '/auth/otp/verify', { body: { phone, code, app, name } });
     return v.accessToken as string;
   }

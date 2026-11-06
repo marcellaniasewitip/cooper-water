@@ -27,6 +27,8 @@ data class LoginState(
     val loading: Boolean = false,
     val error: UiText? = null,
     val resendInSec: Int = 0,
+    /** Set when the server is in training mode: shown on screen instead of arriving by SMS. */
+    val trainingCode: String? = null,
 ) {
     enum class Step { PHONE, CODE }
 }
@@ -44,7 +46,7 @@ class LoginViewModel(
 
     fun onCodeChanged(v: String) = _state.update { it.copy(code = v.filter(Char::isDigit).take(6), error = null) }
 
-    fun backToPhone() = _state.update { it.copy(step = LoginState.Step.PHONE, code = "", error = null) }
+    fun backToPhone() = _state.update { it.copy(step = LoginState.Step.PHONE, code = "", error = null, trainingCode = null) }
 
     fun requestCode() {
         val phone = _state.value.phone.replace(" ", "")
@@ -57,7 +59,14 @@ class LoginViewModel(
         viewModelScope.launch {
             when (val r = apiCall { authApi.requestOtp(OtpRequest(phone)) }) {
                 is ApiResult.Success -> _state.update {
-                    it.copy(loading = false, step = LoginState.Step.CODE, normalisedPhone = r.value.phone, code = "", resendInSec = 30)
+                    it.copy(
+                        loading = false,
+                        step = LoginState.Step.CODE,
+                        normalisedPhone = r.value.phone,
+                        code = "",
+                        resendInSec = 30,
+                        trainingCode = r.value.trainingCode?.takeIf { r.value.trainingMode },
+                    )
                 }
                 is ApiResult.Failure -> _state.update { it.copy(loading = false, error = r.error.toUiText()) }
             }

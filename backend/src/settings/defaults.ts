@@ -40,6 +40,11 @@ export const SETTING_DEFAULTS = {
   'driver.required_documents': ['drivers_licence', 'vehicle_registration', 'national_id', 'truck_photo'],
   'driver.location_stale_sec': 120,
 
+  /**
+   * Training mode (testing only): sign-in codes are NOT sent by SMS; the app shows the code on screen instead.
+   * Turn off (Admin → Settings → OTP) once the SMS gateway (ClickSend) is funded, to send real SMS again.
+   */
+  'otp.training_mode': true,
   'otp.ttl_sec': 300,
   'otp.max_attempts': 5,
   'otp.max_sends_per_phone_per_hour': 5,

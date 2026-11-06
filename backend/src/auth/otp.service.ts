@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Errors } from '../common/errors';
+import { logger } from '../common/logger';
 
 const hash = (phone: string, code: string) => createHash('sha256').update(`${phone}:${code}`).digest('hex');
 
@@ -16,11 +17,12 @@ export class OtpService {
   ) {}
 
   /** Issue and send a 6-digit OTP. Rate-limited per phone and per IP (§9, §11). */
-  async request(phone: string, ip: string | null): Promise<{ ttlSec: number }> {
-    const [ttlSec, perPhone, perIp] = await Promise.all([
+  async request(phone: string, ip: string | null): Promise<{ ttlSec: number; trainingCode?: string }> {
+    const [ttlSec, perPhone, perIp, training] = await Promise.all([
       this.settings.get('otp.ttl_sec'),
       this.settings.get('otp.max_sends_per_phone_per_hour'),
       this.settings.get('otp.max_sends_per_ip_per_hour'),
+      this.settings.get('otp.training_mode'),
     ]);
     const since = new Date(Date.now() - 3600_000);
     const [phoneCount, ipCount] = await Promise.all([
@@ -35,6 +37,11 @@ export class OtpService {
     const otp = await this.prisma.otpCode.create({
       data: { phone, codeHash: hash(phone, code), expiresAt: new Date(Date.now() + ttlSec * 1000), ip },
     });
+    if (training) {
+      // Training mode: skip the SMS gateway and hand the code to the app to show on screen.
+      logger.warn({ phone }, 'otp.training_mode is on: sign-in code returned to the app, no SMS sent');
+      return { ttlSec, trainingCode: code };
+    }
     try {
       await this.notifications.sendOtp(phone, code, ttlSec);
     } catch (err) {
