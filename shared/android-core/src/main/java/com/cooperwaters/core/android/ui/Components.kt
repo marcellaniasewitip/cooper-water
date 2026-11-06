@@ -1,6 +1,11 @@
 package com.cooperwaters.core.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
@@ -42,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.cooperwaters.core.R
 import com.cooperwaters.core.time.PomTime
 import kotlinx.coroutines.delay
@@ -94,17 +98,24 @@ fun ErrorCard(message: UiText?, modifier: Modifier = Modifier, onRetry: (() -> U
 /** Testing only: shows the sign-in code the server returned in training mode (no SMS sent). */
 @Composable
 fun TrainingCodeBanner(code: String, onUse: () -> Unit, modifier: Modifier = Modifier) {
+    val message = buildAnnotatedString {
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.cw_training_title)) }
+        append(" — ")
+        append(stringResource(R.string.cw_training_body))
+        append(" ")
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)) { append(code) }
+        append(".")
+    }
     Card(
         modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f)),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.cw_training_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.cw_training_body), style = MaterialTheme.typography.bodyMedium)
-            Text(code, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp)) {
+            Text(message, style = MaterialTheme.typography.bodyMedium)
             TextButton(onClick = onUse, contentPadding = PaddingValues(0.dp)) { Text(stringResource(R.string.cw_training_use)) }
         }
     }

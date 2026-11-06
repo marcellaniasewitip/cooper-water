@@ -37,8 +37,8 @@
     <string name="cw_map_driver">Driver</string>
     <string name="cw_map_me">You</string>
     <string name="cw_training_title">Training mode</string>
-    <string name="cw_training_body">No SMS gateway is in use, so no SMS was sent. Your code is:</string>
-    <string name="cw_training_use">Use this code</string>
+    <string name="cw_training_body">no SMS gateway is configured. Your code is</string>
+    <string name="cw_training_use">Fill in the code</string>
     <string name="cw_login_phone_invalid">Enter your mobile number.</string>
     <string name="cw_login_code_invalid">Enter the 6-digit code from the SMS.</string>
     <string name="cw_login_code_wrong">That code is not correct.</string>
