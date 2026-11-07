@@ -47,6 +47,7 @@ import com.cooperwaters.core.android.ui.CwIcons
 import com.cooperwaters.core.android.ui.ErrorCard
 import com.cooperwaters.core.android.ui.LoadingButton
 import com.cooperwaters.core.android.ui.TrainingCodeBanner
+import com.cooperwaters.customer.BuildConfig
 import com.cooperwaters.customer.R
 import com.cooperwaters.customer.ui.common.appContainer
 import com.cooperwaters.customer.ui.common.containerViewModel
@@ -158,6 +159,11 @@ fun LoginScreen(onSignedIn: (needsName: Boolean) -> Unit) {
                         }
                     }
                 }
+                Text(
+                    stringResource(R.string.app_version, BuildConfig.VERSION_NAME, BuildConfig.GIT_SHA),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

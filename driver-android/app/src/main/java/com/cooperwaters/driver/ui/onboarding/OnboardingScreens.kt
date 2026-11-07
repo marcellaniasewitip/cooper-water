@@ -55,6 +55,7 @@ import com.cooperwaters.core.android.ui.CwIcons
 import com.cooperwaters.core.android.ui.ErrorCard
 import com.cooperwaters.core.android.ui.LoadingButton
 import com.cooperwaters.core.android.ui.SectionTitle
+import com.cooperwaters.driver.BuildConfig
 import com.cooperwaters.driver.R
 import com.cooperwaters.driver.ui.common.PhotoPickerButtons
 import com.cooperwaters.driver.ui.common.ScreenScaffold
@@ -241,6 +242,12 @@ fun OnboardingScreen(onStageChanged: (DriverStage) -> Unit, onProfile: () -> Uni
                 vm::saveTruck,
                 Modifier.fillMaxWidth(),
                 enabled = !state.truckSaved,
+            )
+            Text(
+                stringResource(R.string.app_version, BuildConfig.VERSION_NAME, BuildConfig.GIT_SHA),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
             )
             Spacer(Modifier.height(8.dp))
         }
