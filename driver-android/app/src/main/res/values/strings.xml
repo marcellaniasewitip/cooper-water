@@ -26,6 +26,7 @@
     <string name="tracking_notification_body">Sharing your location with Cooper Waters to receive jobs.</string>
 
     <!-- Sign in -->
+    <string name="app_version">Version %1$s · %2$s</string>
     <string name="login_tagline">Sign in to receive water delivery jobs.</string>
     <string name="login_phone_label">Mobile number</string>
     <string name="login_phone_hint">e.g. 7123 4567</string>

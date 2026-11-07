@@ -14,6 +14,8 @@ if (file("google-services.json").exists()) {
 }
 
 val apiBaseUrl: String = (findProperty("cw.apiBaseUrl") as String?) ?: "http://10.0.2.2:3100"
+/** Short commit id shown on the sign-in screen so testers can tell builds apart (CI passes -Pcw.gitSha). */
+val gitSha: String = (findProperty("cw.gitSha") as String?)?.take(7) ?: "dev"
 val apiBaseUrlRelease: String = (findProperty("cw.apiBaseUrlRelease") as String?) ?: apiBaseUrl
 
 android {
@@ -28,6 +30,7 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+        buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
     }
 
     signingConfigs {
