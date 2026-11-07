@@ -18,7 +18,9 @@ object ImageCompressor {
     fun compress(context: Context, uri: Uri, maxDimension: Int = 1600, quality: Int = 70): ByteArray? {
         val resolver = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return null
+        // A bounds-only decode always returns null and just fills in outWidth/outHeight, so judge success by
+        // those (they stay -1 if the stream couldn't be opened or the image couldn't be read).
+        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
         var sample = 1
