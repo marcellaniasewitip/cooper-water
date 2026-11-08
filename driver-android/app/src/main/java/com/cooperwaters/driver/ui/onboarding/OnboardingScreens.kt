@@ -61,6 +61,7 @@ import com.cooperwaters.driver.ui.common.PhotoPickerButtons
 import com.cooperwaters.driver.ui.common.ScreenScaffold
 import com.cooperwaters.driver.ui.common.appContainer
 import com.cooperwaters.driver.ui.common.compressPhoto
+import com.cooperwaters.driver.ui.common.photoReason
 import com.cooperwaters.driver.ui.common.containerViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -191,8 +192,9 @@ fun OnboardingScreen(onStageChanged: (DriverStage) -> Unit, onProfile: () -> Uni
                                 enabled = state.uploading == null,
                                 onPicked = { uri ->
                                     scope.launch {
-                                        val bytes = compressPhoto(context, uri)
-                                        if (bytes != null) vm.uploadDocument(doc.type, bytes) else vm.photoUnreadable(doc.type)
+                                        compressPhoto(context, uri)
+                                            .onSuccess { vm.uploadDocument(doc.type, it) }
+                                            .onFailure { vm.photoUnreadable(doc.type, it.photoReason()) }
                                     }
                                 },
                             )
@@ -232,7 +234,7 @@ fun OnboardingScreen(onStageChanged: (DriverStage) -> Unit, onProfile: () -> Uni
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (state.truckPhotoBytes != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    PhotoPickerButtons(onPicked = { uri -> scope.launch { compressPhoto(context, uri)?.let(vm::onTruckPhoto) } })
+                    PhotoPickerButtons(onPicked = { uri -> scope.launch { compressPhoto(context, uri).onSuccess(vm::onTruckPhoto).onFailure { vm.photoUnreadable(OnboardingState.TRUCK, it.photoReason()) } } })
                 }
             }
             if (state.failedType == OnboardingState.TRUCK) ErrorCard(state.error, onDismiss = null)

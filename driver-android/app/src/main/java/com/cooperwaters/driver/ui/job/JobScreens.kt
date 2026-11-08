@@ -150,7 +150,7 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit) {
                             bmp?.let { Image(it, contentDescription = stringResource(R.string.job_proof_photo), modifier = Modifier.fillMaxWidth().height(180.dp)) }
                             TextButton(onClick = vm::clearProofPhoto) { Text(stringResource(R.string.job_proof_remove)) }
                         } else {
-                            PhotoPickerButtons(onPicked = { uri -> scope.launch { compressPhoto(context, uri)?.let(vm::onProofPhoto) } })
+                            PhotoPickerButtons(onPicked = { uri -> scope.launch { compressPhoto(context, uri).onSuccess(vm::onProofPhoto) } })
                         }
                         LoadingButton(stringResource(R.string.job_mark_delivered), ui.busy, { vm.performStep(null, null) }, Modifier.fillMaxWidth())
                     }
