@@ -71,10 +71,12 @@ fun PhotoPickerButtons(onPicked: (Uri) -> Unit, enabled: Boolean = true, modifie
     }
 }
 
-/** Compress off the main thread (3G uploads). Null if the image could not be read. */
-suspend fun compressPhoto(context: android.content.Context, uri: Uri): ByteArray? =
+/** Compress off the main thread (3G uploads). A failure carries a short reason that can be shown on screen. */
+suspend fun compressPhoto(context: android.content.Context, uri: Uri): Result<ByteArray> =
     withContext(Dispatchers.IO) {
         runCatching { ImageCompressor.compress(context, uri) }
             .onFailure { android.util.Log.w("CW-Photo", "compress failed for $uri", it) }
-            .getOrNull()
     }
+
+/** Short, displayable reason for a failed [compressPhoto]. */
+fun Throwable.photoReason(): String = message?.takeIf { it.isNotBlank() } ?: javaClass.simpleName

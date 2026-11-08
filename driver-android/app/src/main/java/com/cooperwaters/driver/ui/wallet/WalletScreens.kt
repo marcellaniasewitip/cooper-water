@@ -178,7 +178,7 @@ fun TopupScreen(onDone: () -> Unit) {
                 if (ui.proofPhoto != null) {
                     TextButton(onClick = { vm.onProofPhoto(null) }, enabled = !ui.locked) { Text(stringResource(R.string.job_proof_remove)) }
                 } else {
-                    PhotoPickerButtons(enabled = !ui.locked, onPicked = { uri -> scope.launch { compressPhoto(context, uri)?.let(vm::onProofPhoto) } })
+                    PhotoPickerButtons(enabled = !ui.locked, onPicked = { uri -> scope.launch { compressPhoto(context, uri).onSuccess(vm::onProofPhoto) } })
                 }
             } else {
                 ui.merchantNumber?.let { Text(stringResource(R.string.topup_merchant, it), style = MaterialTheme.typography.bodySmall) }

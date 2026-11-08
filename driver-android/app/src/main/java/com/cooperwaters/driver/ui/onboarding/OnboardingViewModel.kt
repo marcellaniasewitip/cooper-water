@@ -118,7 +118,8 @@ class OnboardingViewModel(
     }
 
     /** The picked image could not be decoded (corrupt, unsupported format or out of memory). */
-    fun photoUnreadable(type: String) = _state.update { it.copy(error = UiText.res(R.string.onboarding_photo_unreadable), failedType = type) }
+    fun photoUnreadable(type: String, reason: String) =
+        _state.update { it.copy(error = UiText.res(R.string.onboarding_photo_unreadable, reason), failedType = type) }
 
     fun onPlate(v: String) = _state.update { it.copy(plate = v.uppercase().take(20), error = null, failedType = null, truckSaved = false) }
     fun onCapacity(v: String) = _state.update { it.copy(capacity = v.filter(Char::isDigit).take(6), error = null, failedType = null, truckSaved = false) }

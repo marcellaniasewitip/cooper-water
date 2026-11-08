@@ -10,7 +10,12 @@ import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+
+/** Why a picked/captured photo couldn't be prepared for upload; [message] is short enough to show on screen. */
+class PhotoReadException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 /**
  * Downscale + JPEG-compress photos before upload. A 12 MP camera shot (~4 MB) becomes ~150–300 KB,
@@ -21,31 +26,29 @@ object ImageCompressor {
 
     private const val TAG = "CW-Photo"
 
-    fun compress(context: Context, uri: Uri, maxDimension: Int = 1600, quality: Int = 70): ByteArray? {
+    /** @throws PhotoReadException with a short, displayable reason when the photo can't be read. */
+    fun compress(context: Context, uri: Uri, maxDimension: Int = 1600, quality: Int = 70): ByteArray {
         val resolver = context.contentResolver
-        // BitmapFactory first (all Android versions); ImageDecoder as a fallback on Android 9+ for formats or
-        // files BitmapFactory can't read (e.g. some HEIC photos). ImageDecoder already applies EXIF rotation.
-        val fromFactory = decodeWithBitmapFactory(context, uri, maxDimension)
+        val type = resolver.getType(uri) ?: "unknown type"
+        // Read the file once: some providers (cloud galleries, camera apps) don't like being opened repeatedly.
+        val raw = try {
+            resolver.openInputStream(uri)?.use { it.readBytes() }
+        } catch (e: Exception) {
+            throw PhotoReadException("couldn't open the photo (${e.javaClass.simpleName})", e)
+        } ?: throw PhotoReadException("couldn't open the photo")
+        if (raw.isEmpty()) throw PhotoReadException("the photo file is empty; the camera app may not have saved it")
+
+        // BitmapFactory first (all Android versions); ImageDecoder as a fallback on Android 9+ for formats it can't
+        // read (e.g. some HEIC photos). ImageDecoder already applies EXIF rotation.
+        val fromFactory = decodeWithBitmapFactory(raw, maxDimension)
         val decoded = fromFactory
-            ?: (if (Build.VERSION.SDK_INT >= 28) decodeWithImageDecoder(context, uri, maxDimension) else null)
+            ?: (if (Build.VERSION.SDK_INT >= 28) decodeWithImageDecoder(raw, maxDimension) else null)
             ?: run {
-                Log.w(TAG, "could not decode $uri (type ${resolver.getType(uri)})")
-                return null
+                Log.w(TAG, "could not decode $uri ($type, ${raw.size} bytes)")
+                throw PhotoReadException("unsupported picture format ($type)")
             }
 
-        val rotation = if (fromFactory == null) 0f else try {
-            resolver.openInputStream(uri)?.use { input ->
-                when (ExifInterface(input).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
-                    ExifInterface.ORIENTATION_ROTATE_90 -> 90f
-                    ExifInterface.ORIENTATION_ROTATE_180 -> 180f
-                    ExifInterface.ORIENTATION_ROTATE_270 -> 270f
-                    else -> 0f
-                }
-            } ?: 0f
-        } catch (e: Exception) {
-            0f
-        }
-
+        val rotation = if (fromFactory == null) 0f else exifRotation(raw)
         val scale = minOf(1f, maxDimension.toFloat() / maxOf(decoded.width, decoded.height))
         val matrix = Matrix().apply {
             if (scale < 1f) postScale(scale, scale)
@@ -63,26 +66,35 @@ object ImageCompressor {
         return out.toByteArray()
     }
 
-    private fun decodeWithBitmapFactory(context: Context, uri: Uri, maxDimension: Int): Bitmap? {
-        val resolver = context.contentResolver
+    private fun decodeWithBitmapFactory(raw: ByteArray, maxDimension: Int): Bitmap? {
+        // A bounds-only decode always returns null and just fills in outWidth/outHeight, so judge success by those.
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        // A bounds-only decode always returns null and just fills in outWidth/outHeight, so judge success by
-        // those (they stay -1 if the stream couldn't be opened or the image couldn't be read).
-        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        BitmapFactory.decodeByteArray(raw, 0, raw.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         val opts = BitmapFactory.Options().apply { inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, maxDimension) }
-        return resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
+        return BitmapFactory.decodeByteArray(raw, 0, raw.size, opts)
     }
 
     @RequiresApi(28)
-    private fun decodeWithImageDecoder(context: Context, uri: Uri, maxDimension: Int): Bitmap? = try {
-        ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { decoder, info, _ ->
+    private fun decodeWithImageDecoder(raw: ByteArray, maxDimension: Int): Bitmap? = try {
+        ImageDecoder.decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(raw))) { decoder, info, _ ->
             decoder.setTargetSampleSize(sampleSize(info.size.width, info.size.height, maxDimension))
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE // Bitmap.compress needs a software bitmap
         }
     } catch (e: Exception) {
-        Log.w(TAG, "ImageDecoder failed for $uri", e)
+        Log.w(TAG, "ImageDecoder failed", e)
         null
+    }
+
+    private fun exifRotation(raw: ByteArray): Float = try {
+        when (ExifInterface(ByteArrayInputStream(raw)).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+    } catch (e: Exception) {
+        0f
     }
 
     /** Largest power-of-two downsample that keeps both sides at or above [maxDimension]. */
