@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -127,7 +128,8 @@ fun CwMap(
     }
     AndroidView(
         factory = { mapView },
-        modifier = modifier,
+        // Clip: in a scrolling list the map view otherwise paints over the cards above and below it.
+        modifier = modifier.clipToBounds(),
         update = { map ->
             map.overlays.clear()
             map.overlays.add(tapOverlay)
