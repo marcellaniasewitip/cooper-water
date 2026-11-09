@@ -33,7 +33,8 @@ export class GeoService {
       FROM depots d
       WHERE d.active AND d.deleted_at IS NULL
         AND CASE
-          WHEN d.geofence_polygon IS NOT NULL THEN
+          -- jsonb_typeof guards against a JSON null stored instead of SQL NULL (it would crash ST_GeomFromGeoJSON).
+          WHEN jsonb_typeof(d.geofence_polygon) = 'object' THEN
             ST_Covers(ST_SetSRID(ST_GeomFromGeoJSON(d.geofence_polygon::text), 4326)::geography,
                       ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography)
           ELSE

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { Errors } from '../common/errors';
@@ -67,7 +68,7 @@ export class CatalogueService {
 
   async createDepot(adminId: string, input: DepotInput, ip: string | null) {
     validatePolygon(input.geofencePolygon);
-    const depot = await this.prisma.depot.create({ data: { ...input, geofencePolygon: input.geofencePolygon ?? undefined } });
+    const depot = await this.prisma.depot.create({ data: { ...input, geofencePolygon: input.geofencePolygon ?? Prisma.DbNull } });
     await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'depot.create', entity: 'depot', entityId: depot.id, after: depot, ip });
     return depot;
   }
@@ -77,7 +78,8 @@ export class CatalogueService {
     const before = await this.prisma.depot.findFirst({ where: { id, deletedAt: null } });
     if (!before) throw Errors.notFound('Depot');
     const data: any = { ...input };
-    if (input.geofencePolygon === null) data.geofencePolygon = null;
+    // Plain null would be stored as a JSON null, which reads as "has a polygon"; clear it to SQL NULL instead.
+    if (input.geofencePolygon === null) data.geofencePolygon = Prisma.DbNull;
     const after = await this.prisma.depot.update({ where: { id }, data });
     await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'depot.update', entity: 'depot', entityId: id, before, after, ip });
     return after;

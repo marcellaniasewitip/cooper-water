@@ -277,6 +277,22 @@ describe('auth, RBAC, onboarding, notifications, reports (integration)', () => {
     await h.http().post('/api/v1/driver/online').set(bearer(d.token)).send(CUSTOMER_POINT).expect(200);
   });
 
+  it('a driver can go online at a depot created and edited in the admin (no polygon)', async () => {
+    const admin = await adminLogin(h);
+    const at = { lat: -9.431, lng: 147.175 };
+    const created = await h.http().post('/api/v1/admin/depots').set(bearer(admin)).send({ name: 'Hohola', ...at, geofenceRadiusM: null, geofencePolygon: null, active: true }).expect(201);
+    await h.http().patch(`/api/v1/admin/depots/${created.body.id}`).set(bearer(admin)).send({ name: 'Hohola', ...at, geofenceRadiusM: 800, geofencePolygon: null }).expect(200);
+    const [row] = await h.prisma.$queryRaw<{ sqlNull: boolean }[]>`SELECT geofence_polygon IS NULL AS "sqlNull" FROM depots WHERE id = ${created.body.id}::uuid`;
+    expect(row.sqlNull).toBe(true); // not a JSON null
+    const d = await approvedDriver(h, { online: false });
+    await h.http().post('/api/v1/driver/online').set(bearer(d.token)).send({ lat: -9.4312, lng: 147.1752 }).expect(200);
+
+    // Rows saved before the fix hold a JSON null; the geofence check must treat them as "no polygon".
+    await h.prisma.$executeRaw`UPDATE depots SET geofence_polygon = 'null'::jsonb WHERE id = ${created.body.id}::uuid`;
+    await h.http().post('/api/v1/driver/offline').set(bearer(d.token)).send();
+    await h.http().post('/api/v1/driver/online').set(bearer(d.token)).send({ lat: -9.4312, lng: 147.1752 }).expect(200);
+  });
+
   it('a driver coming online is offered already-open nearby orders', async () => {
     const c = await customer(h);
     const r = await h.http().post('/api/v1/customer/orders').set(bearer(c.token)).set('Idempotency-Key', idem()).send({ packageId: pkgId, quantity: 1, paymentMethod: 'cod', location: { ...CUSTOMER_POINT, address: 'x' } }).expect(201);
