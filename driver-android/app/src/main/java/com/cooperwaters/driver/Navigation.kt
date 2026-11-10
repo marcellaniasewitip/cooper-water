@@ -106,6 +106,7 @@ fun DriverNavHost() {
             HomeScreen(
                 onOpenJob = { nav.navigate(Routes.job(it)) },
                 onTopup = { nav.navigate(Routes.TOPUP) },
+                onWallet = { nav.selectTab(MainTab.WALLET) },
                 bottomBar = { MainBottomBar(MainTab.JOBS) { nav.selectTab(it) } },
             )
         }

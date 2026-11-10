@@ -39,6 +39,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cooperwaters.core.android.LocationHelper
+import com.cooperwaters.core.android.ui.CwIcons
 import com.cooperwaters.core.android.ui.CwMap
 import com.cooperwaters.core.android.ui.ErrorCard
 import com.cooperwaters.core.android.ui.Labels
@@ -61,6 +62,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     onOpenJob: (String) -> Unit,
     onTopup: () -> Unit,
+    onWallet: () -> Unit,
     bottomBar: @Composable () -> Unit,
 ) {
     val vm = containerViewModel { c -> HomeViewModel(c.repository, c.state) }
@@ -106,7 +108,7 @@ fun HomeScreen(
     ) {
         if (ui.refreshing || ui.togglingOnline) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            wallet?.takeIf { it.blocked }?.let { w -> item { LowBalanceBanner(w, onTopup) } }
+            wallet?.let { w -> item { WalletBalanceCard(w, onTopup, onWallet) } }
             item {
                 OnlineCard(
                     online = online,
@@ -169,12 +171,34 @@ fun HomeScreen(
 }
 
 @Composable
-private fun LowBalanceBanner(w: WalletBrief, onTopup: () -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+private fun WalletBalanceCard(w: WalletBrief, onTopup: () -> Unit, onOpenWallet: () -> Unit) {
+    // Always visible on Jobs: blue when the driver can work, red with a Top up button when below the minimum.
+    val c = MaterialTheme.colorScheme
+    Card(
+        onClick = onOpenWallet,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (w.blocked) c.errorContainer else c.primaryContainer,
+            contentColor = if (w.blocked) c.onErrorContainer else c.onPrimaryContainer,
+        ),
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(R.string.wallet_blocked_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.wallet_blocked_body, Money.format(w.balanceToea), Money.format(w.minBalanceToea), HomeViewModel.shortfallText(w)))
-            Button(onClick = onTopup) { Text(stringResource(R.string.wallet_topup)) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(CwIcons.Wallet, contentDescription = null)
+                Text(
+                    stringResource(R.string.home_wallet_balance),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(start = 8.dp).weight(1f),
+                )
+                Text(stringResource(R.string.home_wallet_open), style = MaterialTheme.typography.labelLarge)
+            }
+            Text(Money.format(w.balanceToea), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            if (w.blocked) {
+                Text(stringResource(R.string.wallet_blocked_body, Money.format(w.balanceToea), Money.format(w.minBalanceToea), HomeViewModel.shortfallText(w)))
+                Button(onClick = onTopup) { Text(stringResource(R.string.wallet_topup)) }
+            } else {
+                Text(stringResource(R.string.home_wallet_ok, Money.format(w.minBalanceToea)), style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }

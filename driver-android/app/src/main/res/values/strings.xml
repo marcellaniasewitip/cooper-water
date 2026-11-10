@@ -88,6 +88,9 @@
     <string name="waiting_check_now">Check again</string>
 
     <!-- Home -->
+    <string name="home_wallet_balance">Wallet balance</string>
+    <string name="home_wallet_open">View wallet ›</string>
+    <string name="home_wallet_ok">You can take jobs (minimum %1$s).</string>
     <string name="home_online">Online</string>
     <string name="home_offline">Offline</string>
     <string name="home_online_help">You will receive job offers near you.</string>
