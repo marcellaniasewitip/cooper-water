@@ -68,6 +68,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.cooperwaters.core.android.ui.CwBrandBlue
 import com.cooperwaters.core.android.ui.CwIcons
 import com.cooperwaters.core.android.ui.CwMap
 import com.cooperwaters.core.android.ui.ErrorCard
@@ -183,7 +184,7 @@ fun HomeScreen(actions: HomeActions) {
     ModalNavigationDrawer(
         drawerState = drawer,
         drawerContent = {
-            ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface, drawerShape = RoundedCornerShape(0.dp)) {
+            ModalDrawerSheet(drawerContainerColor = CwBrandBlue, drawerContentColor = Color.White, drawerShape = RoundedCornerShape(0.dp)) {
                 DrawerContent(
                     onProfile = { closeThen(actions.onProfile) },
                     onOrderWater = { closeThen { actions.onNewOrder(null) } },
@@ -341,7 +342,7 @@ private fun ActiveOrderCard(order: Order, onClick: () -> Unit) {
     }
 }
 
-/** Side menu: black header with avatar, name and phone (opens Profile), then the menu list. */
+/** Side menu in the brand blue (same as the driver app): avatar, name and phone (opens Profile), then the menu list. */
 @Composable
 private fun DrawerContent(
     onProfile: () -> Unit,
@@ -359,11 +360,11 @@ private fun DrawerContent(
     val user = appContainer().tokenStore.user()
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().background(Color.Black).clickable(onClick = onProfile).statusBarsPadding().padding(horizontal = 16.dp, vertical = 24.dp),
+            Modifier.fillMaxWidth().clickable(onClick = onProfile).statusBarsPadding().padding(horizontal = 16.dp, vertical = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(64.dp).clip(CircleShape).background(Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Person, contentDescription = null, tint = Color(0xFF9E9E9E), modifier = Modifier.size(40.dp))
+            Box(Modifier.size(64.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Person, contentDescription = null, tint = CwBrandBlue, modifier = Modifier.size(40.dp))
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
@@ -383,13 +384,13 @@ private fun DrawerContent(
             DrawerItem(Icons.Filled.LocationOn, stringResource(R.string.menu_places), onPlaces)
             DrawerItem(Icons.Filled.Person, stringResource(R.string.profile_title), onProfile)
             DrawerItem(Icons.Filled.Email, stringResource(R.string.menu_support), onSupport)
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.25f))
             DrawerItem(Icons.AutoMirrored.Filled.ExitToApp, stringResource(R.string.profile_sign_out), onSignOut)
         }
         Text(
             stringResource(R.string.app_version, BuildConfig.VERSION_NAME, BuildConfig.GIT_SHA),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier.navigationBarsPadding().padding(16.dp),
         )
     }
@@ -398,8 +399,8 @@ private fun DrawerContent(
 @Composable
 private fun DrawerItem(icon: ImageVector, label: String, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(18.dp))
-        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = Color.White)
     }
 }

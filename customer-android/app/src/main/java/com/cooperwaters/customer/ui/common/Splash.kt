@@ -16,15 +16,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cooperwaters.core.android.ui.CwBrandBlue
 import com.cooperwaters.core.android.ui.CwIcons
 import com.cooperwaters.customer.R
 
-/** Brief black launch screen with the logo, shown while the app starts (StarTrip style). */
+/** Brief blue launch screen with the logo, shown while the app starts (StarTrip style). */
 @Composable
 fun SplashScreen() {
-    Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(CwBrandBlue), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(CwIcons.WaterDrop, contentDescription = null, tint = Color(0xFF4FC3F7), modifier = Modifier.size(96.dp))
+            Icon(CwIcons.WaterDrop, contentDescription = null, tint = Color.White, modifier = Modifier.size(96.dp))
             Text(stringResource(R.string.app_name), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         }
     }

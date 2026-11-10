@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.cooperwaters.core.android.ui.CwBrandBlue
 import com.cooperwaters.core.android.ui.CwIcons
 import com.cooperwaters.core.android.ui.ErrorCard
 import com.cooperwaters.core.android.ui.LoadingButton
@@ -101,9 +102,9 @@ fun ReferralScreen(onBack: () -> Unit) {
             val info = ui.info
             if (info != null) {
                 val reward = Money.format(info.rewardToea)
-                Card(colors = CardDefaults.cardColors(containerColor = Color.Black, contentColor = Color.White), modifier = Modifier.fillMaxWidth()) {
+                Card(colors = CardDefaults.cardColors(containerColor = CwBrandBlue, contentColor = Color.White), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(CwIcons.WaterDrop, contentDescription = null, tint = Color(0xFF4FC3F7), modifier = Modifier.size(48.dp))
+                        Icon(CwIcons.WaterDrop, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
                         Text(stringResource(R.string.referral_headline, reward), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                         Text(stringResource(R.string.referral_body, reward), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.85f))
                         Text(stringResource(R.string.referral_your_code), color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.labelLarge)
@@ -115,7 +116,7 @@ fun ReferralScreen(onBack: () -> Unit) {
                                 putExtra(Intent.EXTRA_TEXT, text)
                             }
                             context.startActivity(Intent.createChooser(send, context.getString(R.string.referral_share)))
-                        }, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) {
+                        }, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = CwBrandBlue)) {
                             Icon(Icons.Filled.Share, contentDescription = null)
                             Text(stringResource(R.string.referral_share), modifier = Modifier.padding(start = 8.dp))
                         }

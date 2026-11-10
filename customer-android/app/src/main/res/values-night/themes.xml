@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Black window before the first frame, matching the black splash screen. -->
+    <!-- Brand-blue window before the first frame, matching the blue splash screen. -->
     <style name="Theme.CooperWaters" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#FF000000</item>
-        <item name="android:statusBarColor">#FF000000</item>
+        <item name="android:windowBackground">#FF0A6CBF</item>
+        <item name="android:statusBarColor">#FF0A6CBF</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:navigationBarColor">#FF000000</item>
+        <item name="android:navigationBarColor">#FF0A6CBF</item>
     </style>
 </resources>
