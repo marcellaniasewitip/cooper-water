@@ -88,16 +88,71 @@ export class WalletService {
     };
   }
 
+  // ───────────── Customer wallet ─────────────
+
+  async customerSummary(userId: string) {
+    const wallet = await this.ledger.customerWallet(userId);
+    const pending = await this.prisma.topupRequest.aggregate({
+      where: { customerId: userId, status: 'pending' },
+      _sum: { amountToea: true },
+      _count: true,
+    });
+    return {
+      walletId: wallet.id,
+      balanceToea: wallet.balanceToea,
+      pendingTopups: { count: pending._count, amountToea: pending._sum.amountToea ?? 0 },
+    };
+  }
+
+  /** Customer top-up by cash, bank transfer or cell money; an admin approves it in Wallet top-ups (same as drivers). */
+  async submitCustomerTopup(
+    userId: string,
+    dto: { method: 'cash' | 'bank_transfer' | 'cellmoney'; amountToea: number; referenceText: string; msisdn?: string; proofFileKey?: string },
+    idempotencyKey: string,
+  ) {
+    if (dto.proofFileKey) this.storage.assertOwnedKey(dto.proofFileKey, 'topup-proofs', userId);
+    const existing = await this.prisma.topupRequest.findUnique({ where: { idempotencyKey } });
+    if (existing) {
+      if (existing.customerId !== userId) throw Errors.conflict('idempotency_key_reused', 'This request key was already used');
+      return existing;
+    }
+    return this.prisma.topupRequest.create({
+      data: {
+        customerId: userId,
+        method: dto.method,
+        amountToea: dto.amountToea,
+        referenceText: dto.referenceText,
+        msisdn: dto.msisdn,
+        proofFileKey: dto.proofFileKey,
+        idempotencyKey,
+      },
+    });
+  }
+
+  async customerTopups(userId: string, q: CursorQuery) {
+    const limit = pageLimit(q);
+    const rows = await this.prisma.topupRequest.findMany({
+      where: { AND: [{ customerId: userId }, cursorWhere(q.cursor)] },
+      orderBy: pageOrder,
+      take: limit + 1,
+    });
+    return toPage(rows, limit);
+  }
+
   // ───────────── Top-ups (§8.5) ─────────────
 
-  async submitBankTopup(driverId: string, dto: { amountToea: number; referenceText: string; proofFileKey?: string }, idempotencyKey: string) {
+  async submitBankTopup(
+    driverId: string,
+    dto: { amountToea: number; referenceText: string; proofFileKey?: string; method?: 'bank_transfer' | 'cash' },
+    idempotencyKey: string,
+  ) {
     if (dto.proofFileKey) this.storage.assertOwnedKey(dto.proofFileKey, 'topup-proofs', driverId);
     const existing = await this.prisma.topupRequest.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
     return this.prisma.topupRequest.create({
       data: {
         driverId,
-        method: 'bank_transfer',
+        method: dto.method ?? 'bank_transfer',
         amountToea: dto.amountToea,
         referenceText: dto.referenceText,
         proofFileKey: dto.proofFileKey,
@@ -112,7 +167,7 @@ export class WalletService {
       where: { AND: [where, cursorWhere(q.cursor)] },
       orderBy: pageOrder,
       take: limit + 1,
-      include: { driver: { include: { user: { select: { name: true, phone: true } } } }, payment: true },
+      include: { driver: { include: { user: { select: { name: true, phone: true } } } }, customer: { select: { id: true, name: true, phone: true } }, payment: true },
     });
     const page = toPage(rows, limit);
     const items = await Promise.all(
@@ -123,7 +178,9 @@ export class WalletService {
 
   /** Credit a top-up. Called by admin approval and by successful cell money collections. Idempotent. */
   async creditTopup(tx: Tx, topup: TopupRequest, createdBy: string, effects: AfterCommit, reviewerId: string | null = null): Promise<void> {
-    const wallet = await this.ledger.driverWallet(topup.driverId, tx);
+    const wallet = topup.customerId
+      ? await this.ledger.customerWallet(topup.customerId, tx)
+      : await this.ledger.driverWallet(topup.driverId!, tx);
     await this.ledger.post(tx, {
       walletId: wallet.id,
       amountToea: topup.amountToea,
@@ -132,7 +189,7 @@ export class WalletService {
       referenceId: topup.id,
       idempotencyKey: `topup:${topup.id}`,
       createdBy,
-      description: topup.method === 'bank_transfer' ? `Bank top-up ${topup.referenceText}`.trim() : 'Cell money top-up',
+      description: topupDescription(topup),
     });
     await tx.topupRequest.update({
       where: { id: topup.id },
@@ -140,7 +197,12 @@ export class WalletService {
     });
     const after = await tx.wallet.findUniqueOrThrow({ where: { id: wallet.id } });
     effects.add(async () => {
-      const driver = await this.prisma.driver.findUnique({ where: { id: topup.driverId } });
+      if (topup.customerId) {
+        this.realtime.toUser(topup.customerId, 'wallet.updated', { balanceToea: after.balanceToea });
+        await this.notifications.notify(topup.customerId, 'topup.approved', { amount: formatKina(topup.amountToea), balance: formatKina(after.balanceToea) });
+        return;
+      }
+      const driver = await this.prisma.driver.findUnique({ where: { id: topup.driverId! } });
       if (!driver) return;
       const min = await this.settings.get('wallet.min_balance_toea');
       this.realtime.toUser(driver.userId, 'wallet.updated', { balanceToea: after.balanceToea, minBalanceToea: min, blocked: after.balanceToea < min });
@@ -182,8 +244,8 @@ export class WalletService {
       await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'topup.reject', entity: 'topup_request', entityId: t.id, before: t, after, ip }, tx);
       return after;
     });
-    const driver = await this.prisma.driver.findUnique({ where: { id: result.driverId } });
-    if (driver) await this.notifications.notify(driver.userId, 'topup.rejected', { amount: formatKina(result.amountToea), reason });
+    const userId = result.customerId ?? (result.driverId ? (await this.prisma.driver.findUnique({ where: { id: result.driverId } }))?.userId : null);
+    if (userId) await this.notifications.notify(userId, 'topup.rejected', { amount: formatKina(result.amountToea), reason });
     return result;
   }
 
@@ -305,5 +367,16 @@ export class WalletService {
       }
       return entry;
     });
+  }
+}
+
+function topupDescription(t: TopupRequest): string {
+  switch (t.method) {
+    case 'bank_transfer':
+      return `Bank top-up ${t.referenceText}`.trim();
+    case 'cash':
+      return `Cash top-up ${t.referenceText}`.trim();
+    default:
+      return 'Cell money top-up';
   }
 }

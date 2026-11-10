@@ -128,6 +128,19 @@ export const DEFAULT_TEMPLATES: TemplateDef[] = [
     critical: false,
   },
   {
+    key: 'referral.rewarded',
+    pushTitle: 'Referral reward',
+    pushBody: '{{amount}} was added to your wallet. Thanks for spreading the word!',
+    smsBody: 'Cooper Waters: referral reward {{amount}} added. Wallet balance {{balance}}.',
+    critical: false,
+  },
+  {
+    key: 'chat.message',
+    pushTitle: '{{sender}} ({{shortCode}})',
+    pushBody: '{{preview}}',
+    critical: false,
+  },
+  {
     key: 'topup.approved',
     pushTitle: 'Top-up approved',
     pushBody: '{{amount}} was added to your wallet.',

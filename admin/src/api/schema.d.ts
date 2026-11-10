@@ -253,6 +253,167 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/wallet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_walletSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/wallet/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_walletEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/wallet/topups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_walletTopups"];
+        put?: never;
+        /** @description Top up by cash, bank transfer or cell money; an admin approves it in Wallet top-ups. */
+        post: operations["CustomerController_walletTopup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_offers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/offers/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CustomerController_checkOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/referral": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_referral"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/referral/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CustomerController_applyReferral"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_inbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_chats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/orders/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerController_messages"];
+        put?: never;
+        post: operations["CustomerController_sendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver/me": {
         parameters: {
             query?: never;
@@ -695,6 +856,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver/chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DriverController_chats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/orders/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DriverController_messages"];
+        put?: never;
+        post: operations["DriverController_sendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/overview": {
         parameters: {
             query?: never;
@@ -751,6 +944,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AdminOrdersController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminOrdersController_messages"];
         put?: never;
         post?: never;
         delete?: never;
@@ -997,6 +1206,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminTrucksController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/promos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCatalogueController_promoList"];
+        put?: never;
+        post: operations["AdminCatalogueController_createPromo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/promos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminCatalogueController_updatePromo"];
         trace?: never;
     };
     "/api/v1/admin/depots": {
@@ -1814,6 +2055,8 @@ export interface components {
         QuoteDto: {
             packageId: string;
             quantity: number;
+            /** @description Offers: promo code to apply (validated for this customer). */
+            promoCode?: string;
         };
         DeliveryLocationDto: {
             lat: number;
@@ -1825,11 +2068,13 @@ export interface components {
         CreateOrderDto: {
             packageId: string;
             quantity: number;
+            /** @description Offers: promo code to apply (validated for this customer). */
+            promoCode?: string;
             /** @description A saved location; or send `location` instead. */
             locationId?: string;
             location?: components["schemas"]["DeliveryLocationDto"];
             /** @enum {string} */
-            paymentMethod: "cod" | "cellmoney";
+            paymentMethod: "cod" | "cellmoney" | "wallet";
             /** @description Cell money number to charge (defaults to the account phone). */
             msisdn?: string;
         };
@@ -1846,6 +2091,27 @@ export interface components {
         DisputeDto: {
             category: string;
             description: string;
+        };
+        CustomerTopupDto: {
+            /**
+             * @description How the money was paid: cash at a Cooper Waters office/depot, bank transfer, or cell money.
+             * @enum {string}
+             */
+            method: "cash" | "bank_transfer" | "cellmoney";
+            amountToea: number;
+            /** @description Receipt number, bank reference or cell money transaction ID. */
+            referenceText: string;
+            /** @description Cell money: the number the money was sent from. */
+            msisdn?: string;
+        };
+        PromoCheckDto: {
+            code: string;
+        };
+        ReferralApplyDto: {
+            code: string;
+        };
+        ChatSendDto: {
+            body: string;
         };
         UploadRequestDto: {
             /** @enum {string} */
@@ -1886,7 +2152,7 @@ export interface components {
         };
         TopupDto: {
             /** @enum {string} */
-            method: "bank_transfer" | "cellmoney";
+            method: "bank_transfer" | "cellmoney" | "cash";
             amountToea: number;
             /** @description Bank transfer: the bank's transaction reference. */
             referenceText?: string;
@@ -1921,6 +2187,37 @@ export interface components {
         TruckUpdateDto: {
             plate?: string;
             capacityLitres?: number;
+            active?: boolean;
+        };
+        PromoDto: {
+            /** @example WATER10 */
+            code: string;
+            maxDiscountToea?: number | null;
+            startsAt?: string | null;
+            expiresAt?: string | null;
+            maxUses?: number | null;
+            description?: string;
+            /** @enum {string} */
+            discountType: "percent" | "flat";
+            /** @description percent: 1–100; flat: toea */
+            discountValue: number;
+            minOrderToea?: number;
+            perCustomerLimit?: number;
+            public?: boolean;
+            active?: boolean;
+        };
+        UpdatePromoDto: {
+            maxDiscountToea?: number | null;
+            startsAt?: string | null;
+            expiresAt?: string | null;
+            maxUses?: number | null;
+            description?: string;
+            /** @enum {string} */
+            discountType?: "percent" | "flat";
+            discountValue?: number;
+            minOrderToea?: number;
+            perCustomerLimit?: number;
+            public?: boolean;
             active?: boolean;
         };
         DepotDto: {
@@ -2446,6 +2743,233 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DisputeDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_walletSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_walletEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_walletTopups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_walletTopup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Unique key per logical request (UUID recommended) */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerTopupDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_offers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_checkOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromoCheckDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_referral: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_applyReferral: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReferralApplyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_inbox: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_chats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_messages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_sendMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatSendDto"];
             };
         };
         responses: {
@@ -3059,6 +3583,65 @@ export interface operations {
             };
         };
     };
+    DriverController_chats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DriverController_messages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DriverController_sendMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatSendDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminDashboardController_overview: {
         parameters: {
             query?: never;
@@ -3121,6 +3704,25 @@ export interface operations {
         };
     };
     AdminOrdersController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminOrdersController_messages: {
         parameters: {
             query?: never;
             header?: never;
@@ -3444,6 +4046,67 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TruckUpdateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCatalogueController_promoList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCatalogueController_createPromo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromoDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCatalogueController_updatePromo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePromoDto"];
             };
         };
         responses: {

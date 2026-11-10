@@ -12,7 +12,12 @@ import { RatingsService } from '../disputes/ratings.service';
 import { DisputesService } from '../disputes/disputes.service';
 import { SettingsService } from '../settings/settings.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { LocationDto, PushTokenDto, UpdateLocationDto, UpdateProfileDto } from './customer.dto';
+import { ChatSendDto, CustomerTopupDto, LocationDto, PromoCheckDto, PushTokenDto, ReferralApplyDto, UpdateLocationDto, UpdateProfileDto } from './customer.dto';
+import { WalletService } from '../wallet/wallet.service';
+import { PromosService } from '../promos/promos.service';
+import { ReferralsService } from '../referrals/referrals.service';
+import { ChatService } from '../chat/chat.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CancelDto, CreateOrderDto, DisputeDto, QuoteDto, RateDto, StartPaymentDto } from '../orders/orders.dto';
 import { AppError } from '../common/errors';
 
@@ -28,6 +33,11 @@ export class CustomerController {
     private readonly payments: PaymentsService,
     private readonly ratings: RatingsService,
     private readonly disputes: DisputesService,
+    private readonly wallet: WalletService,
+    private readonly promos: PromosService,
+    private readonly referrals: ReferralsService,
+    private readonly chat: ChatService,
+    private readonly notifications: NotificationsService,
     private readonly settings: SettingsService,
     private readonly prisma: PrismaService,
   ) {}
@@ -93,8 +103,8 @@ export class CustomerController {
   /** Fixed price quote. */
   @Post('quote')
   @HttpCode(200)
-  quote(@Body() dto: QuoteDto) {
-    return this.orders.quote(dto.packageId, dto.quantity);
+  quote(@CurrentUser() u: UserPrincipal, @Body() dto: QuoteDto) {
+    return this.orders.quote(dto.packageId, dto.quantity, { customerId: u.id, code: dto.promoCode });
   }
 
   /**
@@ -165,5 +175,78 @@ export class CustomerController {
   @Post('orders/:id/disputes')
   dispute(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: DisputeDto) {
     return this.disputes.raise({ type: 'customer', userId: u.id }, id, dto.category, dto.description);
+  }
+
+  // ───────────── Wallet (StarTrip "cash") ─────────────
+
+  @Get('wallet')
+  walletSummary(@CurrentUser() u: UserPrincipal) {
+    return this.wallet.customerSummary(u.id);
+  }
+
+  @Get('wallet/entries')
+  async walletEntries(@CurrentUser() u: UserPrincipal, @Query() q: CursorQuery) {
+    const s = await this.wallet.customerSummary(u.id);
+    return this.wallet.entries(s.walletId, q);
+  }
+
+  /** Top up by cash, bank transfer or cell money; an admin approves it in Wallet top-ups. */
+  @Post('wallet/topups')
+  @Idempotent()
+  walletTopup(@CurrentUser() u: UserPrincipal, @Body() dto: CustomerTopupDto, @IdempotencyKey() key: string) {
+    return this.wallet.submitCustomerTopup(u.id, dto, key);
+  }
+
+  @Get('wallet/topups')
+  walletTopups(@CurrentUser() u: UserPrincipal, @Query() q: CursorQuery) {
+    return this.wallet.customerTopups(u.id, q);
+  }
+
+  // ───────────── Offers ─────────────
+
+  @Get('offers')
+  offers(@CurrentUser() u: UserPrincipal) {
+    return this.promos.offersFor(u.id);
+  }
+
+  @Post('offers/check')
+  @HttpCode(200)
+  checkOffer(@CurrentUser() u: UserPrincipal, @Body() dto: PromoCheckDto) {
+    return this.promos.describe(dto.code, u.id);
+  }
+
+  // ───────────── Refer & Earn ─────────────
+
+  @Get('referral')
+  referral(@CurrentUser() u: UserPrincipal) {
+    return this.referrals.summary(u.id);
+  }
+
+  @Post('referral/apply')
+  @HttpCode(200)
+  applyReferral(@CurrentUser() u: UserPrincipal, @Body() dto: ReferralApplyDto) {
+    return this.referrals.apply(u.id, dto.code);
+  }
+
+  // ───────────── Inbox & chat ─────────────
+
+  @Get('inbox')
+  inbox(@CurrentUser() u: UserPrincipal, @Query() q: CursorQuery) {
+    return this.notifications.inbox(u.id, q);
+  }
+
+  @Get('chats')
+  chats(@CurrentUser() u: UserPrincipal) {
+    return this.chat.conversations(u.id, 'customer');
+  }
+
+  @Get('orders/:id/messages')
+  messages(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.chat.messages(id, u.id, 'customer');
+  }
+
+  @Post('orders/:id/messages')
+  sendMessage(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ChatSendDto) {
+    return this.chat.send(id, u.id, 'customer', dto.body);
   }
 }

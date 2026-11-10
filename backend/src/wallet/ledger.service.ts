@@ -89,6 +89,11 @@ export class LedgerService {
     return this.walletFor('driver', driverId, db);
   }
 
+  /** Customer wallet (StarTrip-style "cash"): top-ups, referral/promo credits, refunds, pays orders. */
+  customerWallet(userId: string, db: Tx | PrismaService = this.prisma): Promise<Wallet> {
+    return this.walletFor('customer', userId, db);
+  }
+
   platformWallet(db: Tx | PrismaService = this.prisma): Promise<Wallet> {
     return this.walletFor('platform', PLATFORM_OWNER_ID, db);
   }

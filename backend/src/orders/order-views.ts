@@ -38,6 +38,10 @@ const base = (o: WithRelations) => ({
   quantity: o.quantity,
   unitPriceToea: o.unitPriceToea,
   priceToea: o.priceToea,
+  /** Promo discount (absorbed by Cooper Waters). */
+  discountToea: o.discountToea,
+  /** What the customer pays: price − discount. A cash-on-delivery driver collects this amount. */
+  payableToea: o.priceToea - o.discountToea,
   paymentMethod: o.paymentMethod,
   paymentStatus: o.paymentStatus,
   delivery: { lat: o.deliveryLat, lng: o.deliveryLng, address: o.deliveryAddress, notes: o.deliveryNotes },

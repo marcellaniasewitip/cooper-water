@@ -7,6 +7,7 @@ import { AfterCommit } from '../common/after-commit';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { formatKina } from '../common/money';
+import { ReferralsService } from '../referrals/referrals.service';
 
 /**
  * Commission and settlement (§8.2, §8.3). All entries carry deterministic idempotency keys so
@@ -20,6 +21,7 @@ export class SettlementService {
     private readonly settings: SettingsService,
     private readonly notifications: NotificationsService,
     private readonly realtime: RealtimeGateway,
+    private readonly referrals: ReferralsService,
   ) {}
 
   /** On ACCEPTED with commission.deduct_at = acceptance: take commission from the driver's wallet. */
@@ -86,7 +88,30 @@ export class SettlementService {
         });
       }
     }
+    if (order.discountToea > 0) await this.absorbDiscount(tx, order, driverId, effects);
     await tx.order.update({ where: { id: order.id }, data: { settledAt: new Date(), commissionDeducted: true } });
+    await this.referrals.rewardIfFirstOrder(tx, order, effects);
+  }
+
+  /**
+   * Promo discounts come out of the platform's revenue. Cash orders: the driver collected the discounted
+   * price, so the platform tops the driver up by the discount. Other methods: the driver's earning is
+   * already based on the full price; the platform just records the cost.
+   */
+  private async absorbDiscount(tx: Tx, order: Order, driverId: string, effects: AfterCommit): Promise<void> {
+    const platformWallet = await this.ledger.platformWallet(tx);
+    const ref = { referenceType: 'order', referenceId: order.id, createdBy: 'system', description: `Promo discount ${order.shortCode}` };
+    if (order.paymentMethod === 'cod') {
+      const driverWallet = await this.ledger.driverWallet(driverId, tx);
+      await this.ledger.transfer(tx, { walletId: platformWallet.id, type: 'promo' }, { walletId: driverWallet.id, type: 'promo' }, order.discountToea, {
+        ...ref,
+        idempotencyKey: `promo:${order.id}`,
+      });
+      const after = await tx.wallet.findUniqueOrThrow({ where: { id: driverWallet.id } });
+      effects.add(() => this.walletChanged(driverId, after.balanceToea));
+    } else {
+      await this.ledger.post(tx, { ...ref, walletId: platformWallet.id, amountToea: -order.discountToea, type: 'promo', idempotencyKey: `promo:${order.id}` });
+    }
   }
 
   /** Give commission back to a driver when an accepted order is cancelled or reassigned before settlement. */

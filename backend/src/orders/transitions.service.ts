@@ -10,6 +10,7 @@ import { AppError, Errors } from '../common/errors';
 import { formatKina } from '../common/money';
 import { SettlementService } from './settlement.service';
 import { RefundsService } from '../payments/refunds.service';
+import { PromosService } from '../promos/promos.service';
 import { STATUS_TIMESTAMP, canTransition } from './state-machine';
 import { ORDER_INCLUDE, customerOrderView, driverOrderView, adminOrderView } from './order-views';
 
@@ -57,6 +58,7 @@ export class OrderTransitionsService {
     private readonly realtime: RealtimeGateway,
     private readonly settlement: SettlementService,
     private readonly refunds: RefundsService,
+    private readonly promos: PromosService,
   ) {}
 
   /** SELECT … FOR UPDATE on the order row. */
@@ -111,6 +113,8 @@ export class OrderTransitionsService {
     // ── Money hooks (same transaction) ──
     if (to === 'ACCEPTED') await this.settlement.onAccepted(tx, updated, effects);
     if (to === 'COMPLETED') await this.settlement.settle(tx, updated, effects);
+    // An order that never completed gives the promo use back.
+    if ((to === 'CANCELLED' || to === 'EXPIRED' || to === 'FAILED') && updated.promoCodeId) await this.promos.release(tx, updated.id);
     if ((to === 'CANCELLED' || to === 'EXPIRED') && updated.paymentStatus === 'paid' && opts.refundToea !== 0) {
       await this.refunds.refundOrderPayment(tx, updated, effects, {
         amountToea: opts.refundToea,
@@ -162,7 +166,7 @@ export class OrderTransitionsService {
         shortCode: order.shortCode,
         driverName: order.driver?.user?.name ?? 'Your driver',
         plate: truck?.plate ?? '',
-        amount: formatKina(order.priceToea),
+        amount: formatKina(order.priceToea - order.discountToea),
         reason: opts.reason ?? '',
         instructions: '',
       });
