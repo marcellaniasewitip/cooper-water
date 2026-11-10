@@ -199,8 +199,7 @@
     <string name="support_title">Support</string>
     <string name="support_heading">Send us a mail</string>
     <string name="support_placeholder">Describe your issue</string>
-    <!-- Change to the real Cooper Waters support mailbox. -->
-    <string name="support_email" translatable="false">support@cooperwaters.com.pg</string>
+    <string name="support_email" translatable="false">support@cooperwaters.com</string>
     <string name="support_subject">Cooper Waters support (%1$s)</string>
     <string name="support_no_email_app">No email app found. Please email %1$s.</string>
 </resources>
