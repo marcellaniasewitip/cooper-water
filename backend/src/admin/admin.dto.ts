@@ -280,3 +280,79 @@ export class RangeQuery {
   @IsOptional() @IsString() to?: string;
 }
 
+
+export class PromoDto {
+  @ApiProperty({ example: 'WATER10' })
+  @IsString()
+  @Length(3, 30)
+  code: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  description?: string;
+
+  @IsIn(['percent', 'flat'])
+  discountType: 'percent' | 'flat';
+
+  /** percent: 1–100; flat: toea */
+  @IsInt()
+  @Min(1)
+  @Max(10_000_000)
+  discountValue: number;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxDiscountToea?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minOrderToea?: number;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  startsAt?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  expiresAt?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxUses?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  perCustomerLimit?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  public?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+}
+
+export class UpdatePromoDto {
+  @IsOptional() @IsString() @MaxLength(200) description?: string;
+  @IsOptional() @IsIn(['percent', 'flat']) discountType?: 'percent' | 'flat';
+  @IsOptional() @IsInt() @Min(1) @Max(10_000_000) discountValue?: number;
+  @ApiPropertyOptional({ nullable: true }) @IsOptional() @IsInt() @Min(1) maxDiscountToea?: number | null;
+  @IsOptional() @IsInt() @Min(0) minOrderToea?: number;
+  @ApiPropertyOptional({ nullable: true }) @IsOptional() @IsString() startsAt?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @IsOptional() @IsString() expiresAt?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @IsOptional() @IsInt() @Min(1) maxUses?: number | null;
+  @IsOptional() @IsInt() @Min(1) @Max(100) perCustomerLimit?: number;
+  @IsOptional() @IsBoolean() public?: boolean;
+  @IsOptional() @IsBoolean() active?: boolean;
+}

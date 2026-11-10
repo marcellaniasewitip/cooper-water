@@ -26,6 +26,7 @@
     <string name="cw_status_unknown">Unknown status</string>
     <string name="cw_payment_cod">Cash on delivery</string>
     <string name="cw_payment_cellmoney">Cell money</string>
+    <string name="cw_payment_wallet">Wallet</string>
     <string name="cw_dispute_not_delivered">Water not delivered</string>
     <string name="cw_dispute_short_volume">Less water than ordered</string>
     <string name="cw_dispute_quality">Water quality problem</string>

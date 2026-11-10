@@ -18,6 +18,8 @@ import { PushTokenDto, UpdateProfileDto } from '../customers/customer.dto';
 import { DeliveredDto, DisputeDto, PositionDto } from '../orders/orders.dto';
 import { EarningsQuery, LocationBatchDto, OptionalPositionDto, SubmitDocumentDto, TopupDto, TruckDto, UploadRequestDto, WithdrawalDto } from './driver.dto';
 import { Errors } from '../common/errors';
+import { ChatService } from '../chat/chat.service';
+import { ChatSendDto } from '../customers/customer.dto';
 
 @ApiTags('driver')
 @ApiBearerAuth()
@@ -33,6 +35,7 @@ export class DriverController {
     private readonly disputes: DisputesService,
     private readonly customers: CustomersService,
     private readonly settings: SettingsService,
+    private readonly chat: ChatService,
   ) {}
 
   private async driverId(u: UserPrincipal): Promise<string> {
@@ -219,9 +222,16 @@ export class DriverController {
   @Idempotent()
   async topup(@CurrentUser() u: UserPrincipal, @Body() dto: TopupDto, @IdempotencyKey() key: string) {
     const driverId = await this.driverId(u);
-    if (dto.method === 'bank_transfer') {
-      if (!dto.referenceText) throw Errors.invalid('reference_required', 'Enter the bank transfer reference');
-      return { topup: await this.wallet.submitBankTopup(driverId, { amountToea: dto.amountToea, referenceText: dto.referenceText, proofFileKey: dto.proofFileKey }, key), payment: null };
+    if (dto.method === 'bank_transfer' || dto.method === 'cash') {
+      if (!dto.referenceText) {
+        throw Errors.invalid('reference_required', dto.method === 'cash' ? 'Enter the cash receipt number' : 'Enter the bank transfer reference');
+      }
+      const topup = await this.wallet.submitBankTopup(
+        driverId,
+        { amountToea: dto.amountToea, referenceText: dto.referenceText, proofFileKey: dto.proofFileKey, method: dto.method },
+        key,
+      );
+      return { topup, payment: null };
     }
     return this.payments.startTopup(driverId, dto.amountToea, dto.msisdn ?? u.phone, key);
   }
@@ -249,5 +259,22 @@ export class DriverController {
     if (days < 1) throw new BadRequestException();
     const since = new Date(today.getTime() - (days - 1) * 24 * 3600_000);
     return this.wallet.earningsSummary(await this.driverId(u), since);
+  }
+
+  // ───────────── Chat with the customer ─────────────
+
+  @Get('chats')
+  chats(@CurrentUser() u: UserPrincipal) {
+    return this.chat.conversations(u.id, 'driver');
+  }
+
+  @Get('orders/:id/messages')
+  messages(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.chat.messages(id, u.id, 'driver');
+  }
+
+  @Post('orders/:id/messages')
+  sendMessage(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ChatSendDto) {
+    return this.chat.send(id, u.id, 'driver', dto.body);
   }
 }

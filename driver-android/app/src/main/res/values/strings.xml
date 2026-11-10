@@ -88,6 +88,9 @@
     <string name="waiting_check_now">Check again</string>
 
     <!-- Home -->
+    <string name="home_wallet_balance">Wallet balance</string>
+    <string name="home_wallet_open">View wallet ›</string>
+    <string name="home_wallet_ok">You can take jobs (minimum %1$s).</string>
     <string name="home_online">Online</string>
     <string name="home_offline">Offline</string>
     <string name="home_online_help">You will receive job offers near you.</string>
@@ -240,4 +243,60 @@
     <string name="tab_history">History</string>
     <string name="tab_profile">Profile</string>
     <string name="profile_saved">Saved.</string>
+    <!-- Chat with the customer, cash top-ups, promo -->
+    <string name="chat_title">Chat</string>
+    <string name="chat_title_order">Chat · %1$s</string>
+    <string name="chat_empty">No messages yet. Say hello to %1$s.</string>
+    <string name="chat_closed">This chat is closed because the order is finished.</string>
+    <string name="chat_placeholder">Type a message</string>
+    <string name="chat_send">Send</string>
+    <string name="job_message_customer">Message customer</string>
+    <string name="job_promo_note">Includes %1$s promo discount — Cooper Waters pays you the difference.</string>
+    <string name="topup_cash">Cash</string>
+    <string name="topup_cash_help">Pay cash at a Cooper Waters office or depot, then enter the receipt number.</string>
+    <string name="topup_receipt">Receipt number</string>
+    <string name="topup_receipt_required">Enter the cash receipt number.</string>
+    <string name="ledger_promo">Promo discount (paid by Cooper Waters)</string>
+    <!-- StarTrip-style home and side menu -->
+    <string name="menu_open">Open menu</string>
+    <string name="menu_profile">Profile</string>
+    <string name="menu_balance">%1$s balance</string>
+    <string name="menu_driver_on">Cooper Waters Driver ON</string>
+    <string name="menu_driver_off">Cooper Waters Driver OFF</string>
+    <string name="menu_live_requests">Live Requests</string>
+    <string name="menu_earnings">Earnings</string>
+    <string name="menu_wallet">Wallet</string>
+    <string name="menu_history">Job History</string>
+    <string name="menu_messages">Messages</string>
+    <string name="menu_support">Support</string>
+    <string name="menu_logout">Logout</string>
+    <string name="home_locate">My location</string>
+    <string name="home_you_are_offline">You are offline</string>
+    <string name="home_you_are_online">You are online</string>
+    <string name="home_go_online">Go online</string>
+    <string name="home_go_offline">Go offline</string>
+    <string name="home_waiting_requests">Waiting for requests near you…</string>
+    <string name="home_nearest_depot">Nearest depot: %1$s (%2$s). Go online from inside a depot.</string>
+
+    <!-- Live requests -->
+    <string name="live_title">Live Requests</string>
+    <string name="live_empty">No Live Requests Currently</string>
+    <string name="live_offline">You are offline. Go online to receive requests.</string>
+
+    <!-- Messages -->
+    <string name="chats_title">Messages</string>
+    <string name="chats_empty">No messages yet. You can chat with a customer once you accept their order.</string>
+    <string name="chats_customer">Customer</string>
+    <string name="chats_row_title">%1$s · %2$s</string>
+    <string name="chats_you_prefix">You: %1$s</string>
+    <string name="chats_no_messages">No messages yet</string>
+
+    <!-- Support -->
+    <string name="support_title">Support</string>
+    <string name="support_heading">Send us a mail</string>
+    <string name="support_placeholder">Describe your issue</string>
+    <string name="support_email" translatable="false">support@cooperwaters.com</string>
+    <string name="support_subject">Cooper Waters driver support (%1$s)</string>
+    <string name="support_no_email_app">No email app found. Please email %1$s.</string>
+    <string name="support_continue">Continue</string>
 </resources>

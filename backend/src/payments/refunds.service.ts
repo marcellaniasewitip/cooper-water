@@ -9,6 +9,8 @@ import { AfterCommit } from '../common/after-commit';
 import { formatKina } from '../common/money';
 import { Errors } from '../common/errors';
 import { logger } from '../common/logger';
+import { LedgerService } from '../wallet/ledger.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 /**
  * Refunds (§8.4): cancelled/expired after a successful cell money payment, late payments on a dead order,
@@ -23,6 +25,8 @@ export class RefundsService implements OnModuleInit {
     private readonly registry: PaymentProvidersRegistry,
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
+    private readonly ledger: LedgerService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   onModuleInit(): void {
@@ -36,6 +40,10 @@ export class RefundsService implements OnModuleInit {
     effects: AfterCommit,
     opts: { amountToea?: number; reason: string; sourcePaymentId?: string },
   ): Promise<Payment | null> {
+    if (order.paymentMethod === 'wallet') {
+      await this.refundToWallet(tx, order, effects, opts);
+      return null;
+    }
     const source = opts.sourcePaymentId
       ? await tx.payment.findUnique({ where: { id: opts.sourcePaymentId } })
       : await tx.payment.findFirst({
@@ -66,6 +74,31 @@ export class RefundsService implements OnModuleInit {
     await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'refund_pending' } });
     effects.add(() => this.jobs.enqueue('payments', 'payments.refund.execute', { paymentId: refund.id }, { jobId: `refund-${refund.id}` }));
     return refund;
+  }
+
+  /** Wallet-paid order: credit the customer's wallet straight back (instant, no provider). Idempotent. */
+  private async refundToWallet(tx: Tx, order: Order, effects: AfterCommit, opts: { amountToea?: number; reason: string }): Promise<void> {
+    const paid = order.priceToea - order.discountToea;
+    const amount = Math.min(opts.amountToea ?? paid, paid);
+    if (amount <= 0) return;
+    const wallet = await this.ledger.customerWallet(order.customerId, tx);
+    const { created } = await this.ledger.post(tx, {
+      walletId: wallet.id,
+      amountToea: amount,
+      type: 'refund',
+      referenceType: 'order',
+      referenceId: order.id,
+      idempotencyKey: `wallet-refund:${order.id}`,
+      createdBy: 'system',
+      description: `Refund for ${order.shortCode}`,
+    });
+    if (!created) return;
+    await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'refunded' } });
+    const after = await tx.wallet.findUniqueOrThrow({ where: { id: wallet.id } });
+    effects.add(async () => {
+      this.realtime.toUser(order.customerId, 'wallet.updated', { balanceToea: after.balanceToea });
+      await this.notifications.notify(order.customerId, 'refund.issued', { shortCode: order.shortCode, amount: formatKina(amount), reason: opts.reason });
+    });
   }
 
   /** Manual cash refund task (COD disputes resolved for the customer). */

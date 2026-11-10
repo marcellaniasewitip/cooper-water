@@ -585,6 +585,300 @@
         ]
       }
     },
+    "/api/v1/customer/wallet": {
+      "get": {
+        "operationId": "CustomerController_walletSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customer/wallet/entries": {
+      "get": {
+        "operationId": "CustomerController_walletEntries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customer/wallet/topups": {
+      "post": {
+        "operationId": "CustomerController_walletTopup",
+        "summary": "",
+        "description": "Top up by cash, bank transfer or cell money; an admin approves it in Wallet top-ups.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key per logical request (UUID recommended)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerTopupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "CustomerController_walletTopups",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customer/offers": {
+      "get": {
+        "operationId": "CustomerController_offers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customer/offers/check": {
+      "post": {
+        "operationId": "CustomerController_checkOffer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoCheckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customer/referral": {
+      "get": {
+        "operationId": "CustomerController_referral",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customer/referral/apply": {
+      "post": {
+        "operationId": "CustomerController_applyReferral",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralApplyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customer/inbox": {
+      "get": {
+        "operationId": "CustomerController_inbox",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customer/chats": {
+      "get": {
+        "operationId": "CustomerController_chats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customer/orders/{id}/messages": {
+      "get": {
+        "operationId": "CustomerController_messages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "CustomerController_sendMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatSendDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/driver/me": {
       "get": {
         "operationId": "DriverController_me",
@@ -1450,6 +1744,89 @@
         ]
       }
     },
+    "/api/v1/driver/chats": {
+      "get": {
+        "operationId": "DriverController_chats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/driver/orders/{id}/messages": {
+      "get": {
+        "operationId": "DriverController_messages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "DriverController_sendMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatSendDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/overview": {
       "get": {
         "operationId": "AdminDashboardController_overview",
@@ -1574,6 +1951,34 @@
     "/api/v1/admin/orders/{id}": {
       "get": {
         "operationId": "AdminOrdersController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/orders/{id}/messages": {
+      "get": {
+        "operationId": "AdminOrdersController_messages",
         "parameters": [
           {
             "name": "id",
@@ -2134,6 +2539,90 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/TruckUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/promos": {
+      "get": {
+        "operationId": "AdminCatalogueController_promoList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "AdminCatalogueController_createPromo",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/promos/{id}": {
+      "patch": {
+        "operationId": "AdminCatalogueController_updatePromo",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromoDto"
               }
             }
           }
@@ -4067,6 +4556,12 @@
             "type": "number",
             "minimum": 1,
             "maximum": 100
+          },
+          "promoCode": {
+            "type": "string",
+            "description": "Offers: promo code to apply (validated for this customer).",
+            "minLength": 3,
+            "maxLength": 30
           }
         },
         "required": [
@@ -4111,6 +4606,12 @@
             "minimum": 1,
             "maximum": 100
           },
+          "promoCode": {
+            "type": "string",
+            "description": "Offers: promo code to apply (validated for this customer).",
+            "minLength": 3,
+            "maxLength": 30
+          },
           "locationId": {
             "type": "string",
             "description": "A saved location; or send `location` instead."
@@ -4122,7 +4623,8 @@
             "type": "string",
             "enum": [
               "cod",
-              "cellmoney"
+              "cellmoney",
+              "wallet"
             ]
           },
           "msisdn": {
@@ -4198,6 +4700,81 @@
         "required": [
           "category",
           "description"
+        ]
+      },
+      "CustomerTopupDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "description": "How the money was paid: cash at a Cooper Waters office/depot, bank transfer, or cell money.",
+            "enum": [
+              "cash",
+              "bank_transfer",
+              "cellmoney"
+            ]
+          },
+          "amountToea": {
+            "type": "number",
+            "minimum": 100,
+            "maximum": 10000000
+          },
+          "referenceText": {
+            "type": "string",
+            "description": "Receipt number, bank reference or cell money transaction ID.",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "msisdn": {
+            "type": "string",
+            "description": "Cell money: the number the money was sent from.",
+            "minLength": 7,
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "method",
+          "amountToea",
+          "referenceText"
+        ]
+      },
+      "PromoCheckDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 30
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "ReferralApplyDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "ChatSendDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "body"
         ]
       },
       "UploadRequestDto": {
@@ -4350,7 +4927,8 @@
             "type": "string",
             "enum": [
               "bank_transfer",
-              "cellmoney"
+              "cellmoney",
+              "cash"
             ]
           },
           "amountToea": {
@@ -4479,6 +5057,126 @@
           "capacityLitres": {
             "type": "number",
             "minimum": 100
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PromoDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 30,
+            "example": "WATER10"
+          },
+          "maxDiscountToea": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1
+          },
+          "startsAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxUses": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "discountType": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "flat"
+            ]
+          },
+          "discountValue": {
+            "type": "number",
+            "description": "percent: 1–100; flat: toea",
+            "minimum": 1,
+            "maximum": 10000000
+          },
+          "minOrderToea": {
+            "type": "number",
+            "minimum": 0
+          },
+          "perCustomerLimit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "public": {
+            "type": "boolean"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "discountType",
+          "discountValue"
+        ]
+      },
+      "UpdatePromoDto": {
+        "type": "object",
+        "properties": {
+          "maxDiscountToea": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1
+          },
+          "startsAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxUses": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "discountType": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "flat"
+            ]
+          },
+          "discountValue": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000000
+          },
+          "minOrderToea": {
+            "type": "number",
+            "minimum": 0
+          },
+          "perCustomerLimit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "public": {
+            "type": "boolean"
           },
           "active": {
             "type": "boolean"

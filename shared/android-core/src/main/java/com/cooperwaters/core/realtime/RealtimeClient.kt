@@ -1,5 +1,6 @@
 package com.cooperwaters.core.realtime
 
+import com.cooperwaters.core.net.ChatMessage
 import com.cooperwaters.core.net.CwJson
 import com.cooperwaters.core.net.Offer
 import com.cooperwaters.core.net.Order
@@ -30,6 +31,7 @@ sealed interface RealtimeEvent {
     data class OfferReceived(val offer: Offer) : RealtimeEvent
     data class OfferRevoked(val orderId: String, val reason: String?) : RealtimeEvent
     data class WalletUpdated(val update: WalletUpdate) : RealtimeEvent
+    data class ChatMessageReceived(val orderId: String, val shortCode: String, val message: ChatMessage) : RealtimeEvent
 }
 
 object RealtimeEvents {
@@ -39,13 +41,15 @@ object RealtimeEvents {
     const val ORDER_OFFER_REVOKED = "order.offer_revoked"
     const val WALLET_UPDATED = "wallet.updated"
     const val DRIVER_LOCATION = "driver.location"
+    const val CHAT_MESSAGE = "chat.message"
 
-    val ALL = listOf(ORDER_UPDATED, ORDER_DRIVER_LOCATION, ORDER_OFFER, ORDER_OFFER_REVOKED, WALLET_UPDATED)
+    val ALL = listOf(ORDER_UPDATED, ORDER_DRIVER_LOCATION, ORDER_OFFER, ORDER_OFFER_REVOKED, WALLET_UPDATED, CHAT_MESSAGE)
 
     @Serializable private data class OrderWrap(val order: Order)
     @Serializable private data class OfferWrap(val offer: Offer)
     @Serializable private data class LocationMsg(val orderId: String, val lat: Double, val lng: Double, val at: String? = null)
     @Serializable private data class RevokedMsg(val orderId: String, val reason: String? = null)
+    @Serializable private data class ChatMsg(val orderId: String, val shortCode: String = "", val message: ChatMessage)
 
     /** Parse one event's JSON payload; null for unknown events or malformed payloads. */
     fun parse(event: String, payloadJson: String, json: Json = CwJson): RealtimeEvent? = try {
@@ -57,6 +61,7 @@ object RealtimeEvents {
             ORDER_OFFER_REVOKED -> json.decodeFromString(RevokedMsg.serializer(), payloadJson)
                 .let { RealtimeEvent.OfferRevoked(it.orderId, it.reason) }
             WALLET_UPDATED -> RealtimeEvent.WalletUpdated(json.decodeFromString(WalletUpdate.serializer(), payloadJson))
+            CHAT_MESSAGE -> json.decodeFromString(ChatMsg.serializer(), payloadJson).let { RealtimeEvent.ChatMessageReceived(it.orderId, it.shortCode, it.message) }
             else -> null
         }
     } catch (e: Exception) {

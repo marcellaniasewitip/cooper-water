@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -61,7 +62,7 @@ import com.cooperwaters.customer.ui.common.containerViewModel
 import com.cooperwaters.core.R as CoreR
 
 @Composable
-fun TrackingScreen(orderId: String, onBack: () -> Unit, onPay: () -> Unit, onRate: () -> Unit, onDispute: () -> Unit) {
+fun TrackingScreen(orderId: String, onBack: () -> Unit, onPay: () -> Unit, onRate: () -> Unit, onDispute: () -> Unit, onChat: () -> Unit) {
     val vm = containerViewModel(key = "track-$orderId") { c -> TrackingViewModel(c.repository, orderId, c.realtime.events, c.pushEvents) }
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -92,6 +93,9 @@ fun TrackingScreen(orderId: String, onBack: () -> Unit, onPay: () -> Unit, onRat
                                 Text(d.name, style = MaterialTheme.typography.titleMedium)
                                 d.truck?.let { t -> Text(stringResource(R.string.tracking_truck, t.plate), style = MaterialTheme.typography.bodySmall) }
                                 if (d.ratingAvg > 0) Text(stringResource(R.string.tracking_rating, d.ratingAvg), style = MaterialTheme.typography.bodySmall)
+                            }
+                            IconButton(onClick = onChat) {
+                                Icon(Icons.Filled.Email, contentDescription = stringResource(R.string.tracking_message_driver))
                             }
                             d.phone?.let { phone ->
                                 IconButton(onClick = { Intents.dial(context, phone) }) {

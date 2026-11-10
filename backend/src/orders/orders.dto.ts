@@ -42,6 +42,12 @@ export class QuoteDto {
   @Min(1)
   @Max(100)
   quantity: number;
+
+  /** Offers: promo code to apply (validated for this customer). */
+  @IsOptional()
+  @IsString()
+  @Length(3, 30)
+  promoCode?: string;
 }
 
 export class CreateOrderDto extends QuoteDto {
@@ -55,8 +61,8 @@ export class CreateOrderDto extends QuoteDto {
   @Type(() => DeliveryLocationDto)
   location?: DeliveryLocationDto;
 
-  @IsIn(['cod', 'cellmoney'])
-  paymentMethod: 'cod' | 'cellmoney';
+  @IsIn(['cod', 'cellmoney', 'wallet'])
+  paymentMethod: 'cod' | 'cellmoney' | 'wallet';
 
   /** Cell money number to charge (defaults to the account phone). */
   @IsOptional()

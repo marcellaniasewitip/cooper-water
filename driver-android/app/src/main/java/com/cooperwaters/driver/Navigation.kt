@@ -11,12 +11,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cooperwaters.driver.ui.auth.LoginScreen
-import com.cooperwaters.driver.ui.common.MainBottomBar
-import com.cooperwaters.driver.ui.common.MainTab
+import com.cooperwaters.driver.ui.chat.ChatListScreen
+import com.cooperwaters.driver.ui.chat.ChatScreen
 import com.cooperwaters.driver.ui.common.appContainer
 import com.cooperwaters.driver.ui.earnings.EarningsScreen
 import com.cooperwaters.driver.ui.earnings.JobHistoryScreen
 import com.cooperwaters.driver.ui.gate.GateScreen
+import com.cooperwaters.driver.ui.home.HomeActions
 import com.cooperwaters.driver.ui.home.HomeScreen
 import com.cooperwaters.driver.ui.job.IssueScreen
 import com.cooperwaters.driver.ui.job.JobScreen
@@ -24,6 +25,8 @@ import com.cooperwaters.driver.ui.onboarding.DriverStage
 import com.cooperwaters.driver.ui.onboarding.OnboardingScreen
 import com.cooperwaters.driver.ui.onboarding.WaitingScreen
 import com.cooperwaters.driver.ui.profile.ProfileScreen
+import com.cooperwaters.driver.ui.requests.LiveRequestsScreen
+import com.cooperwaters.driver.ui.support.SupportScreen
 import com.cooperwaters.driver.ui.wallet.TopupScreen
 import com.cooperwaters.driver.ui.wallet.WalletScreen
 import com.cooperwaters.driver.ui.wallet.WithdrawScreen
@@ -42,11 +45,15 @@ object Routes {
     const val WITHDRAW = "withdraw"
     const val EARNINGS = "earnings"
     const val HISTORY = "history"
-    const val PROFILE_TAB = "profile_tab"
+    const val CHAT = "chat/{orderId}"
+    const val LIVE = "live_requests"
+    const val CHATS = "chats"
+    const val SUPPORT = "support"
 
     fun profile(onboarding: Boolean) = "profile?onboarding=$onboarding"
     fun job(id: String) = "job/$id"
     fun issue(id: String) = "issue/$id"
+    fun chat(id: String) = "chat/$id"
 }
 
 private fun NavHostController.resetTo(route: String) = navigate(route) { popUpTo(0) { inclusive = true } }
@@ -59,22 +66,10 @@ private fun NavHostController.toStage(stage: DriverStage) = resetTo(
     },
 )
 
-/** Bottom-bar tabs: Jobs is the root; the other tabs sit one level above it so Back returns to Jobs. */
-private fun NavHostController.selectTab(tab: MainTab) {
-    if (tab == MainTab.JOBS) {
-        popBackStack(Routes.HOME, inclusive = false)
-        return
-    }
-    val route = when (tab) {
-        MainTab.WALLET -> Routes.WALLET
-        MainTab.EARNINGS -> Routes.EARNINGS
-        MainTab.HISTORY -> Routes.HISTORY
-        else -> Routes.PROFILE_TAB
-    }
-    navigate(route) {
-        popUpTo(Routes.HOME)
-        launchSingleTop = true
-    }
+/** Side-menu destinations open on top of Home, once (Back returns to Home). */
+private fun NavHostController.openFromMenu(route: String) = navigate(route) {
+    popUpTo(Routes.HOME)
+    launchSingleTop = true
 }
 
 @Composable
@@ -104,14 +99,35 @@ fun DriverNavHost() {
         }
         composable(Routes.HOME) {
             HomeScreen(
-                onOpenJob = { nav.navigate(Routes.job(it)) },
-                onTopup = { nav.navigate(Routes.TOPUP) },
-                bottomBar = { MainBottomBar(MainTab.JOBS) { nav.selectTab(it) } },
+                HomeActions(
+                    onOpenJob = { nav.navigate(Routes.job(it)) },
+                    onTopup = { nav.navigate(Routes.TOPUP) },
+                    onLiveRequests = { nav.openFromMenu(Routes.LIVE) },
+                    onEarnings = { nav.openFromMenu(Routes.EARNINGS) },
+                    onWallet = { nav.openFromMenu(Routes.WALLET) },
+                    onHistory = { nav.openFromMenu(Routes.HISTORY) },
+                    onMessages = { nav.openFromMenu(Routes.CHATS) },
+                    onProfile = { nav.openFromMenu(Routes.profile(onboarding = false)) },
+                    onSupport = { nav.openFromMenu(Routes.SUPPORT) },
+                ),
             )
         }
+        composable(Routes.LIVE) {
+            LiveRequestsScreen(onBack = { nav.popBackStack() }, onOpenJob = { nav.navigate(Routes.job(it)) { popUpTo(Routes.HOME) } })
+        }
+        composable(Routes.CHATS) { ChatListScreen(onOpen = { nav.navigate(Routes.chat(it)) }, onBack = { nav.popBackStack() }) }
+        composable(Routes.SUPPORT) { SupportScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.JOB, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
             val id = entry.arguments?.getString("orderId").orEmpty()
-            JobScreen(orderId = id, onBack = { if (!nav.popBackStack()) nav.resetTo(Routes.HOME) }, onReportIssue = { nav.navigate(Routes.issue(id)) })
+            JobScreen(
+                orderId = id,
+                onBack = { if (!nav.popBackStack()) nav.resetTo(Routes.HOME) },
+                onReportIssue = { nav.navigate(Routes.issue(id)) },
+                onChat = { nav.navigate(Routes.chat(id)) },
+            )
+        }
+        composable(Routes.CHAT, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
+            ChatScreen(orderId = entry.arguments?.getString("orderId").orEmpty(), onBack = { nav.popBackStack() })
         }
         composable(Routes.ISSUE, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
             IssueScreen(orderId = entry.arguments?.getString("orderId").orEmpty(), onDone = { nav.popBackStack() })
@@ -121,26 +137,17 @@ fun DriverNavHost() {
                 onBack = { nav.popBackStack() },
                 onTopup = { nav.navigate(Routes.TOPUP) },
                 onWithdraw = { nav.navigate(Routes.WITHDRAW) },
-                bottomBar = { MainBottomBar(MainTab.WALLET) { nav.selectTab(it) } },
             )
         }
         composable(Routes.TOPUP) { TopupScreen(onDone = { nav.popBackStack() }) }
         composable(Routes.WITHDRAW) { WithdrawScreen(onDone = { nav.popBackStack() }) }
         composable(Routes.EARNINGS) {
-            EarningsScreen(onBack = { nav.popBackStack() }, bottomBar = { MainBottomBar(MainTab.EARNINGS) { nav.selectTab(it) } })
+            EarningsScreen(onBack = { nav.popBackStack() })
         }
         composable(Routes.HISTORY) {
             JobHistoryScreen(
                 onBack = { nav.popBackStack() },
                 onOpen = { nav.navigate(Routes.job(it)) },
-                bottomBar = { MainBottomBar(MainTab.HISTORY) { nav.selectTab(it) } },
-            )
-        }
-        composable(Routes.PROFILE_TAB) {
-            ProfileScreen(
-                onboarding = false,
-                onDone = { nav.popBackStack() },
-                bottomBar = { MainBottomBar(MainTab.PROFILE) { nav.selectTab(it) } },
             )
         }
     }

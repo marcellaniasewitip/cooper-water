@@ -54,6 +54,10 @@ export const SETTING_DEFAULTS = {
   'dispute.categories': ['not_delivered', 'short_volume', 'quality', 'payment', 'behaviour', 'other'],
 
   'payout.min_toea': 1000,
+
+  /** Refer & Earn: wallet credit for both customers once the referred customer completes a first order (toea). */
+  'referral.reward_toea': 1000,
+  'referral.enabled': true,
 };
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
@@ -96,6 +100,7 @@ export function validateSetting(key: string, value: unknown): string | null {
     'otp.max_sends_per_phone_per_hour',
     'otp.max_sends_per_ip_per_hour',
     'payout.min_toea',
+    'referral.reward_toea',
   ];
   if (integerKeys.includes(key) && !Number.isInteger(value)) return `${key} must be a whole number`;
   return null;

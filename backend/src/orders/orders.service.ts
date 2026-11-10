@@ -7,6 +7,7 @@ import { GeoService } from '../geo/geo.service';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../storage/storage.service';
 import { LedgerService } from '../wallet/ledger.service';
+import { PromosService } from '../promos/promos.service';
 import { AfterCommit } from '../common/after-commit';
 import { Errors } from '../common/errors';
 import { computeCommission, formatKina } from '../common/money';
@@ -28,6 +29,7 @@ export class OrdersService implements OnModuleInit {
     private readonly storage: StorageService,
     private readonly ledger: LedgerService,
     private readonly transitions: OrderTransitionsService,
+    private readonly promos: PromosService,
   ) {}
 
   onModuleInit(): void {
@@ -48,13 +50,27 @@ export class OrdersService implements OnModuleInit {
 
   // ═══════════════ Customer ═══════════════
 
-  /** Fixed citywide price (§5 Package). Commission is never shown to customers. */
-  async quote(packageId: string, quantity: number) {
+  /**
+   * Fixed citywide price (§5 Package), less any promo discount. Commission is never shown to customers.
+   * `payableToea` is what the customer pays.
+   */
+  async quote(packageId: string, quantity: number, promo?: { customerId: string; code?: string }) {
     const pkg = await this.prisma.package.findFirst({ where: { id: packageId, active: true, deletedAt: null } });
     if (!pkg) throw Errors.notFound('Package');
     const max = await this.settings.get('order.max_quantity');
     if (quantity > max) throw Errors.invalid('quantity_too_large', `You can order at most ${max} at a time`);
-    return { package: { id: pkg.id, name: pkg.name, volumeLitres: pkg.volumeLitres }, quantity, unitPriceToea: pkg.priceToea, priceToea: pkg.priceToea * quantity };
+    const priceToea = pkg.priceToea * quantity;
+    const applied = promo?.code ? await this.promos.evaluate(promo.code, promo.customerId, priceToea) : null;
+    const discountToea = applied?.discountToea ?? 0;
+    return {
+      package: { id: pkg.id, name: pkg.name, volumeLitres: pkg.volumeLitres },
+      quantity,
+      unitPriceToea: pkg.priceToea,
+      priceToea,
+      discountToea,
+      payableToea: priceToea - discountToea,
+      promo: applied ? { code: applied.promo.code, description: applied.promo.description } : null,
+    };
   }
 
   async create(customerId: string, dto: CreateOrderDto) {
@@ -67,10 +83,15 @@ export class OrdersService implements OnModuleInit {
     ]);
     const commissionToea = computeCommission(q.priceToea, commissionType, commissionValue);
     const initial: OrderStatus = dto.paymentMethod === 'cellmoney' ? 'PENDING_PAYMENT' : 'SEARCHING';
+    const paidFromWallet = dto.paymentMethod === 'wallet';
 
     const effects = new AfterCommit();
     const order = await this.withShortCodeRetry((shortCode) =>
       this.prisma.tx(async (tx) => {
+        // Promo is (re)validated under a row lock so concurrent orders can't exceed its limits.
+        const applied = dto.promoCode ? await this.promos.evaluate(dto.promoCode, customerId, q.priceToea, tx) : null;
+        const discountToea = applied?.discountToea ?? 0;
+        const payableToea = q.priceToea - discountToea;
         // Created in a pre-state then moved through the state machine so the first event is recorded too.
         const created = await tx.order.create({
           data: {
@@ -80,6 +101,8 @@ export class OrdersService implements OnModuleInit {
             quantity: q.quantity,
             unitPriceToea: q.unitPriceToea,
             priceToea: q.priceToea,
+            discountToea,
+            promoCodeId: applied?.promo.id ?? null,
             commissionToea,
             commissionType,
             commissionValue,
@@ -89,15 +112,17 @@ export class OrdersService implements OnModuleInit {
             deliveryAddress: loc.address,
             deliveryNotes: loc.notes,
             paymentMethod: dto.paymentMethod,
-            paymentStatus: dto.paymentMethod === 'cellmoney' ? 'pending' : 'unpaid',
+            paymentStatus: dto.paymentMethod === 'cellmoney' ? 'pending' : paidFromWallet ? 'paid' : 'unpaid',
             status: 'PENDING_PAYMENT',
             paymentPendingAt: dto.paymentMethod === 'cellmoney' ? new Date() : null,
           },
         });
+        if (applied) await this.promos.redeem(tx, applied.promo.id, customerId, created.id, discountToea);
+        if (paidFromWallet && payableToea > 0) await this.payFromWallet(tx, customerId, created.id, created.shortCode, payableToea);
         if (initial === 'SEARCHING') {
-          // COD goes straight to dispatch; this single event records the creation.
+          // COD / wallet go straight to dispatch; this single event records the creation.
           return this.transitions.transition(tx, created, 'SEARCHING', { type: 'system', id: null }, effects, {
-            metadata: { created: true, createdBy: customerId, paymentMethod: 'cod' },
+            metadata: { created: true, createdBy: customerId, paymentMethod: dto.paymentMethod },
           });
         }
         await tx.orderEvent.create({
@@ -108,6 +133,29 @@ export class OrdersService implements OnModuleInit {
     );
     await effects.run();
     return order;
+  }
+
+  /** Debit the customer's wallet for an order (inside the creating transaction). */
+  private async payFromWallet(tx: Tx, customerId: string, orderId: string, shortCode: string, amountToea: number): Promise<void> {
+    const wallet = await this.ledger.customerWallet(customerId, tx);
+    const locked = await this.ledger.lockWallet(tx, wallet.id);
+    if (locked.balanceToea < amountToea) {
+      throw Errors.invalid(
+        'wallet_insufficient',
+        `Your wallet has ${formatKina(locked.balanceToea)}. Top up ${formatKina(amountToea - locked.balanceToea)} more or choose another payment method.`,
+        { balanceToea: locked.balanceToea, amountToea },
+      );
+    }
+    await this.ledger.post(tx, {
+      walletId: wallet.id,
+      amountToea: -amountToea,
+      type: 'order_payment',
+      referenceType: 'order',
+      referenceId: orderId,
+      idempotencyKey: `order-payment:${orderId}`,
+      createdBy: `customer:${customerId}`,
+      description: `Payment for ${shortCode}`,
+    });
   }
 
   async listForCustomer(customerId: string, q: CursorQuery) {

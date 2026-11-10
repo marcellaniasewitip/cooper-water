@@ -47,7 +47,7 @@ export const ORDER_STATUSES = [
   'DISPUTED',
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
-export type PaymentMethod = 'cod' | 'cellmoney';
+export type PaymentMethod = 'cod' | 'cellmoney' | 'wallet';
 export type OrderPaymentStatus = 'unpaid' | 'pending' | 'paid' | 'failed' | 'refund_pending' | 'refunded';
 export type ActorType = 'customer' | 'driver' | 'admin' | 'system';
 
@@ -85,6 +85,10 @@ export interface AdminOrder {
   quantity: number;
   unitPriceToea: number;
   priceToea: number;
+  /** Promo discount absorbed by Cooper Waters (0 when none). */
+  discountToea?: number;
+  /** What the customer pays: price − discount. */
+  payableToea?: number;
   paymentMethod: PaymentMethod;
   paymentStatus: OrderPaymentStatus;
   delivery: { lat: number; lng: number; address: string; notes: string | null };
@@ -379,6 +383,35 @@ export interface Package {
   updatedAt: ISO;
 }
 
+export interface PromoCode {
+  id: string;
+  code: string;
+  description: string;
+  discountType: 'percent' | 'flat';
+  /** percent: 1–100; flat: toea */
+  discountValue: number;
+  maxDiscountToea: number | null;
+  minOrderToea: number;
+  startsAt: ISO | null;
+  expiresAt: ISO | null;
+  maxUses: number | null;
+  perCustomerLimit: number;
+  public: boolean;
+  active: boolean;
+  uses: number;
+  createdAt: ISO;
+  updatedAt: ISO;
+}
+
+export interface ChatMessage {
+  id: string;
+  body: string;
+  senderRole: 'customer' | 'driver';
+  senderName: string | null;
+  createdAt: ISO;
+  readAt: ISO | null;
+}
+
 export type SettingsMap = Record<string, { value: unknown; isDefault: boolean }>;
 
 // ───────────── Money queues ─────────────
@@ -387,8 +420,10 @@ export type TopupStatus = 'pending' | 'approved' | 'rejected' | 'failed';
 
 export interface Topup {
   id: string;
-  driverId: string;
-  method: 'bank_transfer' | 'cellmoney';
+  /** Exactly one of driverId / customerId is set. */
+  driverId: string | null;
+  customerId?: string | null;
+  method: 'bank_transfer' | 'cellmoney' | 'cash';
   amountToea: number;
   referenceText: string;
   msisdn: string | null;
@@ -401,7 +436,8 @@ export interface Topup {
   reviewedAt: ISO | null;
   paymentId: string | null;
   createdAt: ISO;
-  driver: { id: string; user: { name: string | null; phone: string } };
+  driver: { id: string; user: { name: string | null; phone: string } } | null;
+  customer?: { id: string; name: string | null; phone: string } | null;
   payment: Payment | null;
 }
 

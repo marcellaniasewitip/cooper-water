@@ -1,4 +1,4 @@
-import { IsLatitude, IsLongitude, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsIn, IsInt, IsLatitude, IsLongitude, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsString()
@@ -58,4 +58,44 @@ export class UpdateLocationDto {
   @IsString()
   @MaxLength(500)
   landmarkNotes?: string;
+}
+
+export class CustomerTopupDto {
+  /** How the money was paid: cash at a Cooper Waters office/depot, bank transfer, or cell money. */
+  @IsIn(['cash', 'bank_transfer', 'cellmoney'])
+  method: 'cash' | 'bank_transfer' | 'cellmoney';
+
+  @IsInt()
+  @Min(100)
+  @Max(10_000_000)
+  amountToea: number;
+
+  /** Receipt number, bank reference or cell money transaction ID. */
+  @IsString()
+  @Length(1, 100)
+  referenceText: string;
+
+  /** Cell money: the number the money was sent from. */
+  @IsOptional()
+  @IsString()
+  @Length(7, 20)
+  msisdn?: string;
+}
+
+export class PromoCheckDto {
+  @IsString()
+  @Length(3, 30)
+  code: string;
+}
+
+export class ReferralApplyDto {
+  @IsString()
+  @Length(4, 20)
+  code: string;
+}
+
+export class ChatSendDto {
+  @IsString()
+  @Length(1, 1000)
+  body: string;
 }

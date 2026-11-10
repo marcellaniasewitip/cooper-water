@@ -147,6 +147,9 @@ data class Order(
     val quantity: Int = 0,
     val unitPriceToea: Long = 0,
     val priceToea: Long = 0,
+    /** Promo discount; the customer pays (and a cash driver collects) [payableToea]. */
+    val discountToea: Long = 0,
+    val payableToea: Long = priceToea - discountToea,
     val paymentMethod: String? = null,
     val paymentStatus: String? = null,
     val delivery: DeliveryLocation? = null,
@@ -238,7 +241,7 @@ data class WaterPackage(
 )
 
 @Serializable
-data class QuoteRequest(val packageId: String, val quantity: Int)
+data class QuoteRequest(val packageId: String, val quantity: Int, val promoCode: String? = null)
 
 @Serializable
 data class Quote(
@@ -246,7 +249,14 @@ data class Quote(
     val quantity: Int,
     val unitPriceToea: Long,
     val priceToea: Long,
+    /** Promo discount (Offers); the customer pays [payableToea]. */
+    val discountToea: Long = 0,
+    val payableToea: Long = priceToea,
+    val promo: AppliedPromo? = null,
 )
+
+@Serializable
+data class AppliedPromo(val code: String, val description: String = "")
 
 @Serializable
 data class CreateOrderRequest(
@@ -254,9 +264,10 @@ data class CreateOrderRequest(
     val quantity: Int,
     val locationId: String? = null,
     val location: DeliveryLocation? = null,
-    /** "cod" | "cellmoney" */
+    /** "cod" | "cellmoney" | "wallet" */
     val paymentMethod: String,
     val msisdn: String? = null,
+    val promoCode: String? = null,
 )
 
 @Serializable
@@ -459,7 +470,7 @@ data class LedgerEntry(
 
 @Serializable
 data class TopupRequest(
-    /** bank_transfer | cellmoney */
+    /** bank_transfer | cellmoney | cash */
     val method: String,
     val amountToea: Long,
     val referenceText: String? = null,
@@ -521,3 +532,92 @@ data class WalletUpdate(
     val minBalanceToea: Long? = null,
     val blocked: Boolean? = null,
 )
+
+// ───────────── Customer wallet, offers, referral, inbox, chat ─────────────
+
+@Serializable
+data class CustomerWallet(
+    val walletId: String = "",
+    val balanceToea: Long = 0,
+    val pendingTopups: PendingTopups = PendingTopups(),
+)
+
+/** A promo code shown on the Offers screen (named to avoid clashing with driver job [Offer]s). */
+@Serializable
+data class PromoOffer(
+    val code: String,
+    val description: String = "",
+    /** percent | flat */
+    val discountType: String = "flat",
+    /** percent: 1–100; flat: toea */
+    val discountValue: Long = 0,
+    val maxDiscountToea: Long? = null,
+    val minOrderToea: Long = 0,
+    val expiresAt: String? = null,
+    val usable: Boolean = true,
+)
+
+@Serializable
+data class PromoCheckRequest(val code: String)
+
+@Serializable
+data class ReferralInfo(
+    val enabled: Boolean = true,
+    val code: String = "",
+    val rewardToea: Long = 0,
+    val invitedCount: Int = 0,
+    val rewardedCount: Int = 0,
+    val earnedToea: Long = 0,
+    val referredByCode: String? = null,
+    val canApplyCode: Boolean = false,
+)
+
+@Serializable
+data class ReferralApplyRequest(val code: String)
+
+@Serializable
+data class InboxItem(
+    val id: String,
+    val title: String = "",
+    val body: String = "",
+    val template: String = "",
+    val createdAt: String? = null,
+)
+
+@Serializable
+data class ChatMessage(
+    val id: String,
+    val body: String,
+    val mine: Boolean = false,
+    /** customer | driver */
+    val senderRole: String = "",
+    val createdAt: String? = null,
+    val readAt: String? = null,
+)
+
+@Serializable
+data class ChatLastMessage(val body: String, val mine: Boolean = false, val createdAt: String? = null)
+
+@Serializable
+data class ChatConversation(
+    val orderId: String,
+    val shortCode: String = "",
+    val otherName: String = "",
+    /** Messages can still be sent (order active). */
+    val open: Boolean = false,
+    val lastMessage: ChatLastMessage? = null,
+    val unread: Int = 0,
+    val updatedAt: String? = null,
+)
+
+@Serializable
+data class ChatThread(
+    val orderId: String,
+    val shortCode: String = "",
+    val otherName: String = "",
+    val open: Boolean = false,
+    val messages: List<ChatMessage> = emptyList(),
+)
+
+@Serializable
+data class ChatSendRequest(val body: String)

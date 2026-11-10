@@ -24,7 +24,11 @@ object Labels {
     }
 
     @StringRes
-    fun paymentMethod(method: String?): Int = if (method == "cellmoney") R.string.cw_payment_cellmoney else R.string.cw_payment_cod
+    fun paymentMethod(method: String?): Int = when (method) {
+        "cellmoney" -> R.string.cw_payment_cellmoney
+        "wallet" -> R.string.cw_payment_wallet
+        else -> R.string.cw_payment_cod
+    }
 
     /** Dispute categories come from config; known ones get a friendly label, unknown ones fall back to the raw key. */
     @StringRes

@@ -89,6 +89,47 @@ interface CustomerApi {
 
     @POST("customer/orders/{id}/disputes")
     suspend fun dispute(@Path("id") id: String, @Body body: DisputeRequest): Dispute
+
+    // Wallet: cash / bank transfer / cell money top-ups, approved by an admin.
+    @GET("customer/wallet")
+    suspend fun wallet(): CustomerWallet
+
+    @GET("customer/wallet/entries")
+    suspend fun walletEntries(@Query("cursor") cursor: String? = null, @Query("limit") limit: Int? = null): Page<LedgerEntry>
+
+    @GET("customer/wallet/topups")
+    suspend fun walletTopups(@Query("cursor") cursor: String? = null, @Query("limit") limit: Int? = null): Page<Topup>
+
+    /** Idempotent: reuse the key when retrying the same top-up. */
+    @POST("customer/wallet/topups")
+    suspend fun topup(@Header(IDEMPOTENCY_HEADER) key: String, @Body body: TopupRequest): Topup
+
+    // Offers
+    @GET("customer/offers")
+    suspend fun offers(): List<PromoOffer>
+
+    @POST("customer/offers/check")
+    suspend fun checkOffer(@Body body: PromoCheckRequest): PromoOffer
+
+    // Refer & Earn
+    @GET("customer/referral")
+    suspend fun referral(): ReferralInfo
+
+    @POST("customer/referral/apply")
+    suspend fun applyReferral(@Body body: ReferralApplyRequest): ReferralInfo
+
+    // Inbox & chat
+    @GET("customer/inbox")
+    suspend fun inbox(@Query("cursor") cursor: String? = null, @Query("limit") limit: Int? = null): Page<InboxItem>
+
+    @GET("customer/chats")
+    suspend fun chats(): List<ChatConversation>
+
+    @GET("customer/orders/{id}/messages")
+    suspend fun messages(@Path("id") orderId: String): ChatThread
+
+    @POST("customer/orders/{id}/messages")
+    suspend fun sendMessage(@Path("id") orderId: String, @Body body: ChatSendRequest): ChatMessage
 }
 
 interface DriverApi {
@@ -191,4 +232,14 @@ interface DriverApi {
     /** period = today | week | month */
     @GET("driver/earnings")
     suspend fun earnings(@Query("period") period: String): Earnings
+
+    // Chat with the customer
+    @GET("driver/chats")
+    suspend fun chats(): List<ChatConversation>
+
+    @GET("driver/orders/{id}/messages")
+    suspend fun messages(@Path("id") orderId: String): ChatThread
+
+    @POST("driver/orders/{id}/messages")
+    suspend fun sendMessage(@Path("id") orderId: String, @Body body: ChatSendRequest): ChatMessage
 }

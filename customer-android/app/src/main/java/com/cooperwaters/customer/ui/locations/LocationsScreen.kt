@@ -84,7 +84,7 @@ class LocationsViewModel(private val repo: CustomerRepository) : ViewModel() {
 }
 
 @Composable
-fun LocationsScreen(onEdit: (String?) -> Unit, bottomBar: @Composable () -> Unit) {
+fun LocationsScreen(onEdit: (String?) -> Unit, onBack: () -> Unit) {
     val vm = containerViewModel { c -> LocationsViewModel(c.repository) }
     val state by vm.state.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf<SavedLocation?>(null) }
@@ -92,7 +92,7 @@ fun LocationsScreen(onEdit: (String?) -> Unit, bottomBar: @Composable () -> Unit
 
     ScreenScaffold(
         title = stringResource(R.string.locations_title),
-        bottomBar = bottomBar,
+        onBack = onBack,
         actions = {
             IconButton(onClick = { onEdit(null) }) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.locations_add)) }
         },

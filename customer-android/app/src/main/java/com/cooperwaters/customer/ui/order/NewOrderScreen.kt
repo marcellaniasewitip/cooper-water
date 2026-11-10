@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -49,19 +50,27 @@ import com.cooperwaters.core.android.ui.SectionTitle
 import com.cooperwaters.core.money.Money
 import com.cooperwaters.customer.R
 import com.cooperwaters.customer.ui.common.ScreenScaffold
+import com.cooperwaters.customer.ui.common.appContainer
 import com.cooperwaters.customer.ui.common.containerViewModel
 
 @Composable
 fun NewOrderScreen(
+    initialLocationId: String? = null,
     onBack: () -> Unit,
     onAddLocation: () -> Unit,
     onPlaced: (orderId: String, needsPayment: Boolean) -> Unit,
     onResumedElsewhere: () -> Unit,
 ) {
-    val vm = containerViewModel { c -> NewOrderViewModel(c.repository, c.tokenStore.user()?.phone.orEmpty()) }
+    val vm = containerViewModel { c -> NewOrderViewModel(c.repository, c.tokenStore.user()?.phone.orEmpty(), initialLocationId, c.promoStore.selected) }
     val state by vm.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.placed) { state.placed?.let { onPlaced(it.orderId, it.needsPayment) } }
+    val container = appContainer()
+    LaunchedEffect(state.placed) {
+        state.placed?.let {
+            if (state.appliedPromo != null) container.promoStore.selected = null // the picked offer has been used
+            onPlaced(it.orderId, it.needsPayment)
+        }
+    }
     LaunchedEffect(state.resumedElsewhere) { if (state.resumedElsewhere) onResumedElsewhere() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.reloadLocations() }
     BackHandler { if (!vm.back()) onBack() }
@@ -82,7 +91,7 @@ fun NewOrderScreen(
                 OrderStep.PACKAGE -> PackageStep(state, vm)
                 OrderStep.LOCATION -> LocationStep(state, vm, onAddLocation)
                 OrderStep.PAYMENT -> PaymentStep(state, vm)
-                OrderStep.REVIEW -> ReviewStep(state)
+                OrderStep.REVIEW -> ReviewStep(state, vm)
             }
             ErrorCard(state.error)
         }
@@ -113,7 +122,17 @@ private fun PriceBar(state: NewOrderState) {
             stringResource(if (state.quotedPriceToea != null) R.string.order_fixed_price else R.string.order_price_estimate),
             style = MaterialTheme.typography.bodyMedium,
         )
-        Text(Money.format(price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Column(horizontalAlignment = Alignment.End) {
+            if (state.discountToea > 0) {
+                Text(
+                    Money.format(price),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textDecoration = TextDecoration.LineThrough,
+                )
+            }
+            Text(Money.format(state.payableToea ?: price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -197,7 +216,7 @@ private fun LocationStep(state: NewOrderState, vm: NewOrderViewModel, onAddLocat
 @Composable
 private fun PaymentStep(state: NewOrderState, vm: NewOrderViewModel) {
     SectionTitle(stringResource(R.string.order_payment_method))
-    for (m in listOf("cod", "cellmoney")) {
+    for (m in listOf("cod", "cellmoney", "wallet")) {
         val selected = state.paymentMethod == m
         Row(
             Modifier.fillMaxWidth().selectable(selected = selected, onClick = { vm.selectPayment(m) }).padding(vertical = 8.dp),
@@ -208,7 +227,12 @@ private fun PaymentStep(state: NewOrderState, vm: NewOrderViewModel) {
             Column {
                 Text(stringResource(Labels.paymentMethod(m)), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    stringResource(if (m == "cod") R.string.order_cod_help else R.string.order_cellmoney_help),
+                    when (m) {
+                        "cod" -> stringResource(R.string.order_cod_help)
+                        "cellmoney" -> stringResource(R.string.order_cellmoney_help)
+                        else -> state.walletBalanceToea?.let { stringResource(R.string.order_wallet_help, Money.format(it)) }
+                            ?: stringResource(R.string.order_wallet_help_unknown)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -227,7 +251,39 @@ private fun PaymentStep(state: NewOrderState, vm: NewOrderViewModel) {
 }
 
 @Composable
-private fun ReviewStep(state: NewOrderState) {
+private fun PromoField(state: NewOrderState, vm: NewOrderViewModel) {
+    SectionTitle(stringResource(R.string.order_promo_title))
+    val applied = state.appliedPromo
+    if (applied != null) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer), modifier = Modifier.fillMaxWidth()) {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(applied.code, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.order_promo_saving, Money.format(state.discountToea)), style = MaterialTheme.typography.bodyMedium)
+                }
+                if (!state.locked) TextButton(onClick = vm::removePromo) { Text(stringResource(R.string.order_promo_remove)) }
+            }
+        }
+    } else {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = state.promoInput,
+                onValueChange = vm::onPromoInput,
+                placeholder = { Text(stringResource(R.string.order_promo_hint)) },
+                singleLine = true,
+                enabled = !state.locked,
+                modifier = Modifier.weight(1f),
+            )
+            Button(onClick = vm::applyPromo, enabled = state.promoInput.length >= 3 && !state.promoChecking && !state.locked) {
+                Text(stringResource(R.string.order_promo_apply))
+            }
+        }
+    }
+    state.promoError?.let { Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+}
+
+@Composable
+private fun ReviewStep(state: NewOrderState, vm: NewOrderViewModel) {
     SectionTitle(stringResource(R.string.order_review_title))
     val pkg = state.selectedPackage
     val loc = state.selectedLocation
@@ -245,7 +301,14 @@ private fun ReviewStep(state: NewOrderState) {
             HorizontalDivider()
             LabelValue(stringResource(R.string.order_payment_method), stringResource(Labels.paymentMethod(state.paymentMethod)))
             if (state.paymentMethod == "cellmoney") LabelValue(stringResource(R.string.order_msisdn_label), state.msisdn)
+            if (state.discountToea > 0) {
+                HorizontalDivider()
+                state.priceToea?.let { LabelValue(stringResource(R.string.order_review_price), Money.format(it)) }
+                LabelValue(stringResource(R.string.order_review_discount), "-" + Money.format(state.discountToea))
+                state.payableToea?.let { LabelValue(stringResource(R.string.order_review_to_pay), Money.format(it)) }
+            }
         }
     }
+    PromoField(state, vm)
     Text(stringResource(R.string.order_review_note), style = MaterialTheme.typography.bodySmall)
 }

@@ -61,6 +61,7 @@ enum OrderStatus {
 enum PaymentMethod {
   cod
   cellmoney
+  wallet
 }
 
 enum OrderPaymentStatus {
@@ -89,6 +90,7 @@ enum WalletOwnerType {
   driver
   platform
   customer_refund
+  customer
 }
 
 enum LedgerType {
@@ -98,11 +100,20 @@ enum LedgerType {
   refund
   adjustment
   payout
+  order_payment
+  promo
+  referral
 }
 
 enum TopupMethod {
   bank_transfer
   cellmoney
+  cash
+}
+
+enum DiscountType {
+  percent
+  flat
 }
 
 enum TopupStatus {
@@ -179,13 +190,21 @@ model User {
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
-  driver         Driver?
-  locations      CustomerLocation[]
-  customerOrders Order[]            @relation("CustomerOrders")
-  refreshTokens  RefreshToken[]
-  notifications  Notification[]
-  ratingsGiven   Rating[]           @relation("RatingCustomer")
-  disputesRaised Dispute[]          @relation("DisputeRaisedBy")
+  driver             Driver?
+  locations          CustomerLocation[]
+  customerOrders     Order[]            @relation("CustomerOrders")
+  refreshTokens      RefreshToken[]
+  notifications      Notification[]
+  ratingsGiven       Rating[]           @relation("RatingCustomer")
+  disputesRaised     Dispute[]          @relation("DisputeRaisedBy")
+  topups             TopupRequest[]     @relation("CustomerTopups")
+  referralCode       String?            @unique @map("referral_code")
+  referredById       String?            @map("referred_by_id") @db.Uuid
+  referredBy         User?              @relation("Referrals", fields: [referredById], references: [id])
+  referrals          User[]             @relation("Referrals")
+  referralRewardedAt DateTime?          @map("referral_rewarded_at")
+  promoRedemptions   PromoRedemption[]
+  chatMessages       ChatMessage[]
 
   @@index([role, status])
   @@map("users")
@@ -404,6 +423,9 @@ model Order {
   quantity            Int
   unitPriceToea       Int                @map("unit_price_toea")
   priceToea           Int                @map("price_toea")
+  // Promo discount the platform absorbs; the customer pays priceToea - discountToea.
+  discountToea        Int                @default(0) @map("discount_toea")
+  promoCodeId         String?            @map("promo_code_id") @db.Uuid
   commissionToea      Int                @map("commission_toea")
   commissionType      String             @map("commission_type")
   commissionValue     Float              @map("commission_value")
@@ -437,13 +459,16 @@ model Order {
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")
 
-  customer User         @relation("CustomerOrders", fields: [customerId], references: [id])
-  driver   Driver?      @relation("DriverOrders", fields: [driverId], references: [id])
-  package  Package      @relation(fields: [packageId], references: [id])
-  events   OrderEvent[]
-  offers   OrderOffer[]
-  disputes Dispute[]
-  rating   Rating?
+  customer        User             @relation("CustomerOrders", fields: [customerId], references: [id])
+  driver          Driver?          @relation("DriverOrders", fields: [driverId], references: [id])
+  package         Package          @relation(fields: [packageId], references: [id])
+  events          OrderEvent[]
+  offers          OrderOffer[]
+  disputes        Dispute[]
+  rating          Rating?
+  promoCode       PromoCode?       @relation(fields: [promoCodeId], references: [id])
+  promoRedemption PromoRedemption?
+  messages        ChatMessage[]
 
   @@index([status, expiresAt])
   @@index([customerId, createdAt])
@@ -526,7 +551,9 @@ model LedgerEntry {
 
 model TopupRequest {
   id             String      @id @default(uuid()) @db.Uuid
-  driverId       String      @map("driver_id") @db.Uuid
+  // Exactly one of driverId / customerId (CHECK constraint in the migration).
+  driverId       String?     @map("driver_id") @db.Uuid
+  customerId     String?     @map("customer_id") @db.Uuid
   method         TopupMethod
   amountToea     Int         @map("amount_toea")
   referenceText  String      @default("") @map("reference_text")
@@ -540,10 +567,12 @@ model TopupRequest {
   idempotencyKey String      @unique @map("idempotency_key")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
-  driver         Driver      @relation(fields: [driverId], references: [id])
+  driver         Driver?     @relation(fields: [driverId], references: [id])
+  customer       User?       @relation("CustomerTopups", fields: [customerId], references: [id])
   payment        Payment?    @relation(fields: [paymentId], references: [id])
 
   @@index([status, createdAt])
+  @@index([customerId])
   @@map("topup_requests")
 }
 
@@ -734,4 +763,61 @@ model IdempotencyRecord {
   @@unique([scope, key])
   @@index([createdAt])
   @@map("idempotency_records")
+}
+
+model PromoCode {
+  id               String            @id @default(uuid()) @db.Uuid
+  code             String            @unique // upper-case
+  description      String            @default("")
+  discountType     DiscountType      @map("discount_type")
+  // percent: 1–100; flat: toea
+  discountValue    Int               @map("discount_value")
+  // Optional cap for percent codes (toea)
+  maxDiscountToea  Int?              @map("max_discount_toea")
+  minOrderToea     Int               @default(0) @map("min_order_toea")
+  startsAt         DateTime?         @map("starts_at")
+  expiresAt        DateTime?         @map("expires_at")
+  maxUses          Int?              @map("max_uses")
+  perCustomerLimit Int               @default(1) @map("per_customer_limit")
+  // Listed on the customer's Offers screen; private codes work only when typed in.
+  public           Boolean           @default(true)
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  orders           Order[]
+  redemptions      PromoRedemption[]
+
+  @@map("promo_codes")
+}
+
+model PromoRedemption {
+  id           String    @id @default(uuid()) @db.Uuid
+  promoCodeId  String    @map("promo_code_id") @db.Uuid
+  customerId   String    @map("customer_id") @db.Uuid
+  orderId      String    @unique @map("order_id") @db.Uuid
+  discountToea Int       @map("discount_toea")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  promoCode    PromoCode @relation(fields: [promoCodeId], references: [id])
+  customer     User      @relation(fields: [customerId], references: [id])
+  order        Order     @relation(fields: [orderId], references: [id])
+
+  @@index([promoCodeId])
+  @@index([customerId])
+  @@map("promo_redemptions")
+}
+
+model ChatMessage {
+  id         String    @id @default(uuid()) @db.Uuid
+  orderId    String    @map("order_id") @db.Uuid
+  senderId   String    @map("sender_id") @db.Uuid
+  // customer | driver
+  senderRole String    @map("sender_role")
+  body       String
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  order      Order     @relation(fields: [orderId], references: [id])
+  sender     User      @relation(fields: [senderId], references: [id])
+
+  @@index([orderId, createdAt])
+  @@map("chat_messages")
 }

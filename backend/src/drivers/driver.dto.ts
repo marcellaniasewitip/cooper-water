@@ -79,8 +79,8 @@ export class LocationBatchDto {
 }
 
 export class TopupDto {
-  @IsIn(['bank_transfer', 'cellmoney'])
-  method: 'bank_transfer' | 'cellmoney';
+  @IsIn(['bank_transfer', 'cellmoney', 'cash'])
+  method: 'bank_transfer' | 'cellmoney' | 'cash';
 
   @IsInt()
   @Min(100)

@@ -47,6 +47,9 @@ import { ReportsService } from './reports/reports.service';
 import { AdminUsersService } from './admin/admin-users.service';
 import { SweeperService } from './jobs/sweeper.service';
 import { IdempotencyInterceptor } from './common/idempotency';
+import { PromosService } from './promos/promos.service';
+import { ReferralsService } from './referrals/referrals.service';
+import { ChatService } from './chat/chat.service';
 
 /**
  * Domain services live in one module: they form a small, acyclic graph
@@ -107,6 +110,9 @@ import { IdempotencyInterceptor } from './common/idempotency';
     ReportsService,
     AdminUsersService,
     SweeperService,
+    PromosService,
+    ReferralsService,
+    ChatService,
   ],
 })
 export class AppModule {}

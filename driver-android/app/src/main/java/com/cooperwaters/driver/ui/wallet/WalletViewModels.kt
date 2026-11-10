@@ -112,6 +112,7 @@ data class TopupUi(
     companion object {
         const val METHOD_BANK = "bank_transfer"
         const val METHOD_CELLMONEY = "cellmoney"
+        const val METHOD_CASH = "cash"
     }
 }
 
@@ -164,6 +165,7 @@ class TopupViewModel(
             toea == null -> UiText.res(R.string.topup_amount_invalid)
             toea < MIN_TOPUP_TOEA -> UiText.res(R.string.topup_amount_min, Money.format(MIN_TOPUP_TOEA))
             s.method == TopupUi.METHOD_BANK && s.reference.isBlank() -> UiText.res(R.string.topup_reference_required)
+            s.method == TopupUi.METHOD_CASH && s.reference.isBlank() -> UiText.res(R.string.topup_receipt_required)
             s.method == TopupUi.METHOD_CELLMONEY && s.msisdn.length < 7 -> UiText.res(R.string.topup_msisdn_invalid)
             else -> null
         }
@@ -191,7 +193,7 @@ class TopupViewModel(
                 val req = TopupRequest(
                     method = s.method,
                     amountToea = Money.parseKina(s.amount)!!,
-                    referenceText = if (s.method == TopupUi.METHOD_BANK) s.reference.trim() else null,
+                    referenceText = if (s.method == TopupUi.METHOD_BANK || s.method == TopupUi.METHOD_CASH) s.reference.trim() else null,
                     proofFileKey = proofKey,
                     msisdn = if (s.method == TopupUi.METHOD_CELLMONEY) s.msisdn else null,
                 )

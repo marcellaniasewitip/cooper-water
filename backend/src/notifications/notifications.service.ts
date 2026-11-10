@@ -7,6 +7,7 @@ import { PUSH_PROVIDER, PushProvider } from './push.provider';
 import { SMS_PROVIDER, SmsProvider, gsm7Length, isGsm7 } from './sms.provider';
 import { DEFAULT_TEMPLATES, TemplateDef, render } from './templates';
 import { Errors } from '../common/errors';
+import { CursorQuery, cursorWhere, pageLimit, pageOrder, toPage } from '../common/pagination';
 
 const MAX_ATTEMPTS = 5;
 
@@ -127,6 +128,39 @@ export class NotificationsService implements OnModuleInit {
       }
       return err?.permanent && err?.kind === 'recipient' ? 'failed_recipient' : 'failed_account';
     }
+  }
+
+  /**
+   * Inbox (StarTrip style): the user's own notifications, newest first. Each notify() can create a push
+   * and an SMS row; show the push one (or the SMS when the template has no push text). Sign-in codes and
+   * chat messages are left out (chat has its own screen).
+   */
+  async inbox(userId: string, q: CursorQuery) {
+    const limit = pageLimit(q);
+    const rows = await this.prisma.notification.findMany({
+      where: { AND: [{ userId, template: { notIn: ['auth.otp', 'chat.message'] } }, cursorWhere(q.cursor)] },
+      orderBy: pageOrder,
+      take: limit + 1,
+    });
+    const page = toPage(rows, limit);
+    const templates = new Map<string, TemplateDef | null>();
+    const items: { id: string; title: string; body: string; template: string; createdAt: Date }[] = [];
+    for (const n of page.items) {
+      if (!templates.has(n.template)) templates.set(n.template, await this.template(n.template));
+      const tpl = templates.get(n.template);
+      if (!tpl) continue;
+      const hasPush = !!(tpl.pushTitle && tpl.pushBody);
+      if (n.channel === 'sms' && hasPush) continue;
+      const vars = (n.payload ?? {}) as Record<string, unknown>;
+      items.push({
+        id: n.id,
+        template: n.template,
+        title: hasPush ? render(tpl.pushTitle!, vars) : 'Cooper Waters',
+        body: hasPush ? render(tpl.pushBody!, vars) : render(tpl.smsBody ?? '', vars),
+        createdAt: n.createdAt,
+      });
+    }
+    return { items, nextCursor: page.nextCursor };
   }
 
   async template(key: string): Promise<TemplateDef | null> {

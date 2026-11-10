@@ -24,6 +24,7 @@ const DriverDetailPage = lazy(() => import('@/pages/DriverDetailPage'));
 const TrucksPage = lazy(() => import('@/pages/TrucksPage'));
 const DepotsPage = lazy(() => import('@/pages/DepotsPage'));
 const PackagesPage = lazy(() => import('@/pages/PackagesPage'));
+const PromosPage = lazy(() => import('@/pages/PromosPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const TopupsPage = lazy(() => import('@/pages/TopupsPage'));
 const PaymentsPage = lazy(() => import('@/pages/PaymentsPage'));
@@ -125,6 +126,7 @@ export function App() {
                     <Route path="trucks" element={<P perm="trucks.manage"><TrucksPage /></P>} />
                     <Route path="depots" element={<P perm="dashboard.view"><DepotsPage /></P>} />
                     <Route path="packages" element={<P perm="orders.view"><PackagesPage /></P>} />
+                    <Route path="promos" element={<P perm="orders.view"><PromosPage /></P>} />
                     <Route path="settings" element={<P perm="settings.edit"><SettingsPage /></P>} />
                     <Route path="templates" element={<P perm="notifications.edit"><TemplatesPage /></P>} />
                     <Route path="topups" element={<P perm="wallet.view"><TopupsPage /></P>} />

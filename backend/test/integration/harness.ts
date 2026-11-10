@@ -41,6 +41,7 @@ export async function startApp(): Promise<Harness> {
 }
 
 const TABLES = [
+  'chat_messages', 'promo_redemptions', 'promo_codes',
   'audit_logs', 'idempotency_records', 'notifications', 'notification_templates', 'settings', 'ratings', 'disputes',
   'payouts', 'webhook_events', 'topup_requests', 'payments', 'ledger_entries', 'wallets', 'order_offers', 'order_events',
   'orders', 'packages', 'depots', 'trucks', 'driver_documents', 'drivers', 'customer_locations', 'refresh_tokens',
@@ -123,7 +124,7 @@ export function idem(): string {
   return randomUUID();
 }
 
-export async function walletBalance(h: Harness, ownerType: 'driver' | 'platform', ownerId: string): Promise<number> {
+export async function walletBalance(h: Harness, ownerType: 'driver' | 'platform' | 'customer', ownerId: string): Promise<number> {
   const w = await h.prisma.wallet.findUniqueOrThrow({ where: { ownerType_ownerId: { ownerType, ownerId } } });
   const sum = await h.prisma.ledgerEntry.aggregate({ where: { walletId: w.id }, _sum: { amountToea: true } });
   // The cached balance must always equal the ledger sum.

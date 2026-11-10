@@ -15,6 +15,9 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -60,7 +63,7 @@ import kotlinx.coroutines.launch
 import com.cooperwaters.core.R as CoreR
 
 @Composable
-fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit) {
+fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit, onChat: () -> Unit) {
     val vm = containerViewModel(key = "job-$orderId") { c -> JobViewModel(c.repository, c.uploader, c.state, orderId) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -117,6 +120,13 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit) {
                                 }
                             }
                         }
+                        if (ui.step != JobStep.DONE) {
+                            OutlinedButton(onClick = onChat, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Filled.Email, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.job_message_customer))
+                            }
+                        }
                     }
                 }
 
@@ -165,7 +175,16 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit) {
                         order.earningsToea?.let { LabelValue(stringResource(R.string.job_earnings), Money.format(it)) }
                         order.commissionToea?.let { LabelValue(stringResource(R.string.job_commission), Money.format(it)) }
                         LabelValue(stringResource(R.string.job_payment), stringResource(Labels.paymentMethod(order.paymentMethod)))
-                        if (order.paymentMethod == "cod") Text(stringResource(R.string.job_collect_cash, Money.format(order.priceToea)), fontWeight = FontWeight.SemiBold)
+                        if (order.paymentMethod == "cod") {
+                            Text(stringResource(R.string.job_collect_cash, Money.format(order.payableToea)), fontWeight = FontWeight.SemiBold)
+                            if (order.discountToea > 0) {
+                                Text(
+                                    stringResource(R.string.job_promo_note, Money.format(order.discountToea)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                 }
                 TextButton(onClick = onReportIssue) { Text(stringResource(R.string.job_report_issue)) }

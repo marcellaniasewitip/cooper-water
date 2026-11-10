@@ -65,7 +65,7 @@ export class PaymentsService implements OnModuleInit {
     const p = await this.initiate({
       purpose: 'order',
       purposeId: order.id,
-      baseAmountToea: order.priceToea,
+      baseAmountToea: order.priceToea - order.discountToea,
       msisdn: normalisePhone(msisdnInput),
       reference: order.shortCode,
       idempotencyKey: `order:${order.id}:${idempotencyKey}`,

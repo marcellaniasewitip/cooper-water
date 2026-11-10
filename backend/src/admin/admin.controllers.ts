@@ -16,6 +16,8 @@ import { DriversService } from '../drivers/drivers.service';
 import { CustomersService } from '../customers/customers.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
 import { WalletService } from '../wallet/wallet.service';
+import { PromosService } from '../promos/promos.service';
+import { ChatService } from '../chat/chat.service';
 import { LedgerService } from '../wallet/ledger.service';
 import { PaymentsService } from '../payments/payments.service';
 import { RefundsService } from '../payments/refunds.service';
@@ -27,6 +29,8 @@ import { AfterCommit } from '../common/after-commit';
 import { AdminUsersService } from './admin-users.service';
 import { AdminOrdersQuery, CancelDto, ReassignDto } from '../orders/orders.dto';
 import {
+  PromoDto,
+  UpdatePromoDto,
   AdjustmentDto,
   AuditQuery,
   CompleteRefundDto,
@@ -92,6 +96,7 @@ export class AdminOrdersController {
     private readonly refunds: RefundsService,
     private readonly transitions: OrderTransitionsService,
     private readonly audit: AuditService,
+    private readonly chat: ChatService,
   ) {}
 
   @Get()
@@ -104,6 +109,13 @@ export class AdminOrdersController {
   @RequirePermissions('orders.view')
   get(@Param('id', ParseUUIDPipe) id: string) {
     return this.orders.adminGet(id);
+  }
+
+  /** Customer ↔ driver chat transcript (for disputes). */
+  @Get(':id/messages')
+  @RequirePermissions('orders.view')
+  messages(@Param('id', ParseUUIDPipe) id: string) {
+    return this.chat.transcript(id);
   }
 
   @Post(':id/cancel')
@@ -271,7 +283,27 @@ export class AdminCatalogueController {
   constructor(
     private readonly catalogue: CatalogueService,
     private readonly settings: SettingsService,
+    private readonly promos: PromosService,
   ) {}
+
+  // Offers / promo codes
+  @Get('promos')
+  @RequirePermissions('orders.view')
+  promoList() {
+    return this.promos.list();
+  }
+
+  @Post('promos')
+  @RequirePermissions('pricing.edit')
+  createPromo(@CurrentAdmin() a: AdminPrincipal, @Body() dto: PromoDto, @Ip() ip: string) {
+    return this.promos.create(a.id, dto, ip);
+  }
+
+  @Patch('promos/:id')
+  @RequirePermissions('pricing.edit')
+  updatePromo(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePromoDto, @Ip() ip: string) {
+    return this.promos.update(a.id, id, dto, ip);
+  }
 
   @Get('depots')
   @RequirePermissions('dashboard.view')
