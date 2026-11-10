@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.sp
 
 // Brand
 private val Ocean = Color(0xFF0A6CBF)       // primary (light)
+
+/** Cooper Waters brand blue, the same in light and dark mode (side menus, splash). Matches the admin. */
+val CwBrandBlue: Color = Ocean
 private val OceanDeep = Color(0xFF003A66)
 private val OceanTint = Color(0xFFD6E9FA)
 private val Sky = Color(0xFF7FC4FF)         // primary (dark)

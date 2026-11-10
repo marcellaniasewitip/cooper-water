@@ -11,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.cooperwaters.core.android.ui.CooperWatersTheme
-import com.cooperwaters.core.android.ui.CwPalette
 import com.cooperwaters.customer.ui.common.SplashScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +24,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         openOrder.value = intent?.getStringExtra(EXTRA_ORDER_ID)
         setContent {
-            CooperWatersTheme(palette = CwPalette.MONO) {
+            CooperWatersTheme {
                 var splash by rememberSaveable { mutableStateOf(savedInstanceState == null) }
                 LaunchedEffect(Unit) {
                     delay(SPLASH_MS)

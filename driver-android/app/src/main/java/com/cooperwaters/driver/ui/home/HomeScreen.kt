@@ -73,6 +73,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cooperwaters.core.android.LocationHelper
+import com.cooperwaters.core.android.ui.CwBrandBlue
 import com.cooperwaters.core.android.ui.CwIcons
 import com.cooperwaters.core.android.ui.CwMap
 import com.cooperwaters.core.android.ui.ErrorCard
@@ -179,8 +180,8 @@ fun HomeScreen(actions: HomeActions) {
         drawerState = drawer,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.primary,
-                drawerContentColor = MaterialTheme.colorScheme.onPrimary,
+                drawerContainerColor = CwBrandBlue,
+                drawerContentColor = Color.White,
                 drawerShape = RoundedCornerShape(0.dp),
             ) {
                 DrawerContent(
@@ -392,12 +393,12 @@ private fun DrawerContent(
     close: (() -> Unit) -> Unit,
     onSignOut: () -> Unit,
 ) {
-    val onBrand = MaterialTheme.colorScheme.onPrimary
+    val onBrand = Color.White
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Column(Modifier.fillMaxWidth().clickable { close(actions.onProfile) }.padding(horizontal = 20.dp, vertical = 18.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).background(Color.White), contentAlignment = Alignment.Center) {
-                    Icon(CwIcons.WaterDrop, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
+                    Icon(CwIcons.WaterDrop, contentDescription = null, tint = CwBrandBlue, modifier = Modifier.size(40.dp))
                 }
                 Spacer(Modifier.weight(1f))
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = stringResource(R.string.menu_profile), tint = onBrand)
@@ -422,7 +423,7 @@ private fun DrawerContent(
                     onCheckedChange = onToggle,
                     enabled = !toggling,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedThumbColor = CwBrandBlue,
                         checkedTrackColor = Color.White,
                         uncheckedThumbColor = MaterialTheme.colorScheme.error,
                         uncheckedTrackColor = Color.White,
@@ -451,7 +452,7 @@ private fun DrawerContent(
 
 @Composable
 private fun Stars(rating: Double) {
-    val onBrand = MaterialTheme.colorScheme.onPrimary
+    val onBrand = Color.White
     Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         for (i in 1..5) {
             Icon(
@@ -467,7 +468,7 @@ private fun Stars(rating: Double) {
 
 @Composable
 private fun DrawerItem(icon: ImageVector, label: String, onClick: () -> Unit) {
-    val onBrand = MaterialTheme.colorScheme.onPrimary
+    val onBrand = Color.White
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = null, tint = onBrand, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(16.dp))
