@@ -10,6 +10,7 @@ import {
   IconMap2,
   IconMessage,
   IconPackage,
+  IconDiscount2,
   IconReceipt,
   IconSettings,
   IconShieldLock,
@@ -60,6 +61,7 @@ export const NAV: NavItem[] = [
     children: [
       { label: m.nav.depots, to: '/depots', icon: IconBuildingWarehouse, permission: 'dashboard.view' },
       { label: m.nav.packages, to: '/packages', icon: IconPackage, permission: 'orders.view' },
+      { label: m.nav.promos, to: '/promos', icon: IconDiscount2, permission: 'orders.view' },
       { label: m.nav.settings, to: '/settings', icon: IconSettings, permission: 'settings.edit' },
       { label: m.nav.templates, to: '/templates', icon: IconMessage, permission: 'notifications.edit' },
     ],

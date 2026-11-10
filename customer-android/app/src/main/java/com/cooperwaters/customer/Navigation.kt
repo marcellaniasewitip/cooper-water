@@ -11,19 +11,26 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cooperwaters.customer.ui.auth.LoginScreen
+import com.cooperwaters.customer.ui.chat.ChatListScreen
+import com.cooperwaters.customer.ui.chat.ChatThreadScreen
 import com.cooperwaters.customer.ui.common.appContainer
 import com.cooperwaters.customer.ui.history.HistoryScreen
 import com.cooperwaters.customer.ui.home.HomeActions
 import com.cooperwaters.customer.ui.home.HomeScreen
+import com.cooperwaters.customer.ui.inbox.InboxScreen
 import com.cooperwaters.customer.ui.locations.LocationEditScreen
 import com.cooperwaters.customer.ui.locations.LocationsScreen
+import com.cooperwaters.customer.ui.offers.OffersScreen
 import com.cooperwaters.customer.ui.order.NewOrderScreen
 import com.cooperwaters.customer.ui.payment.PaymentPendingScreen
 import com.cooperwaters.customer.ui.profile.ProfileScreen
+import com.cooperwaters.customer.ui.referral.ReferralScreen
 import com.cooperwaters.customer.ui.support.SupportScreen
 import com.cooperwaters.customer.ui.tracking.DisputeScreen
 import com.cooperwaters.customer.ui.tracking.RateScreen
 import com.cooperwaters.customer.ui.tracking.TrackingScreen
+import com.cooperwaters.customer.ui.wallet.CustomerTopupScreen
+import com.cooperwaters.customer.ui.wallet.WalletScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 
 object Routes {
@@ -39,6 +46,13 @@ object Routes {
     const val RATE = "rate/{orderId}"
     const val DISPUTE = "dispute/{orderId}"
     const val HISTORY = "history"
+    const val WALLET = "wallet"
+    const val TOPUP = "topup"
+    const val OFFERS = "offers"
+    const val REFERRAL = "referral"
+    const val INBOX = "inbox"
+    const val CHATS = "chats"
+    const val CHAT = "chat/{orderId}"
 
     fun profile(onboarding: Boolean) = "profile?onboarding=$onboarding"
     fun locationEdit(id: String?) = if (id == null) "location_edit" else "location_edit?id=$id"
@@ -47,6 +61,7 @@ object Routes {
     fun tracking(orderId: String) = "tracking/$orderId"
     fun rate(orderId: String) = "rate/$orderId"
     fun dispute(orderId: String) = "dispute/$orderId"
+    fun chat(orderId: String) = "chat/$orderId"
 }
 
 private fun NavHostController.goHomeClearingStack() = navigate(Routes.HOME) { popUpTo(0) { inclusive = true } }
@@ -108,6 +123,11 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
                     onPlaces = { nav.navigate(Routes.LOCATIONS) { launchSingleTop = true } },
                     onProfile = { nav.navigate(Routes.profile(onboarding = false)) { launchSingleTop = true } },
                     onSupport = { nav.navigate(Routes.SUPPORT) { launchSingleTop = true } },
+                    onWallet = { nav.navigate(Routes.WALLET) { launchSingleTop = true } },
+                    onOffers = { nav.navigate(Routes.OFFERS) { launchSingleTop = true } },
+                    onReferral = { nav.navigate(Routes.REFERRAL) { launchSingleTop = true } },
+                    onInbox = { nav.navigate(Routes.INBOX) { launchSingleTop = true } },
+                    onChats = { nav.navigate(Routes.CHATS) { launchSingleTop = true } },
                 ),
             )
         }
@@ -155,6 +175,7 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
                 onPay = { nav.navigate(Routes.payment(orderId)) },
                 onRate = { nav.navigate(Routes.rate(orderId)) },
                 onDispute = { nav.navigate(Routes.dispute(orderId)) },
+                onChat = { nav.navigate(Routes.chat(orderId)) { launchSingleTop = true } },
             )
         }
         composable(Routes.RATE, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
@@ -171,5 +192,14 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
             )
         }
         composable(Routes.SUPPORT) { SupportScreen(onBack = { nav.popBackStack() }) }
+        composable(Routes.WALLET) { WalletScreen(onBack = { nav.popBackStack() }, onTopup = { nav.navigate(Routes.TOPUP) }) }
+        composable(Routes.TOPUP) { CustomerTopupScreen(onDone = { nav.popBackStack() }) }
+        composable(Routes.OFFERS) { OffersScreen(onBack = { nav.popBackStack() }) }
+        composable(Routes.REFERRAL) { ReferralScreen(onBack = { nav.popBackStack() }) }
+        composable(Routes.INBOX) { InboxScreen(onBack = { nav.popBackStack() }) }
+        composable(Routes.CHATS) { ChatListScreen(onOpen = { id -> nav.navigate(Routes.chat(id)) }, onBack = { nav.popBackStack() }) }
+        composable(Routes.CHAT, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
+            ChatThreadScreen(orderId = entry.arguments?.getString("orderId").orEmpty(), onBack = { nav.popBackStack() })
+        }
     }
 }

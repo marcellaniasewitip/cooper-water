@@ -58,6 +58,7 @@ fun ledgerTypeLabel(type: String): Int = when (type) {
     "refund" -> R.string.ledger_refund
     "adjustment" -> R.string.ledger_adjustment
     "payout" -> R.string.ledger_payout
+    "promo" -> R.string.ledger_promo
     else -> R.string.ledger_other
 }
 
@@ -153,13 +154,21 @@ fun TopupScreen(onDone: () -> Unit) {
                 } else {
             ui.minBalanceToea?.let { Text(stringResource(R.string.topup_min_info, Money.format(it)), style = MaterialTheme.typography.bodySmall) }
             SectionTitle(stringResource(R.string.topup_method))
-            for (m in listOf(TopupUi.METHOD_BANK, TopupUi.METHOD_CELLMONEY)) {
+            for (m in listOf(TopupUi.METHOD_CASH, TopupUi.METHOD_BANK, TopupUi.METHOD_CELLMONEY)) {
                 Row(
                     Modifier.fillMaxWidth().selectable(selected = ui.method == m, onClick = { vm.setMethod(m) }).padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(selected = ui.method == m, onClick = { vm.setMethod(m) })
-                    Text(stringResource(if (m == TopupUi.METHOD_BANK) R.string.topup_bank else R.string.topup_cellmoney))
+                    Text(
+                        stringResource(
+                            when (m) {
+                                TopupUi.METHOD_CASH -> R.string.topup_cash
+                                TopupUi.METHOD_BANK -> R.string.topup_bank
+                                else -> R.string.topup_cellmoney
+                            },
+                        ),
+                    )
                 }
             }
             OutlinedTextField(
@@ -171,7 +180,10 @@ fun TopupScreen(onDone: () -> Unit) {
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (ui.method == TopupUi.METHOD_BANK) {
+            if (ui.method == TopupUi.METHOD_CASH) {
+                Text(stringResource(R.string.topup_cash_help), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(ui.reference, vm::onReference, label = { Text(stringResource(R.string.topup_receipt)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            } else if (ui.method == TopupUi.METHOD_BANK) {
                 Text(stringResource(R.string.topup_bank_help), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(ui.reference, vm::onReference, label = { Text(stringResource(R.string.topup_reference)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Text(stringResource(if (ui.proofPhoto != null) R.string.topup_proof_ready else R.string.topup_proof_optional), style = MaterialTheme.typography.bodySmall)

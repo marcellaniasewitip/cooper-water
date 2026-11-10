@@ -69,6 +69,9 @@ class AppContainer(private val context: Context) {
         crashReporter = crashReporter,
     )
 
+    /** Promo code picked on the Offers screen, applied to the next order. */
+    val promoStore = PromoStore(context)
+
     val repository = CustomerRepository(api.customerApi, cache, queue, api.json)
 
     /** Push arrived (app may be in background): screens refresh what they show. */
@@ -112,5 +115,20 @@ class AppContainer(private val context: Context) {
         realtime.disconnect()
         _loggedIn.value = false
         appScope.launch { cache.clear() }
+    }
+}
+
+/** Remembers the promo code the customer picked on the Offers screen until it is used on an order. */
+class PromoStore(context: Context) {
+    private val prefs = context.getSharedPreferences("cw_offers", Context.MODE_PRIVATE)
+
+    var selected: String?
+        get() = prefs.getString(KEY, null)?.takeIf { it.isNotBlank() }
+        set(value) {
+            prefs.edit().putString(KEY, value).apply()
+        }
+
+    private companion object {
+        const val KEY = "selected_code"
     }
 }

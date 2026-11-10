@@ -202,4 +202,114 @@
     <string name="support_email" translatable="false">support@cooperwaters.com</string>
     <string name="support_subject">Cooper Waters support (%1$s)</string>
     <string name="support_no_email_app">No email app found. Please email %1$s.</string>
+    <!-- Side menu: new sections -->
+    <string name="menu_wallet">Wallet</string>
+    <string name="menu_offers">Offers</string>
+    <string name="menu_referral">Refer &amp; Earn</string>
+    <string name="menu_inbox">Inbox</string>
+    <string name="menu_chat">Chat</string>
+
+    <!-- New order: wallet and promo -->
+    <string name="order_wallet_short">Your wallet has %1$s. Top up or choose another payment method.</string>
+    <string name="order_wallet_help">Paid now from your wallet (balance %1$s).</string>
+    <string name="order_wallet_help_unknown">Paid now from your Cooper Waters wallet.</string>
+    <string name="order_promo_title">Promo code</string>
+    <string name="order_promo_saving">You save %1$s</string>
+    <string name="order_promo_remove">Remove</string>
+    <string name="order_promo_hint">Enter a promo code</string>
+    <string name="order_promo_apply">Apply</string>
+    <string name="order_review_price">Price</string>
+    <string name="order_review_discount">Discount</string>
+    <string name="order_review_to_pay">To pay</string>
+
+    <!-- Wallet -->
+    <string name="wallet_title">Wallet</string>
+    <string name="wallet_cash_name">Cooper Waters Cash</string>
+    <string name="wallet_cash_help">Use your balance to pay for orders. Refunds and referral rewards land here too.</string>
+    <string name="wallet_topup">Top up</string>
+    <string name="wallet_pending_title">Top-ups in review</string>
+    <string name="wallet_pending_line">%1$s by %2$s · %3$s</string>
+    <string name="wallet_transactions">Transactions</string>
+    <string name="wallet_no_entries">No transactions yet.</string>
+    <string name="wallet_entry_topup">Top-up</string>
+    <string name="wallet_entry_payment">Order payment</string>
+    <string name="wallet_entry_refund">Refund</string>
+    <string name="wallet_entry_referral">Referral reward</string>
+    <string name="wallet_entry_other">Adjustment</string>
+
+    <!-- Wallet top-up -->
+    <string name="topup_method_cash">Cash</string>
+    <string name="topup_method_bank">Bank transfer</string>
+    <string name="topup_method_cellmoney">Cell money</string>
+    <string name="topup_title">Top up wallet</string>
+    <string name="topup_submitted_title">Top-up submitted</string>
+    <string name="topup_submitted_body">Your top-up of %1$s will be added to your wallet once Cooper Waters confirms it.</string>
+    <string name="topup_back_to_wallet">Back to wallet</string>
+    <string name="topup_how">How did you pay?</string>
+    <string name="topup_cash_help">Pay cash at a Cooper Waters office or depot, then enter the receipt number.</string>
+    <string name="topup_bank_help">Transfer to the Cooper Waters account first, then enter the bank\'s transaction reference.</string>
+    <string name="topup_cellmoney_help">Send the amount by cell money to Cooper Waters, then enter the transaction ID and the number you paid from.</string>
+    <string name="topup_amount_label">Amount (Kina)</string>
+    <string name="topup_reference_cash">Receipt number</string>
+    <string name="topup_reference_bank">Bank transaction reference</string>
+    <string name="topup_reference_cellmoney">Cell money transaction ID</string>
+    <string name="topup_msisdn_label">Number you paid from</string>
+    <string name="topup_submit">Submit top-up</string>
+    <string name="topup_review_note">Our team checks each top-up before the money is added.</string>
+    <string name="topup_amount_invalid">Enter a valid amount, e.g. 50 or 50.00.</string>
+    <string name="topup_amount_min">The minimum is %1$s.</string>
+    <string name="topup_reference_required">Enter the payment reference.</string>
+
+    <!-- Offers -->
+    <string name="offers_title">Offers</string>
+    <string name="offers_saved">Code %1$s saved. It will be applied to your next order.</string>
+    <string name="offers_enter_code">Have a promo code?</string>
+    <string name="offers_add">Add</string>
+    <string name="offers_selected">Using %1$s on your next order</string>
+    <string name="offers_available">Available offers</string>
+    <string name="offers_none">No offers right now. Check back soon.</string>
+    <string name="offers_min_order">Min. order %1$s</string>
+    <string name="offers_expires">Valid until %1$s</string>
+    <string name="offers_used">Used</string>
+    <string name="offers_use">Use</string>
+    <string name="offers_percent_off">%1$d%% off</string>
+    <string name="offers_amount_off">%1$s off</string>
+
+    <!-- Refer & Earn -->
+    <string name="referral_title">Refer &amp; Earn</string>
+    <string name="referral_headline">Give %1$s, get %1$s</string>
+    <string name="referral_body">Share your code. When a friend completes their first order, you both get %1$s in your wallet.</string>
+    <string name="referral_your_code">Your code</string>
+    <string name="referral_share_text">Order water with Cooper Waters and get %1$s in your wallet after your first delivery. Use my code: %2$s</string>
+    <string name="referral_share">Share code</string>
+    <string name="referral_invited">Friends joined</string>
+    <string name="referral_earned">Earned</string>
+    <string name="referral_paused">Referral rewards are paused at the moment.</string>
+    <string name="referral_have_code">Got a code from a friend?</string>
+    <string name="referral_friend_code_hint">Friend\'s code</string>
+    <string name="referral_apply">Apply code</string>
+    <string name="referral_applied">Code %1$s applied. You\'ll get %2$s after your first completed order.</string>
+    <string name="referral_used">You joined with code %1$s (%2$s after your first completed order).</string>
+
+    <!-- Inbox -->
+    <string name="inbox_title">Inbox</string>
+    <string name="inbox_empty">No messages yet.</string>
+
+    <!-- Chat -->
+    <string name="chat_list_title">Chat</string>
+    <string name="chat_tab_current">Current</string>
+    <string name="chat_tab_past">Past</string>
+    <string name="chat_none_current">No active chats. You can message your driver once an order is accepted.</string>
+    <string name="chat_none_past">No past chats.</string>
+    <string name="chat_row_title">%1$s · %2$s</string>
+    <string name="chat_driver">Your driver</string>
+    <string name="chat_you_prefix">You: %1$s</string>
+    <string name="chat_no_messages">No messages yet</string>
+    <string name="chat_title">Chat</string>
+    <string name="chat_order_label">Order %1$s</string>
+    <string name="chat_empty">Send %1$s a message about your delivery.</string>
+    <string name="chat_closed">This order is finished, so the chat is closed.</string>
+    <string name="chat_placeholder">Type a message</string>
+    <string name="chat_send">Send</string>
+    <string name="tracking_message_driver">Message driver</string>
 </resources>

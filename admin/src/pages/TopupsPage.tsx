@@ -1,4 +1,4 @@
-import { Anchor, Button, Card, Group, SegmentedControl, Stack, Table, Text } from '@mantine/core';
+import { Anchor, Badge, Button, Card, Group, SegmentedControl, Stack, Table, Text } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -34,6 +34,29 @@ function Proof({ t }: { t: Topup }) {
     <Text size="xs" c="dimmed">
       {m.topups.noProof}
     </Text>
+  );
+}
+
+/** Who the top-up is for: a driver or a customer (both use the same approval queue). */
+function TopupOwner({ t }: { t: Topup }) {
+  const isCustomer = !!t.customer;
+  const name = isCustomer ? (t.customer?.name ?? t.customer?.phone) : (t.driver?.user.name ?? t.driver?.user.phone);
+  const phone = isCustomer ? t.customer?.phone : t.driver?.user.phone;
+  const to = isCustomer ? `/customers/${t.customer?.id}` : `/drivers/${t.driverId}`;
+  return (
+    <>
+      <Group gap={6} wrap="nowrap">
+        <Badge size="xs" variant="light" color={isCustomer ? 'grape' : 'blue'} data-testid="topup-owner">
+          {isCustomer ? m.topups.ownerCustomer : m.topups.ownerDriver}
+        </Badge>
+        <Anchor component={Link} to={to} size="sm">
+          {name ?? '—'}
+        </Anchor>
+      </Group>
+      <Text size="xs" c="dimmed">
+        {phone}
+      </Text>
+    </>
   );
 }
 
@@ -73,7 +96,7 @@ export default function TopupsPage() {
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>{m.common.created}</Table.Th>
-                    <Table.Th>{m.common.driver}</Table.Th>
+                    <Table.Th>{m.topups.from}</Table.Th>
                     <Table.Th>{m.topups.method}</Table.Th>
                     <Table.Th ta="right">{m.common.amount}</Table.Th>
                     <Table.Th>{m.topups.reference}</Table.Th>
@@ -87,12 +110,7 @@ export default function TopupsPage() {
                     <Table.Tr key={t.id}>
                       <Table.Td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(t.createdAt)}</Table.Td>
                       <Table.Td>
-                        <Anchor component={Link} to={`/drivers/${t.driverId}`} size="sm">
-                          {t.driver.user.name ?? t.driver.user.phone}
-                        </Anchor>
-                        <Text size="xs" c="dimmed">
-                          {t.driver.user.phone}
-                        </Text>
+                        <TopupOwner t={t} />
                       </Table.Td>
                       <Table.Td>
                         {label(m.enums.topupMethod, t.method)}
@@ -155,7 +173,7 @@ export default function TopupsPage() {
           opened
           onClose={() => setAction(null)}
           title={fmt(action.kind === 'approve' ? m.topups.approveTitle : m.topups.rejectTitle, { amount: formatKina(action.t.amountToea) })}
-          body={action.kind === 'approve' ? fmt(m.topups.approveBody, { amount: formatKina(action.t.amountToea), driver: action.t.driver.user.name ?? action.t.driver.user.phone }) : undefined}
+          body={action.kind === 'approve' ? fmt(m.topups.approveBody, { amount: formatKina(action.t.amountToea), driver: action.t.customer?.name ?? action.t.customer?.phone ?? action.t.driver?.user.name ?? action.t.driver?.user.phone ?? '' }) : undefined}
           color={action.kind === 'approve' ? 'teal' : 'red'}
           confirmLabel={action.kind === 'approve' ? m.topups.approve : m.topups.reject}
           fields={action.kind === 'reject' ? [{ name: 'reason', label: m.common.reason, type: 'textarea', required: true, maxLength: 500 }] : []}

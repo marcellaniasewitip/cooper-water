@@ -11,6 +11,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cooperwaters.driver.ui.auth.LoginScreen
+import com.cooperwaters.driver.ui.chat.ChatScreen
 import com.cooperwaters.driver.ui.common.MainBottomBar
 import com.cooperwaters.driver.ui.common.MainTab
 import com.cooperwaters.driver.ui.common.appContainer
@@ -42,11 +43,13 @@ object Routes {
     const val WITHDRAW = "withdraw"
     const val EARNINGS = "earnings"
     const val HISTORY = "history"
+    const val CHAT = "chat/{orderId}"
     const val PROFILE_TAB = "profile_tab"
 
     fun profile(onboarding: Boolean) = "profile?onboarding=$onboarding"
     fun job(id: String) = "job/$id"
     fun issue(id: String) = "issue/$id"
+    fun chat(id: String) = "chat/$id"
 }
 
 private fun NavHostController.resetTo(route: String) = navigate(route) { popUpTo(0) { inclusive = true } }
@@ -112,7 +115,15 @@ fun DriverNavHost() {
         }
         composable(Routes.JOB, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
             val id = entry.arguments?.getString("orderId").orEmpty()
-            JobScreen(orderId = id, onBack = { if (!nav.popBackStack()) nav.resetTo(Routes.HOME) }, onReportIssue = { nav.navigate(Routes.issue(id)) })
+            JobScreen(
+                orderId = id,
+                onBack = { if (!nav.popBackStack()) nav.resetTo(Routes.HOME) },
+                onReportIssue = { nav.navigate(Routes.issue(id)) },
+                onChat = { nav.navigate(Routes.chat(id)) },
+            )
+        }
+        composable(Routes.CHAT, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
+            ChatScreen(orderId = entry.arguments?.getString("orderId").orEmpty(), onBack = { nav.popBackStack() })
         }
         composable(Routes.ISSUE, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
             IssueScreen(orderId = entry.arguments?.getString("orderId").orEmpty(), onDone = { nav.popBackStack() })

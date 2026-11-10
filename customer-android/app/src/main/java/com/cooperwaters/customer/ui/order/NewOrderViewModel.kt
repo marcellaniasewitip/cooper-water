@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cooperwaters.core.android.ui.UiText
 import com.cooperwaters.core.android.ui.toUiText
+import com.cooperwaters.core.money.Money
 import com.cooperwaters.core.net.ApiResult
+import com.cooperwaters.core.net.AppliedPromo
 import com.cooperwaters.core.net.CreateOrderRequest
 import com.cooperwaters.core.net.QuoteRequest
 import com.cooperwaters.core.net.SavedLocation
@@ -38,6 +40,14 @@ data class NewOrderState(
     val locationId: String? = null,
     val paymentMethod: String = "cod",
     val msisdn: String = "",
+    /** Wallet balance (null while unknown/offline); the Wallet option needs enough to cover [payableToea]. */
+    val walletBalanceToea: Long? = null,
+    /** Offers: code typed or picked on the Offers screen, and the one the server accepted. */
+    val promoInput: String = "",
+    val appliedPromo: AppliedPromo? = null,
+    val discountToea: Long = 0,
+    val promoChecking: Boolean = false,
+    val promoError: UiText? = null,
     val placing: Boolean = false,
     /** A previous "Place order" is saved but unconfirmed: retry it with the same Idempotency-Key. */
     val unsent: Boolean = false,
@@ -51,6 +61,8 @@ data class NewOrderState(
     val selectedLocation: SavedLocation? get() = locations.firstOrNull { it.id == locationId }
     val localPriceToea: Long? get() = selectedPackage?.let { it.priceToea * quantity }
     val priceToea: Long? get() = quotedPriceToea ?: localPriceToea
+    /** What the customer pays after the promo discount. */
+    val payableToea: Long? get() = priceToea?.let { (it - discountToea).coerceAtLeast(0) }
 
     /** Draft fields are locked while an unconfirmed order exists, so a retry always sends the identical body. */
     val locked: Boolean get() = unsent || placing
@@ -67,8 +79,10 @@ class NewOrderViewModel(
     accountPhone: String,
     /** Saved place picked on Home ("order to this place"); null → the first saved place. */
     initialLocationId: String? = null,
+    /** Promo picked on the Offers screen; applied once a package is chosen. */
+    initialPromoCode: String? = null,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(NewOrderState(msisdn = accountPhone, locationId = initialLocationId))
+    private val _state = MutableStateFlow(NewOrderState(msisdn = accountPhone, locationId = initialLocationId, promoInput = initialPromoCode.orEmpty()))
     val state: StateFlow<NewOrderState> = _state.asStateFlow()
 
     private var quoteJob: Job? = null
@@ -91,12 +105,14 @@ class NewOrderViewModel(
         val locs = repo.locations()
         val unsent = repo.pendingOrder()
         pending = unsent
+        val wallet = (apiCall { repo.api.wallet() } as? ApiResult.Success)?.value
         _state.update { s ->
             var next = s.copy(
                 loading = false,
                 packages = pkgs.value.orEmpty(),
                 locations = locs.value.orEmpty(),
                 maxQuantity = config.value?.maxQuantity ?: s.maxQuantity,
+                walletBalanceToea = wallet?.balanceToea ?: s.walletBalanceToea,
                 packageId = s.packageId ?: pkgs.value?.firstOrNull()?.id,
                 locationId = s.locationId ?: locs.value?.firstOrNull()?.id,
                 error = if (pkgs.value == null) pkgs.error?.toUiText() else null,
@@ -111,12 +127,16 @@ class NewOrderViewModel(
                     locationId = req.locationId,
                     paymentMethod = req.paymentMethod,
                     msisdn = req.msisdn ?: next.msisdn,
+                    appliedPromo = req.promoCode?.let { AppliedPromo(it) },
+                    promoInput = req.promoCode.orEmpty(),
                     error = UiText.res(R.string.order_unsent_resume),
                 )
             }
             next
         }
-        requestQuote()
+        // A code picked on the Offers screen is checked as soon as there is a package to price.
+        val st = _state.value
+        if (!st.unsent && st.appliedPromo == null && st.promoInput.isNotBlank() && st.packageId != null) applyPromo() else requestQuote()
     }
 
     /** Re-read saved locations (after the user added one). */
@@ -156,10 +176,16 @@ class NewOrderViewModel(
 
     fun next() {
         val s = _state.value
+        val payable = s.payableToea
         val err: UiText? = when (s.step) {
             OrderStep.PACKAGE -> if (s.selectedPackage == null) UiText.res(R.string.order_choose_package) else null
             OrderStep.LOCATION -> if (s.selectedLocation == null) UiText.res(R.string.order_choose_location) else null
-            OrderStep.PAYMENT -> if (s.paymentMethod == "cellmoney" && s.msisdn.length < 7) UiText.res(R.string.order_msisdn_invalid) else null
+            OrderStep.PAYMENT -> when {
+                s.paymentMethod == "cellmoney" && s.msisdn.length < 7 -> UiText.res(R.string.order_msisdn_invalid)
+                s.paymentMethod == "wallet" && s.walletBalanceToea != null && payable != null && s.walletBalanceToea < payable ->
+                    UiText.res(R.string.order_wallet_short, Money.format(s.walletBalanceToea))
+                else -> null
+            }
             OrderStep.REVIEW -> null
         }
         if (err != null) {
@@ -184,13 +210,48 @@ class NewOrderViewModel(
         val pkg = s.packageId ?: return
         quoteJob?.cancel()
         _state.update { it.copy(quoting = true) }
+        val code = s.appliedPromo?.code
         quoteJob = viewModelScope.launch {
-            val r = apiCall { repo.api.quote(QuoteRequest(pkg, s.quantity)) }
+            val r = apiCall { repo.api.quote(QuoteRequest(pkg, s.quantity, code)) }
             _state.update {
-                if (it.packageId != pkg || it.quantity != s.quantity) it
-                else it.copy(quoting = false, quotedPriceToea = (r as? ApiResult.Success)?.value?.priceToea)
+                if (it.packageId != pkg || it.quantity != s.quantity) {
+                    it
+                } else if (r is ApiResult.Failure && code != null && r.error.code.startsWith("promo_")) {
+                    // The promo no longer fits (e.g. below its minimum order): drop it and requote without it.
+                    it.copy(quoting = false, appliedPromo = null, discountToea = 0, promoError = r.error.toUiText())
+                } else {
+                    val q = (r as? ApiResult.Success)?.value
+                    it.copy(quoting = false, quotedPriceToea = q?.priceToea, discountToea = q?.discountToea ?: it.discountToea)
+                }
+            }
+            if (r is ApiResult.Failure && code != null && r.error.code.startsWith("promo_")) requestQuote()
+        }
+    }
+
+    fun onPromoInput(v: String) {
+        if (!_state.value.locked) _state.update { it.copy(promoInput = v.uppercase().filter { c -> c.isLetterOrDigit() || c == '-' || c == '_' }.take(30), promoError = null) }
+    }
+
+    /** Check the typed code against the current package/quantity (the server also checks it again when ordering). */
+    fun applyPromo() {
+        val s = _state.value
+        val pkg = s.packageId ?: return
+        val code = s.promoInput.trim()
+        if (code.length < 3 || s.locked || s.promoChecking) return
+        _state.update { it.copy(promoChecking = true, promoError = null) }
+        viewModelScope.launch {
+            when (val r = apiCall { repo.api.quote(QuoteRequest(pkg, s.quantity, code)) }) {
+                is ApiResult.Success -> _state.update {
+                    it.copy(promoChecking = false, appliedPromo = r.value.promo, discountToea = r.value.discountToea, quotedPriceToea = r.value.priceToea)
+                }
+                is ApiResult.Failure -> _state.update { it.copy(promoChecking = false, appliedPromo = null, discountToea = 0, promoError = r.error.toUiText()) }
             }
         }
+    }
+
+    fun removePromo() {
+        if (_state.value.locked) return
+        _state.update { it.copy(appliedPromo = null, discountToea = 0, promoInput = "", promoError = null) }
     }
 
     fun buildRequest(s: NewOrderState = _state.value): CreateOrderRequest? {
@@ -202,6 +263,7 @@ class NewOrderViewModel(
             locationId = loc.id,
             paymentMethod = s.paymentMethod,
             msisdn = if (s.paymentMethod == "cellmoney") s.msisdn.ifBlank { null } else null,
+            promoCode = s.appliedPromo?.code,
         )
     }
 

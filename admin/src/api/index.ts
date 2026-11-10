@@ -44,6 +44,7 @@ export const api = {
     cancel: (id: string, body: Dto<'CancelDto'>) => http.post<T.AdminOrderDetail>(`/admin/orders/${id}/cancel`, body),
     reassign: (id: string, body: Dto<'ReassignDto'>) => http.post<T.AdminOrderDetail>(`/admin/orders/${id}/reassign`, body),
     refund: (id: string, body: Dto<'IssueRefundDto'>) => http.post<T.Payment>(`/admin/orders/${id}/refund`, body),
+    messages: (id: string) => http.get<T.ChatMessage[]>(`/admin/orders/${id}/messages`),
   },
   customers: {
     list: (q: ListQuery) => http.get<T.Page<T.CustomerListItem>>('/admin/customers', q),
@@ -74,6 +75,11 @@ export const api = {
     create: (body: Dto<'PackageDto'>) => http.post<T.Package>('/admin/packages', body),
     update: (id: string, body: Dto<'UpdatePackageDto'>) => http.patch<T.Package>(`/admin/packages/${id}`, body),
     remove: (id: string) => http.delete<void>(`/admin/packages/${id}`),
+  },
+  promos: {
+    list: () => http.get<T.PromoCode[]>('/admin/promos'),
+    create: (body: Dto<'PromoDto'>) => http.post<T.PromoCode>('/admin/promos', body),
+    update: (id: string, body: Dto<'UpdatePromoDto'>) => http.patch<T.PromoCode>(`/admin/promos/${id}`, body),
   },
   settings: {
     all: () => http.get<T.SettingsMap>('/admin/settings'),

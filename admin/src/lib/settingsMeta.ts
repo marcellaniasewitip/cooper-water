@@ -42,6 +42,8 @@ export const SETTING_META: Record<string, SettingKind> = {
   'otp.max_sends_per_ip_per_hour': { kind: 'integer', min: 0 },
   'dispute.categories': { kind: 'stringList' },
   'payout.min_toea': { kind: 'money' },
+  'referral.reward_toea': { kind: 'money' },
+  'referral.enabled': { kind: 'boolean' },
 };
 
 export function settingKind(key: string, value: unknown): SettingKind {
@@ -53,7 +55,7 @@ export function settingKind(key: string, value: unknown): SettingKind {
   return { kind: 'string' };
 }
 
-export const SETTING_GROUPS = ['commission', 'wallet', 'order', 'payment', 'depot', 'driver', 'otp', 'dispute', 'other'] as const;
+export const SETTING_GROUPS = ['commission', 'wallet', 'order', 'payment', 'depot', 'driver', 'otp', 'referral', 'dispute', 'other'] as const;
 export type SettingGroup = (typeof SETTING_GROUPS)[number];
 
 export function settingGroup(key: string): SettingGroup {

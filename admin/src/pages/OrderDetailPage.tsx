@@ -1,7 +1,7 @@
 import { Alert, Anchor, Badge, Button, Card, Code, Grid, Group, Image, Radio, Rating, Select, Stack, Table, Text, Timeline, Title } from '@mantine/core';
 import { IconArrowBackUp, IconCash, IconMapPin, IconUserShare, IconX } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CircleMarker, Tooltip } from 'react-leaflet';
 import { Link, useParams } from 'react-router-dom';
 import { api, type AdminOrderDetail } from '@/api';
@@ -115,6 +115,12 @@ export default function OrderDetailPage() {
                     items={[
                       [m.orders.package, `${o.package.name ?? '—'} (${o.package.volumeLitres ?? '?'} L) × ${o.quantity}`],
                       [m.orders.price, <Money key="p" toea={o.priceToea} />],
+                      ...((o.discountToea ?? 0) > 0
+                        ? ([
+                            [m.orders.discount, <Money key="d" toea={-(o.discountToea ?? 0)} />],
+                            [m.orders.customerPays, <Money key="cp" toea={o.payableToea ?? o.priceToea - (o.discountToea ?? 0)} fw={600} />],
+                          ] as [ReactNode, ReactNode][])
+                        : []),
                       [m.orders.commission, <span key="c"><Money toea={o.commissionToea} /> ({o.commissionType === 'percent' ? `${o.commissionValue}%` : formatKina(o.commissionValue)}, {o.commissionDeductAt})</span>],
                       [m.orders.paymentMethod, label(m.enums.paymentMethod, o.paymentMethod)],
                       [m.orders.paymentStatus, <StatusBadge key="ps" value={o.paymentStatus} />],
@@ -130,6 +136,7 @@ export default function OrderDetailPage() {
                     </Alert>
                   )}
                 </Card>
+                <OrderChat orderId={o.id} />
                 <Card withBorder>
                   <Title order={5} mb="sm">
                     {m.orders.timeline}
@@ -425,5 +432,43 @@ export default function OrderDetailPage() {
         </>
       )}
     </QueryState>
+  );
+}
+
+/** Customer ↔ driver chat transcript (read-only; useful for disputes). */
+function OrderChat({ orderId }: { orderId: string }) {
+  const q = useQuery({ queryKey: ['order-messages', orderId], queryFn: () => api.orders.messages(orderId) });
+  return (
+    <Card withBorder data-testid="order-chat">
+      <Title order={5} mb="sm">
+        {m.orders.chat}
+      </Title>
+      <QueryState isPending={q.isPending} error={q.error} refetch={q.refetch}>
+        {!q.data?.length ? (
+          <Text size="sm" c="dimmed">
+            {m.orders.chatEmpty}
+          </Text>
+        ) : (
+          <Stack gap="xs">
+            {q.data.map((msg) => (
+              <Group key={msg.id} justify={msg.senderRole === 'customer' ? 'flex-start' : 'flex-end'}>
+                <Card withBorder p="xs" maw="80%" bg={msg.senderRole === 'customer' ? 'gray.0' : 'blue.0'}>
+                  <Text size="xs" fw={600}>
+                    {msg.senderName ?? (msg.senderRole === 'customer' ? m.orders.chatCustomer : m.orders.chatDriver)} ·{' '}
+                    {msg.senderRole === 'customer' ? m.orders.chatCustomer : m.orders.chatDriver}
+                  </Text>
+                  <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                    {msg.body}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {formatDateTime(msg.createdAt)}
+                  </Text>
+                </Card>
+              </Group>
+            ))}
+          </Stack>
+        )}
+      </QueryState>
+    </Card>
   );
 }

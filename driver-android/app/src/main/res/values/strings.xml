@@ -243,4 +243,18 @@
     <string name="tab_history">History</string>
     <string name="tab_profile">Profile</string>
     <string name="profile_saved">Saved.</string>
+    <!-- Chat with the customer, cash top-ups, promo -->
+    <string name="chat_title">Chat</string>
+    <string name="chat_title_order">Chat · %1$s</string>
+    <string name="chat_empty">No messages yet. Say hello to %1$s.</string>
+    <string name="chat_closed">This chat is closed because the order is finished.</string>
+    <string name="chat_placeholder">Type a message</string>
+    <string name="chat_send">Send</string>
+    <string name="job_message_customer">Message customer</string>
+    <string name="job_promo_note">Includes %1$s promo discount — Cooper Waters pays you the difference.</string>
+    <string name="topup_cash">Cash</string>
+    <string name="topup_cash_help">Pay cash at a Cooper Waters office or depot, then enter the receipt number.</string>
+    <string name="topup_receipt">Receipt number</string>
+    <string name="topup_receipt_required">Enter the cash receipt number.</string>
+    <string name="ledger_promo">Promo discount (paid by Cooper Waters)</string>
 </resources>

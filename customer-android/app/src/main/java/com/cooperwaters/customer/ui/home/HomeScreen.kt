@@ -27,7 +27,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
@@ -143,6 +148,11 @@ class HomeActions(
     val onPlaces: () -> Unit,
     val onProfile: () -> Unit,
     val onSupport: () -> Unit,
+    val onWallet: () -> Unit,
+    val onOffers: () -> Unit,
+    val onReferral: () -> Unit,
+    val onInbox: () -> Unit,
+    val onChats: () -> Unit,
 )
 
 /**
@@ -180,6 +190,11 @@ fun HomeScreen(actions: HomeActions) {
                     onOrders = { closeThen(actions.onOrders) },
                     onPlaces = { closeThen(actions.onPlaces) },
                     onSupport = { closeThen(actions.onSupport) },
+                    onWallet = { closeThen(actions.onWallet) },
+                    onOffers = { closeThen(actions.onOffers) },
+                    onReferral = { closeThen(actions.onReferral) },
+                    onInbox = { closeThen(actions.onInbox) },
+                    onChats = { closeThen(actions.onChats) },
                     onSignOut = { closeThen { container.signOut() } },
                 )
             }
@@ -334,6 +349,11 @@ private fun DrawerContent(
     onOrders: () -> Unit,
     onPlaces: () -> Unit,
     onSupport: () -> Unit,
+    onWallet: () -> Unit,
+    onOffers: () -> Unit,
+    onReferral: () -> Unit,
+    onInbox: () -> Unit,
+    onChats: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val user = appContainer().tokenStore.user()
@@ -355,6 +375,11 @@ private fun DrawerContent(
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
             DrawerItem(CwIcons.WaterDrop, stringResource(R.string.menu_order_water), onOrderWater)
             DrawerItem(Icons.Filled.List, stringResource(R.string.menu_orders), onOrders)
+            DrawerItem(Icons.Filled.AccountBox, stringResource(R.string.menu_wallet), onWallet)
+            DrawerItem(Icons.Filled.Star, stringResource(R.string.menu_offers), onOffers)
+            DrawerItem(Icons.Filled.Favorite, stringResource(R.string.menu_referral), onReferral)
+            DrawerItem(Icons.Filled.Notifications, stringResource(R.string.menu_inbox), onInbox)
+            DrawerItem(Icons.AutoMirrored.Filled.Send, stringResource(R.string.menu_chat), onChats)
             DrawerItem(Icons.Filled.LocationOn, stringResource(R.string.menu_places), onPlaces)
             DrawerItem(Icons.Filled.Person, stringResource(R.string.profile_title), onProfile)
             DrawerItem(Icons.Filled.Email, stringResource(R.string.menu_support), onSupport)
