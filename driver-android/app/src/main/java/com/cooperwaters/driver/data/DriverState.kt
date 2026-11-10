@@ -74,6 +74,7 @@ class DriverState(
                 if (o.status != OrderStatus.SEARCHING) removeOffer(o.id)
             }
             is RealtimeEvent.DriverLocationChanged -> Unit
+            is RealtimeEvent.ChatMessageReceived -> Unit // handled by the chat screen
         }
     }
 
