@@ -109,6 +109,87 @@ private val Dark = darkColorScheme(
     inversePrimary = Ocean,
 )
 
+/*
+ * Monochrome palette (customer app): black on white like StarTrip, green for success, red for errors.
+ * Dark mode inverts to white on black. Contrast pairs stay at WCAG AA.
+ */
+private val Ink = Color(0xFF111111)
+private val Success = Color(0xFF1E8E3E)
+private val SuccessBright = Color(0xFF5BD27C)
+
+private val MonoLight = lightColorScheme(
+    primary = Ink,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFEDEDED),
+    onPrimaryContainer = Ink,
+    secondary = Success,
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFDDF3E3),
+    onSecondaryContainer = Color(0xFF0B3B1A),
+    tertiary = Sun,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFE9D1),
+    onTertiaryContainer = Color(0xFF2C1600),
+    error = Color(0xFFD32F2F),
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+    background = Color.White,
+    onBackground = Ink,
+    surface = Color.White,
+    onSurface = Ink,
+    surfaceVariant = Color(0xFFF2F2F2),
+    onSurfaceVariant = Color(0xFF5F5F5F),
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFFAFAFA),
+    surfaceContainer = Color(0xFFF5F5F5),
+    surfaceContainerHigh = Color(0xFFF0F0F0),
+    surfaceContainerHighest = Color(0xFFEAEAEA),
+    outline = Color(0xFFBDBDBD),
+    outlineVariant = Color(0xFFE3E3E3),
+    inverseSurface = Ink,
+    inverseOnSurface = Color.White,
+    inversePrimary = Color.White,
+)
+
+private val MonoDark = darkColorScheme(
+    primary = Color.White,
+    onPrimary = Ink,
+    primaryContainer = Color(0xFF2A2A2A),
+    onPrimaryContainer = Color.White,
+    secondary = SuccessBright,
+    onSecondary = Color(0xFF00391A),
+    secondaryContainer = Color(0xFF14532D),
+    onSecondaryContainer = Color(0xFFDDF3E3),
+    tertiary = SunBright,
+    onTertiary = Color(0xFF482900),
+    tertiaryContainer = Color(0xFF673D00),
+    onTertiaryContainer = Color(0xFFFFDDB8),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color.Black,
+    onBackground = Color(0xFFEDEDED),
+    surface = Color.Black,
+    onSurface = Color(0xFFEDEDED),
+    surfaceVariant = Color(0xFF1E1E1E),
+    onSurfaceVariant = Color(0xFFBDBDBD),
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF0E0E0E),
+    surfaceContainer = Color(0xFF141414),
+    surfaceContainerHigh = Color(0xFF1C1C1C),
+    surfaceContainerHighest = Color(0xFF262626),
+    outline = Color(0xFF6E6E6E),
+    outlineVariant = Color(0xFF333333),
+    inverseSurface = Color(0xFFEDEDED),
+    inverseOnSurface = Ink,
+    inversePrimary = Ink,
+)
+
+/** OCEAN: blue brand look (driver app). MONO: black & white (customer app). */
+enum class CwPalette { OCEAN, MONO }
+
 private val CwShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),
     small = RoundedCornerShape(10.dp),
@@ -131,9 +212,16 @@ private val CwTypography = Typography().let { t ->
 }
 
 @Composable
-fun CooperWatersTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun CooperWatersTheme(
+    dark: Boolean = isSystemInDarkTheme(),
+    palette: CwPalette = CwPalette.OCEAN,
+    content: @Composable () -> Unit,
+) {
     MaterialTheme(
-        colorScheme = if (dark) Dark else Light,
+        colorScheme = when (palette) {
+            CwPalette.OCEAN -> if (dark) Dark else Light
+            CwPalette.MONO -> if (dark) MonoDark else MonoLight
+        },
         shapes = CwShapes,
         typography = CwTypography,
         content = content,

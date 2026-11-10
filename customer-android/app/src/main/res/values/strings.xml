@@ -166,7 +166,7 @@
     <string name="dispute_submit">Send report</string>
 
     <!-- History -->
-    <string name="history_title">Your orders</string>
+    <string name="history_title">History</string>
     <string name="history_empty">You haven\'t ordered yet. Your past deliveries will show here.</string>
     <!-- Bottom navigation -->
     <string name="tab_home">Home</string>
@@ -179,4 +179,28 @@
     <string name="home_hero_body">Order a water cart to your door anywhere in Port Moresby. Fixed prices, pay cash or cell money.</string>
     <string name="order_no_packages">No water packages are available right now. Please try again shortly.</string>
     <string name="profile_saved">Saved.</string>
+    <!-- StarTrip-style home, side menu and support -->
+    <string name="menu_open">Open menu</string>
+    <string name="menu_order_water">Order water</string>
+    <string name="menu_orders">My orders</string>
+    <string name="menu_places">Saved places</string>
+    <string name="menu_support">Help &amp; support</string>
+    <string name="home_where_to">Where should we deliver?</string>
+    <string name="home_tile_delivery">Water delivery</string>
+    <string name="home_tile_orders">My orders</string>
+    <string name="home_active_order">Order %1$s</string>
+    <string name="home_active_pay">Pay</string>
+    <string name="home_active_track">Track</string>
+    <string name="history_filter_all">All</string>
+    <string name="history_filter_active">Active</string>
+    <string name="history_filter_completed">Completed</string>
+    <string name="history_filter_cancelled">Cancelled</string>
+    <string name="history_package_line">%1$d × %2$s</string>
+    <string name="support_title">Support</string>
+    <string name="support_heading">Send us a mail</string>
+    <string name="support_placeholder">Describe your issue</string>
+    <!-- Change to the real Cooper Waters support mailbox. -->
+    <string name="support_email" translatable="false">support@cooperwaters.com.pg</string>
+    <string name="support_subject">Cooper Waters support (%1$s)</string>
+    <string name="support_no_email_app">No email app found. Please email %1$s.</string>
 </resources>

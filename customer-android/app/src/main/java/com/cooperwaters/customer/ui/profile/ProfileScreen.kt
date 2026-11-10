@@ -104,18 +104,16 @@ fun ProfileScreen(
     onDone: () -> Unit,
     showBack: Boolean,
     onBack: () -> Unit,
-    bottomBar: (@Composable () -> Unit)? = null,
 ) {
     val container = appContainer()
     val vm = containerViewModel { c -> ProfileViewModel(c.api.customerApi, c.tokenStore) }
     val state by vm.state.collectAsStateWithLifecycle()
     // From the tab, saving shows a confirmation instead of leaving the screen.
-    LaunchedEffect(state.saved) { if (state.saved && bottomBar == null) onDone() }
+    LaunchedEffect(state.saved) { if (state.saved) onDone() }
 
     ScreenScaffold(
         title = stringResource(if (onboarding) R.string.profile_welcome_title else R.string.profile_title),
         onBack = if (showBack) onBack else null,
-        bottomBar = bottomBar,
     ) {
         Column(
             Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -152,9 +150,6 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             ErrorCard(state.error)
-            if (state.saved && bottomBar != null) {
-                Text(stringResource(R.string.profile_saved), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
-            }
             LoadingButton(stringResource(R.string.action_save), state.saving, vm::save, Modifier.fillMaxWidth())
             if (!onboarding) {
                 OutlinedButton(

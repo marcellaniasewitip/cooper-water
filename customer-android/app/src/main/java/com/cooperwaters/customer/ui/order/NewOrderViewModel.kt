@@ -65,8 +65,10 @@ data class NewOrderState(
 class NewOrderViewModel(
     private val repo: CustomerRepository,
     accountPhone: String,
+    /** Saved place picked on Home ("order to this place"); null → the first saved place. */
+    initialLocationId: String? = null,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(NewOrderState(msisdn = accountPhone))
+    private val _state = MutableStateFlow(NewOrderState(msisdn = accountPhone, locationId = initialLocationId))
     val state: StateFlow<NewOrderState> = _state.asStateFlow()
 
     private var quoteJob: Job? = null

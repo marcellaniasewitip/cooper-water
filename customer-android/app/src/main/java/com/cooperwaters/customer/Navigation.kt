@@ -11,16 +11,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cooperwaters.customer.ui.auth.LoginScreen
-import com.cooperwaters.customer.ui.common.MainBottomBar
-import com.cooperwaters.customer.ui.common.MainTab
 import com.cooperwaters.customer.ui.common.appContainer
 import com.cooperwaters.customer.ui.history.HistoryScreen
+import com.cooperwaters.customer.ui.home.HomeActions
 import com.cooperwaters.customer.ui.home.HomeScreen
 import com.cooperwaters.customer.ui.locations.LocationEditScreen
 import com.cooperwaters.customer.ui.locations.LocationsScreen
 import com.cooperwaters.customer.ui.order.NewOrderScreen
 import com.cooperwaters.customer.ui.payment.PaymentPendingScreen
 import com.cooperwaters.customer.ui.profile.ProfileScreen
+import com.cooperwaters.customer.ui.support.SupportScreen
 import com.cooperwaters.customer.ui.tracking.DisputeScreen
 import com.cooperwaters.customer.ui.tracking.RateScreen
 import com.cooperwaters.customer.ui.tracking.TrackingScreen
@@ -32,7 +32,8 @@ object Routes {
     const val HOME = "home"
     const val LOCATIONS = "locations"
     const val LOCATION_EDIT = "location_edit?id={id}"
-    const val NEW_ORDER = "new_order"
+    const val NEW_ORDER = "new_order?locationId={locationId}"
+    const val SUPPORT = "support"
     const val PAYMENT = "payment/{orderId}"
     const val TRACKING = "tracking/{orderId}"
     const val RATE = "rate/{orderId}"
@@ -41,6 +42,7 @@ object Routes {
 
     fun profile(onboarding: Boolean) = "profile?onboarding=$onboarding"
     fun locationEdit(id: String?) = if (id == null) "location_edit" else "location_edit?id=$id"
+    fun newOrder(locationId: String? = null) = if (locationId == null) "new_order" else "new_order?locationId=$locationId"
     fun payment(orderId: String) = "payment/$orderId"
     fun tracking(orderId: String) = "tracking/$orderId"
     fun rate(orderId: String) = "rate/$orderId"
@@ -48,23 +50,6 @@ object Routes {
 }
 
 private fun NavHostController.goHomeClearingStack() = navigate(Routes.HOME) { popUpTo(0) { inclusive = true } }
-
-/** Bottom-bar navigation: one copy of each tab, Back always returns to Home. */
-private fun NavHostController.selectTab(tab: MainTab) {
-    if (tab == MainTab.HOME) {
-        popBackStack(Routes.HOME, inclusive = false)
-        return
-    }
-    val route = when (tab) {
-        MainTab.ORDERS -> Routes.HISTORY
-        MainTab.PLACES -> Routes.LOCATIONS
-        else -> Routes.profile(onboarding = false)
-    }
-    navigate(route) {
-        popUpTo(Routes.HOME)
-        launchSingleTop = true
-    }
-}
 
 @Composable
 fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
@@ -101,33 +86,35 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
             arguments = listOf(navArgument("onboarding") { type = NavType.BoolType; defaultValue = false }),
         ) { entry ->
             val onboarding = entry.arguments?.getBoolean("onboarding") ?: false
-            val tabBar: (@Composable () -> Unit)? =
-                if (onboarding) null else { { MainBottomBar(MainTab.PROFILE) { nav.selectTab(it) } } }
             ProfileScreen(
                 onboarding = onboarding,
                 onDone = { if (onboarding) nav.goHomeClearingStack() else nav.popBackStack() },
                 showBack = !onboarding,
                 onBack = { nav.popBackStack() },
-                bottomBar = tabBar,
             )
         }
         composable(Routes.HOME) {
             HomeScreen(
-                onNewOrder = { nav.navigate(Routes.NEW_ORDER) },
-                onOpenOrder = { order ->
-                    if (order.status == com.cooperwaters.core.order.OrderStatus.PENDING_PAYMENT) {
-                        nav.navigate(Routes.payment(order.id))
-                    } else {
-                        nav.navigate(Routes.tracking(order.id))
-                    }
-                },
-                bottomBar = { MainBottomBar(MainTab.HOME) { nav.selectTab(it) } },
+                HomeActions(
+                    onNewOrder = { locationId -> nav.navigate(Routes.newOrder(locationId)) },
+                    onOpenOrder = { order ->
+                        if (order.status == com.cooperwaters.core.order.OrderStatus.PENDING_PAYMENT) {
+                            nav.navigate(Routes.payment(order.id))
+                        } else {
+                            nav.navigate(Routes.tracking(order.id))
+                        }
+                    },
+                    onOrders = { nav.navigate(Routes.HISTORY) { launchSingleTop = true } },
+                    onPlaces = { nav.navigate(Routes.LOCATIONS) { launchSingleTop = true } },
+                    onProfile = { nav.navigate(Routes.profile(onboarding = false)) { launchSingleTop = true } },
+                    onSupport = { nav.navigate(Routes.SUPPORT) { launchSingleTop = true } },
+                ),
             )
         }
         composable(Routes.LOCATIONS) {
             LocationsScreen(
                 onEdit = { id -> nav.navigate(Routes.locationEdit(id)) },
-                bottomBar = { MainBottomBar(MainTab.PLACES) { nav.selectTab(it) } },
+                onBack = { nav.popBackStack() },
             )
         }
         composable(
@@ -136,8 +123,12 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
         ) { entry ->
             LocationEditScreen(locationId = entry.arguments?.getString("id"), onDone = { nav.popBackStack() })
         }
-        composable(Routes.NEW_ORDER) {
+        composable(
+            Routes.NEW_ORDER,
+            arguments = listOf(navArgument("locationId") { type = NavType.StringType; nullable = true; defaultValue = null }),
+        ) { entry ->
             NewOrderScreen(
+                initialLocationId = entry.arguments?.getString("locationId"),
                 onBack = { nav.popBackStack() },
                 onAddLocation = { nav.navigate(Routes.locationEdit(null)) },
                 onPlaced = { orderId, needsPayment ->
@@ -175,9 +166,10 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
         composable(Routes.HISTORY) {
             HistoryScreen(
                 onOpen = { id -> nav.navigate(Routes.tracking(id)) },
-                onNewOrder = { nav.navigate(Routes.NEW_ORDER) },
-                bottomBar = { MainBottomBar(MainTab.ORDERS) { nav.selectTab(it) } },
+                onNewOrder = { nav.navigate(Routes.newOrder()) },
+                onBack = { nav.popBackStack() },
             )
         }
+        composable(Routes.SUPPORT) { SupportScreen(onBack = { nav.popBackStack() }) }
     }
 }

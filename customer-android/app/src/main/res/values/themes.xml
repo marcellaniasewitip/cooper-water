@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Compose draws the UI; this themes the window before the first frame and the system bars.
-         Colours match CooperWatersTheme (light). -->
+    <!-- Black window before the first frame, matching the black splash screen (StarTrip style). -->
     <style name="Theme.CooperWaters" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">#FFF5F8FC</item>
-        <item name="android:statusBarColor">#FFF5F8FC</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:navigationBarColor">#FFF5F8FC</item>
+        <item name="android:windowBackground">#FF000000</item>
+        <item name="android:statusBarColor">#FF000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">#FF000000</item>
     </style>
 </resources>

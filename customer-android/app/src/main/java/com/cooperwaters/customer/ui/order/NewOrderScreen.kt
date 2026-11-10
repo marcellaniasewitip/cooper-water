@@ -53,12 +53,13 @@ import com.cooperwaters.customer.ui.common.containerViewModel
 
 @Composable
 fun NewOrderScreen(
+    initialLocationId: String? = null,
     onBack: () -> Unit,
     onAddLocation: () -> Unit,
     onPlaced: (orderId: String, needsPayment: Boolean) -> Unit,
     onResumedElsewhere: () -> Unit,
 ) {
-    val vm = containerViewModel { c -> NewOrderViewModel(c.repository, c.tokenStore.user()?.phone.orEmpty()) }
+    val vm = containerViewModel { c -> NewOrderViewModel(c.repository, c.tokenStore.user()?.phone.orEmpty(), initialLocationId) }
     val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.placed) { state.placed?.let { onPlaced(it.orderId, it.needsPayment) } }
