@@ -136,8 +136,10 @@ fun ReferralScreen(onBack: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                     )
                     LoadingButton(stringResource(R.string.referral_apply), ui.applying, vm::apply, Modifier.fillMaxWidth())
-                } else if (info.referredByCode != null) {
-                    Text(stringResource(if (ui.applied) R.string.referral_applied else R.string.referral_used, info.referredByCode, reward), color = MaterialTheme.colorScheme.secondary)
+                } else {
+                    info.referredByCode?.let { byCode ->
+                        Text(stringResource(if (ui.applied) R.string.referral_applied else R.string.referral_used, byCode, reward), color = MaterialTheme.colorScheme.secondary)
+                    }
                 }
             }
             ErrorCard(ui.error)
