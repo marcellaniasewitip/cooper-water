@@ -39,7 +39,7 @@ object Routes {
     const val HOME = "home"
     const val LOCATIONS = "locations"
     const val LOCATION_EDIT = "location_edit?id={id}"
-    const val NEW_ORDER = "new_order?locationId={locationId}"
+    const val NEW_ORDER = "new_order?locationId={locationId}&addressFirst={addressFirst}"
     const val SUPPORT = "support"
     const val PAYMENT = "payment/{orderId}"
     const val TRACKING = "tracking/{orderId}"
@@ -56,7 +56,10 @@ object Routes {
 
     fun profile(onboarding: Boolean) = "profile?onboarding=$onboarding"
     fun locationEdit(id: String?) = if (id == null) "location_edit" else "location_edit?id=$id"
-    fun newOrder(locationId: String? = null) = if (locationId == null) "new_order" else "new_order?locationId=$locationId"
+    fun newOrder(locationId: String? = null, addressFirst: Boolean = false): String {
+        val args = listOfNotNull(locationId?.let { "locationId=$it" }, "addressFirst=true".takeIf { addressFirst })
+        return if (args.isEmpty()) "new_order" else "new_order?" + args.joinToString("&")
+    }
     fun payment(orderId: String) = "payment/$orderId"
     fun tracking(orderId: String) = "tracking/$orderId"
     fun rate(orderId: String) = "rate/$orderId"
@@ -112,6 +115,7 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
             HomeScreen(
                 HomeActions(
                     onNewOrder = { locationId -> nav.navigate(Routes.newOrder(locationId)) },
+                    onWhereTo = { locationId -> nav.navigate(Routes.newOrder(locationId, addressFirst = true)) },
                     onOpenOrder = { order ->
                         if (order.status == com.cooperwaters.core.order.OrderStatus.PENDING_PAYMENT) {
                             nav.navigate(Routes.payment(order.id))
@@ -145,10 +149,14 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
         }
         composable(
             Routes.NEW_ORDER,
-            arguments = listOf(navArgument("locationId") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            arguments = listOf(
+                navArgument("locationId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("addressFirst") { type = NavType.BoolType; defaultValue = false },
+            ),
         ) { entry ->
             NewOrderScreen(
                 initialLocationId = entry.arguments?.getString("locationId"),
+                locationFirst = entry.arguments?.getBoolean("addressFirst") ?: false,
                 onBack = { nav.popBackStack() },
                 onAddLocation = { nav.navigate(Routes.locationEdit(null)) },
                 onPlaced = { orderId, needsPayment ->

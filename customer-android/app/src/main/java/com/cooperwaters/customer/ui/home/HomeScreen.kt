@@ -143,7 +143,10 @@ class HomeViewModel(
 
 /** Where the side menu and the Home shortcuts lead. */
 class HomeActions(
+    /** Package first ("Water delivery" tile, side menu). */
     val onNewOrder: (locationId: String?) -> Unit,
+    /** Address first ("Where should we deliver?" bar and saved-place shortcuts). */
+    val onWhereTo: (locationId: String?) -> Unit,
     val onOpenOrder: (Order) -> Unit,
     val onOrders: () -> Unit,
     val onPlaces: () -> Unit,
@@ -259,10 +262,10 @@ private fun BottomPanel(
                     Text(stringResource(R.string.home_unsent_order), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                 }
                 ErrorCard(state.error, onRetry = onRetry)
-                WhereToBar { actions.onNewOrder(null) }
+                WhereToBar { actions.onWhereTo(null) }
             }
             state.places.take(2).forEach { place ->
-                PlaceRow(place) { actions.onNewOrder(place.id) }
+                PlaceRow(place) { actions.onWhereTo(place.id) }
                 HorizontalDivider(Modifier.padding(start = 56.dp, end = 16.dp))
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -273,7 +276,7 @@ private fun BottomPanel(
     }
 }
 
-/** Search-style bar: tapping starts an order (StarTrip "Where to?"). */
+/** Search-style bar: starts an order on the delivery-address step (StarTrip "Where to?"). */
 @Composable
 private fun WhereToBar(onClick: () -> Unit) {
     Surface(
