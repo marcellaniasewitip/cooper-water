@@ -714,8 +714,27 @@ model Notification {
   user      User?               @relation(fields: [userId], references: [id])
 
   @@index([userId, createdAt])
+  @@index([userId, template])
   @@index([status])
   @@map("notifications")
+}
+
+/// A push message an admin sent to drivers and/or customers. Each recipient also gets a
+/// Notification row (template "broadcast") so it shows in the app's Inbox / Announcements.
+model Broadcast {
+  id         String   @id @default(uuid()) @db.Uuid
+  /// drivers | customers | all | user
+  audience   String
+  /// Set when audience = user (one driver or customer).
+  userId     String?  @map("user_id") @db.Uuid
+  title      String
+  body       String
+  recipients Int      @default(0)
+  createdBy  String   @map("created_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("broadcasts")
 }
 
 // ───────────────────────────── Platform ─────────────────────────────

@@ -856,6 +856,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DriverController_inbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver/chats": {
         parameters: {
             query?: never;
@@ -1688,6 +1704,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/broadcasts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBroadcastsController_list"];
+        put?: never;
+        post: operations["AdminBroadcastsController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/broadcasts/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBroadcastsController_count"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/permissions": {
         parameters: {
             query?: never;
@@ -2291,6 +2339,17 @@ export interface components {
             pushBody?: string | null;
             smsBody?: string | null;
             critical?: boolean;
+        };
+        BroadcastDto: {
+            /**
+             * @description drivers | customers | all | user (one person, by phone)
+             * @enum {string}
+             */
+            audience: "drivers" | "customers" | "all" | "user";
+            /** @description Driver's or customer's phone, when audience = user. */
+            phone?: string;
+            title: string;
+            body: string;
         };
         RoleDto: {
             name: string;
@@ -3583,6 +3642,23 @@ export interface operations {
             };
         };
     };
+    DriverController_inbox: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     DriverController_chats: {
         parameters: {
             query?: never;
@@ -4767,6 +4843,64 @@ export interface operations {
                 "application/json": components["schemas"]["TemplateDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminBroadcastsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminBroadcastsController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BroadcastDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminBroadcastsController_count: {
+        parameters: {
+            query: {
+                audience: "drivers" | "customers" | "all" | "user";
+                phone?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

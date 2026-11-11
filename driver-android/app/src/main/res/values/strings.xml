@@ -300,4 +300,8 @@
     <string name="support_subject">Cooper Waters driver support (%1$s)</string>
     <string name="support_no_email_app">No email app found. Please email %1$s.</string>
     <string name="support_continue">Continue</string>
+    <string name="menu_announcements">Announcements</string>
+    <string name="announcements_title">Announcements</string>
+    <string name="announcements_empty">No announcements yet. Messages from Cooper Waters will appear here.</string>
+    <string name="announcements_more">Show older</string>
 </resources>

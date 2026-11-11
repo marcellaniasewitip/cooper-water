@@ -41,7 +41,7 @@ export async function startApp(): Promise<Harness> {
 }
 
 const TABLES = [
-  'chat_messages', 'promo_redemptions', 'promo_codes',
+  'broadcasts', 'chat_messages', 'promo_redemptions', 'promo_codes',
   'audit_logs', 'idempotency_records', 'notifications', 'notification_templates', 'settings', 'ratings', 'disputes',
   'payouts', 'webhook_events', 'topup_requests', 'payments', 'ledger_entries', 'wallets', 'order_offers', 'order_events',
   'orders', 'packages', 'depots', 'trucks', 'driver_documents', 'drivers', 'customer_locations', 'refresh_tokens',

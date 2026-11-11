@@ -1744,6 +1744,25 @@
         ]
       }
     },
+    "/api/v1/driver/inbox": {
+      "get": {
+        "operationId": "DriverController_inbox",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/driver/chats": {
       "get": {
         "operationId": "DriverController_chats",
@@ -3703,6 +3722,95 @@
         ]
       }
     },
+    "/api/v1/admin/broadcasts": {
+      "get": {
+        "operationId": "AdminBroadcastsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "AdminBroadcastsController_send",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BroadcastDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/broadcasts/count": {
+      "get": {
+        "operationId": "AdminBroadcastsController_count",
+        "parameters": [
+          {
+            "name": "audience",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "drivers",
+                "customers",
+                "all",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "phone",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 20,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/permissions": {
       "get": {
         "operationId": "AdminAccessController_permissions",
@@ -5449,6 +5557,41 @@
             "type": "boolean"
           }
         }
+      },
+      "BroadcastDto": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "type": "string",
+            "description": "drivers | customers | all | user (one person, by phone)",
+            "enum": [
+              "drivers",
+              "customers",
+              "all",
+              "user"
+            ]
+          },
+          "phone": {
+            "type": "string",
+            "description": "Driver's or customer's phone, when audience = user.",
+            "maxLength": 20
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "audience",
+          "title",
+          "body"
+        ]
       },
       "RoleDto": {
         "type": "object",

@@ -32,6 +32,7 @@ const PayoutsPage = lazy(() => import('@/pages/PayoutsPage'));
 const DisputesPage = lazy(() => import('@/pages/DisputesPage'));
 const DisputeDetailPage = lazy(() => import('@/pages/DisputeDetailPage'));
 const TemplatesPage = lazy(() => import('@/pages/TemplatesPage'));
+const BroadcastsPage = lazy(() => import('@/pages/BroadcastsPage'));
 const AdminsPage = lazy(() => import('@/pages/AdminsPage'));
 const AuditPage = lazy(() => import('@/pages/AuditPage'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
@@ -129,6 +130,7 @@ export function App() {
                     <Route path="promos" element={<P perm="orders.view"><PromosPage /></P>} />
                     <Route path="settings" element={<P perm="settings.edit"><SettingsPage /></P>} />
                     <Route path="templates" element={<P perm="notifications.edit"><TemplatesPage /></P>} />
+                    <Route path="broadcasts" element={<P perm="notifications.edit"><BroadcastsPage /></P>} />
                     <Route path="topups" element={<P perm="wallet.view"><TopupsPage /></P>} />
                     <Route path="payments" element={<P perm="payments.view"><PaymentsPage /></P>} />
                     <Route path="payouts" element={<P perm="payouts.process"><PayoutsPage /></P>} />

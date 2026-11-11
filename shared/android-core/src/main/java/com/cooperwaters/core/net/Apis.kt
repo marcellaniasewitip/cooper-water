@@ -234,6 +234,10 @@ interface DriverApi {
     suspend fun earnings(@Query("period") period: String): Earnings
 
     // Chat with the customer
+    /** Announcements: push messages Cooper Waters sent to drivers. */
+    @GET("driver/inbox")
+    suspend fun inbox(@Query("cursor") cursor: String? = null, @Query("limit") limit: Int? = null): Page<InboxItem>
+
     @GET("driver/chats")
     suspend fun chats(): List<ChatConversation>
 

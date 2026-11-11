@@ -27,6 +27,7 @@ import {
   AdminReportsController,
   AdminSettingsController,
   AdminTemplatesController,
+  AdminBroadcastsController,
   AdminTrucksController,
 } from './admin/admin.controllers';
 import { LedgerService } from './wallet/ledger.service';
@@ -50,6 +51,7 @@ import { IdempotencyInterceptor } from './common/idempotency';
 import { PromosService } from './promos/promos.service';
 import { ReferralsService } from './referrals/referrals.service';
 import { ChatService } from './chat/chat.service';
+import { BroadcastsService } from './notifications/broadcasts.service';
 
 /**
  * Domain services live in one module: they form a small, acyclic graph
@@ -87,6 +89,7 @@ import { ChatService } from './chat/chat.service';
     AdminMoneyController,
     AdminDisputesController,
     AdminTemplatesController,
+    AdminBroadcastsController,
     AdminAccessController,
     AdminReportsController,
   ],
@@ -113,6 +116,7 @@ import { ChatService } from './chat/chat.service';
     PromosService,
     ReferralsService,
     ChatService,
+    BroadcastsService,
   ],
 })
 export class AppModule {}
