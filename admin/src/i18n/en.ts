@@ -554,6 +554,7 @@ export const en = {
     preview: 'Preview on the phone',
     reach: 'This will go to {count} people.',
     reachOne: 'This will go to 1 person.',
+    pushOff: 'Phone notifications reach people whose app is running (drivers while online, customers with the app open) and every message stays in their Inbox / Announcements. To also reach phones with the app closed, set up Firebase push (docs/deployment-aws.md).',
     send: 'Send message',
     confirmTitle: 'Send this message?',
     confirmBody: 'It goes to {count} people now and cannot be recalled.',

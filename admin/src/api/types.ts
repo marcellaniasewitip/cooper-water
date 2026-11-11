@@ -615,6 +615,8 @@ export interface Broadcast {
 
 export interface BroadcastCount {
   recipients: number;
+  /** Firebase push is set up: closed apps get it too. Otherwise it reaches open/online apps and the in-app Inbox. */
+  pushEnabled: boolean;
   name?: string | null;
   role?: 'driver' | 'customer';
 }

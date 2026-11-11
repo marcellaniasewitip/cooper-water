@@ -6,6 +6,8 @@ import { Errors } from '../common/errors';
 import { normalisePhone } from '../common/phone';
 import { CursorQuery, cursorWhere, pageLimit, pageOrder, toPage } from '../common/pagination';
 import { NotificationsService } from './notifications.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { loadEnv } from '../config/env';
 
 export type BroadcastAudience = 'drivers' | 'customers' | 'all' | 'user';
 
@@ -28,6 +30,7 @@ export class BroadcastsService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   private recipientsWhere(audience: Exclude<BroadcastAudience, 'user'>): Prisma.UserWhereInput {
@@ -38,12 +41,14 @@ export class BroadcastsService {
   }
 
   /** How many people a message would reach (shown before sending). */
-  async count(audience: BroadcastAudience, phone?: string): Promise<{ recipients: number; name?: string | null; role?: string }> {
+  async count(audience: BroadcastAudience, phone?: string): Promise<{ recipients: number; name?: string | null; role?: string; pushEnabled: boolean }> {
+    // Without Firebase (PUSH_PROVIDER=fcm) messages still reach open/online apps live and every Inbox / Announcements.
+    const pushEnabled = loadEnv().pushProvider === 'fcm';
     if (audience === 'user') {
       const u = await this.findUser(phone);
-      return { recipients: 1, name: u.name, role: u.role };
+      return { recipients: 1, name: u.name, role: u.role, pushEnabled };
     }
-    return { recipients: await this.prisma.user.count({ where: this.recipientsWhere(audience) }) };
+    return { recipients: await this.prisma.user.count({ where: this.recipientsWhere(audience) }), pushEnabled };
   }
 
   async send(adminId: string, input: BroadcastInput, ip?: string) {
@@ -66,6 +71,9 @@ export class BroadcastsService {
     const b = await this.prisma.broadcast.create({ data: { audience: input.audience, userId, title, body, createdBy: adminId } });
     const recipients = await this.notifications.sendBroadcast(userIds, { title, body, broadcastId: b.id });
     const saved = await this.prisma.broadcast.update({ where: { id: b.id }, data: { recipients } });
+    // Live delivery: apps that are connected (drivers while online, customers with the app open) show it as a
+    // phone notification straight away, even without Firebase push. Same broadcastId → no duplicate if push lands too.
+    for (const id of userIds) this.realtime.toUser(id, 'notification.message', { broadcastId: b.id, title, body });
     await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'broadcast.send', entity: 'broadcast', entityId: b.id, after: saved, ip });
     return this.view(saved);
   }

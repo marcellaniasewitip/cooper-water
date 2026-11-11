@@ -158,6 +158,11 @@ function Composer() {
         <Stack justify="space-between">
           <PhonePreview title={title.trim()} body={body.trim()} />
           <Stack gap="xs">
+            {count.data && !count.data.pushEnabled && (
+              <Alert color="yellow" variant="light" data-testid="broadcast-push-off">
+                <Text size="sm">{m.broadcasts.pushOff}</Text>
+              </Alert>
+            )}
             {!isUser && count.data && <Text size="sm">{fmt(m.broadcasts.reach, { count: recipients })}</Text>}
             {userFound && <Text size="sm">{m.broadcasts.reachOne}</Text>}
             {error && <Alert color="red">{error}</Alert>}

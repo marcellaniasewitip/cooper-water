@@ -37,11 +37,13 @@ class DriverMessagingService : FirebaseMessagingService() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(if (isOffer) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
             .setSilent(isOffer && app.offerAlarm.isRinging)
+            .setOnlyAlertOnce(true)
             .setAutoCancel(true)
             .setContentIntent(pi)
             .build()
         try {
-            NotificationManagerCompat.from(this).notify((message.messageId ?: body).hashCode(), n)
+            // A push message also arrives over the socket; the same id (broadcast id) keeps it to one notification.
+            NotificationManagerCompat.from(this).notify((message.data["broadcastId"] ?: message.messageId ?: body).hashCode(), n)
         } catch (e: SecurityException) {
             // POST_NOTIFICATIONS not granted
         }

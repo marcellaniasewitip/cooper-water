@@ -32,6 +32,9 @@ sealed interface RealtimeEvent {
     data class OfferRevoked(val orderId: String, val reason: String?) : RealtimeEvent
     data class WalletUpdated(val update: WalletUpdate) : RealtimeEvent
     data class ChatMessageReceived(val orderId: String, val shortCode: String, val message: ChatMessage) : RealtimeEvent
+
+    /** A push message from Cooper Waters (admin → Push messages). */
+    data class MessageReceived(val id: String, val title: String, val body: String) : RealtimeEvent
 }
 
 object RealtimeEvents {
@@ -42,14 +45,16 @@ object RealtimeEvents {
     const val WALLET_UPDATED = "wallet.updated"
     const val DRIVER_LOCATION = "driver.location"
     const val CHAT_MESSAGE = "chat.message"
+    const val NOTIFICATION_MESSAGE = "notification.message"
 
-    val ALL = listOf(ORDER_UPDATED, ORDER_DRIVER_LOCATION, ORDER_OFFER, ORDER_OFFER_REVOKED, WALLET_UPDATED, CHAT_MESSAGE)
+    val ALL = listOf(ORDER_UPDATED, ORDER_DRIVER_LOCATION, ORDER_OFFER, ORDER_OFFER_REVOKED, WALLET_UPDATED, CHAT_MESSAGE, NOTIFICATION_MESSAGE)
 
     @Serializable private data class OrderWrap(val order: Order)
     @Serializable private data class OfferWrap(val offer: Offer)
     @Serializable private data class LocationMsg(val orderId: String, val lat: Double, val lng: Double, val at: String? = null)
     @Serializable private data class RevokedMsg(val orderId: String, val reason: String? = null)
     @Serializable private data class ChatMsg(val orderId: String, val shortCode: String = "", val message: ChatMessage)
+    @Serializable private data class BroadcastMsg(val broadcastId: String, val title: String = "", val body: String = "")
 
     /** Parse one event's JSON payload; null for unknown events or malformed payloads. */
     fun parse(event: String, payloadJson: String, json: Json = CwJson): RealtimeEvent? = try {
@@ -62,6 +67,7 @@ object RealtimeEvents {
                 .let { RealtimeEvent.OfferRevoked(it.orderId, it.reason) }
             WALLET_UPDATED -> RealtimeEvent.WalletUpdated(json.decodeFromString(WalletUpdate.serializer(), payloadJson))
             CHAT_MESSAGE -> json.decodeFromString(ChatMsg.serializer(), payloadJson).let { RealtimeEvent.ChatMessageReceived(it.orderId, it.shortCode, it.message) }
+            NOTIFICATION_MESSAGE -> json.decodeFromString(BroadcastMsg.serializer(), payloadJson).let { RealtimeEvent.MessageReceived(it.broadcastId, it.title, it.body) }
             else -> null
         }
     } catch (e: Exception) {
