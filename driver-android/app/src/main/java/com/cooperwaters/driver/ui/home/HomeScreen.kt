@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
@@ -104,6 +105,7 @@ class HomeActions(
     val onWallet: () -> Unit,
     val onHistory: () -> Unit,
     val onMessages: () -> Unit,
+    val onAnnouncements: () -> Unit,
     val onProfile: () -> Unit,
     val onSupport: () -> Unit,
 )
@@ -436,8 +438,9 @@ private fun DrawerContent(
             DrawerItem(CwIcons.Wallet, stringResource(R.string.menu_wallet)) { close(actions.onWallet) }
             DrawerItem(Icons.AutoMirrored.Filled.List, stringResource(R.string.menu_history)) { close(actions.onHistory) }
             DrawerItem(Icons.Filled.Email, stringResource(R.string.menu_messages)) { close(actions.onMessages) }
+            DrawerItem(Icons.Filled.Info, stringResource(R.string.menu_announcements)) { close(actions.onAnnouncements) }
             DrawerItem(Icons.Filled.Person, stringResource(R.string.menu_profile)) { close(actions.onProfile) }
-            DrawerItem(Icons.Filled.Info, stringResource(R.string.menu_support)) { close(actions.onSupport) }
+            DrawerItem(Icons.Filled.Call, stringResource(R.string.menu_support)) { close(actions.onSupport) }
             HorizontalDivider(Modifier.padding(vertical = 6.dp), color = onBrand.copy(alpha = 0.25f))
             DrawerItem(Icons.AutoMirrored.Filled.ExitToApp, stringResource(R.string.menu_logout), onSignOut)
         }

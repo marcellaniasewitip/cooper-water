@@ -10,7 +10,8 @@ import { startOfBusinessDay } from '../common/time';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { AuditService } from '../audit/audit.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { BROADCAST_TEMPLATE, NotificationsService } from '../notifications/notifications.service';
+import { BroadcastsService } from '../notifications/broadcasts.service';
 import { OrdersService } from '../orders/orders.service';
 import { DriversService } from '../drivers/drivers.service';
 import { CustomersService } from '../customers/customers.service';
@@ -29,6 +30,8 @@ import { AfterCommit } from '../common/after-commit';
 import { AdminUsersService } from './admin-users.service';
 import { AdminOrdersQuery, CancelDto, ReassignDto } from '../orders/orders.dto';
 import {
+  BroadcastCountQuery,
+  BroadcastDto,
   PromoDto,
   UpdatePromoDto,
   AdjustmentDto,
@@ -558,6 +561,34 @@ export class AdminDisputesController {
 
 @ApiTags('admin')
 @ApiBearerAuth()
+@Controller('admin/broadcasts')
+export class AdminBroadcastsController {
+  constructor(private readonly broadcasts: BroadcastsService) {}
+
+  /** Push messages sent so far, newest first. */
+  @Get()
+  @RequirePermissions('notifications.edit')
+  list(@Query() q: CursorQuery) {
+    return this.broadcasts.list(q);
+  }
+
+  /** How many people a message would reach. */
+  @Get('count')
+  @RequirePermissions('notifications.edit')
+  count(@Query() q: BroadcastCountQuery) {
+    return this.broadcasts.count(q.audience, q.phone);
+  }
+
+  /** Send a push message to all drivers, all customers, everyone, or one person. */
+  @Post()
+  @RequirePermissions('notifications.edit')
+  send(@CurrentAdmin() a: AdminPrincipal, @Body() dto: BroadcastDto, @Ip() ip: string) {
+    return this.broadcasts.send(a.id, dto, ip);
+  }
+}
+
+@ApiTags('admin')
+@ApiBearerAuth()
 @Controller('admin/notification-templates')
 export class AdminTemplatesController {
   constructor(
@@ -575,7 +606,7 @@ export class AdminTemplatesController {
   @Put(':key')
   @RequirePermissions('notifications.edit')
   async update(@CurrentAdmin() a: AdminPrincipal, @Param('key') key: string, @Body() dto: TemplateDto, @Ip() ip: string) {
-    const current = await this.notifications.template(key);
+    const current = key === BROADCAST_TEMPLATE ? null : await this.notifications.template(key);
     if (!current) throw Errors.notFound('Template');
     if (dto.smsBody) this.notifications.validateSmsBody(dto.smsBody);
     const next = {

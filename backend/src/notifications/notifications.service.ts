@@ -11,6 +11,10 @@ import { CursorQuery, cursorWhere, pageLimit, pageOrder, toPage } from '../commo
 
 const MAX_ATTEMPTS = 5;
 
+/** Admin push messages: title and body are the admin's own text, so this template is fixed (not editable). */
+export const BROADCAST_TEMPLATE = 'broadcast';
+const BROADCAST_DEF: TemplateDef = { key: BROADCAST_TEMPLATE, pushTitle: '{{title}}', pushBody: '{{body}}', critical: false };
+
 type DeliveryOutcome = 'sent' | 'skipped' | 'failed_recipient' | 'failed_account';
 
 /**
@@ -51,6 +55,26 @@ export class NotificationsService implements OnModuleInit {
     } catch (err) {
       logger.error({ err, userId, templateKey }, 'notify failed');
     }
+  }
+
+  /**
+   * Admin push message to many users at once. Every recipient gets a Notification row (so it shows in the
+   * app's Inbox / Announcements even without a push token), then a push is queued for each.
+   * @return how many recipients were queued.
+   */
+  async sendBroadcast(userIds: string[], payload: { title: string; body: string; broadcastId: string }): Promise<number> {
+    let total = 0;
+    for (let i = 0; i < userIds.length; i += 500) {
+      const rows = await this.prisma.notification.createManyAndReturn({
+        data: userIds.slice(i, i + 500).map((userId) => ({ userId, channel: 'push' as const, template: BROADCAST_TEMPLATE, payload })),
+        select: { id: true },
+      });
+      for (const r of rows) {
+        await this.jobs.enqueue('notifications', 'notifications.send', { notificationId: r.id }, { jobId: `notif-${r.id}`, attempts: MAX_ATTEMPTS });
+      }
+      total += rows.length;
+    }
+    return total;
   }
 
   /** OTP goes straight out by SMS (time-critical); on failure it falls back to the retry queue. */
@@ -135,10 +159,11 @@ export class NotificationsService implements OnModuleInit {
    * and an SMS row; show the push one (or the SMS when the template has no push text). Sign-in codes and
    * chat messages are left out (chat has its own screen).
    */
-  async inbox(userId: string, q: CursorQuery) {
+  async inbox(userId: string, q: CursorQuery, only?: string[]) {
     const limit = pageLimit(q);
+    const template = only ? { in: only } : { notIn: ['auth.otp', 'chat.message'] };
     const rows = await this.prisma.notification.findMany({
-      where: { AND: [{ userId, template: { notIn: ['auth.otp', 'chat.message'] } }, cursorWhere(q.cursor)] },
+      where: { AND: [{ userId, template }, cursorWhere(q.cursor)] },
       orderBy: pageOrder,
       take: limit + 1,
     });
@@ -164,6 +189,7 @@ export class NotificationsService implements OnModuleInit {
   }
 
   async template(key: string): Promise<TemplateDef | null> {
+    if (key === BROADCAST_TEMPLATE) return BROADCAST_DEF;
     const row = await this.prisma.notificationTemplate.findUnique({ where: { key } });
     if (row) {
       return {

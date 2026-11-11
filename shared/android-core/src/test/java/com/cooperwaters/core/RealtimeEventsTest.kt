@@ -14,6 +14,11 @@ class RealtimeEventsTest {
         assertEquals("CANCELLED", (e as RealtimeEvent.OrderUpdated).order.status)
     }
 
+    @Test fun parsesAdminPushMessage() {
+        val e = RealtimeEvents.parse("notification.message", """{"broadcastId":"b1","title":"Depot closed","body":"Gordons is closed today."}""")
+        assertEquals(RealtimeEvent.MessageReceived("b1", "Depot closed", "Gordons is closed today."), e)
+    }
+
     @Test fun parsesOfferAndWallet() {
         val offer = RealtimeEvents.parse("order.offer", """{"offer":{"offerId":"f","orderId":"o","shortCode":"CW-2","package":"Small tank","volumeLitres":2000,"quantity":2,"distanceM":1234.5,"earningsToea":14400,"priceToea":16000,"expiresAt":"2026-10-16T06:00:00.000Z","delivery":{"lat":-9.4,"lng":147.1,"address":"Boroko","notes":"Blue gate"}}}""")
         assertEquals(14400L, (offer as RealtimeEvent.OfferReceived).offer.earningsToea)

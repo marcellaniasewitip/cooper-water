@@ -9,6 +9,7 @@ import {
   IconListDetails,
   IconMap2,
   IconMessage,
+  IconSpeakerphone,
   IconPackage,
   IconDiscount2,
   IconReceipt,
@@ -64,6 +65,7 @@ export const NAV: NavItem[] = [
       { label: m.nav.promos, to: '/promos', icon: IconDiscount2, permission: 'orders.view' },
       { label: m.nav.settings, to: '/settings', icon: IconSettings, permission: 'settings.edit' },
       { label: m.nav.templates, to: '/templates', icon: IconMessage, permission: 'notifications.edit' },
+      { label: m.nav.broadcasts, to: '/broadcasts', icon: IconSpeakerphone, permission: 'notifications.edit' },
     ],
   },
   {

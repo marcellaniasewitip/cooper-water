@@ -35,6 +35,7 @@ class CustomerMessagingService : FirebaseMessagingService() {
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setOnlyAlertOnce(true)
             .setAutoCancel(true)
             .setContentIntent(pi)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -42,7 +43,8 @@ class CustomerMessagingService : FirebaseMessagingService() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED ||
             android.os.Build.VERSION.SDK_INT < 33
         ) {
-            NotificationManagerCompat.from(this).notify(orderId.hashCode(), n)
+            // A push message also arrives over the socket; the same id (broadcast id) keeps it to one notification.
+            NotificationManagerCompat.from(this).notify((message.data["broadcastId"] ?: orderId ?: message.messageId ?: body).hashCode(), n)
         }
     }
 }

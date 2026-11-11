@@ -19,6 +19,7 @@ import { DeliveredDto, DisputeDto, PositionDto } from '../orders/orders.dto';
 import { EarningsQuery, LocationBatchDto, OptionalPositionDto, SubmitDocumentDto, TopupDto, TruckDto, UploadRequestDto, WithdrawalDto } from './driver.dto';
 import { Errors } from '../common/errors';
 import { ChatService } from '../chat/chat.service';
+import { BROADCAST_TEMPLATE, NotificationsService } from '../notifications/notifications.service';
 import { ChatSendDto } from '../customers/customer.dto';
 
 @ApiTags('driver')
@@ -36,6 +37,7 @@ export class DriverController {
     private readonly customers: CustomersService,
     private readonly settings: SettingsService,
     private readonly chat: ChatService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private async driverId(u: UserPrincipal): Promise<string> {
@@ -262,6 +264,12 @@ export class DriverController {
   }
 
   // ───────────── Chat with the customer ─────────────
+
+  /** Announcements: push messages Cooper Waters sent to drivers (Notifications → Push messages). */
+  @Get('inbox')
+  inbox(@CurrentUser() u: UserPrincipal, @Query() q: CursorQuery) {
+    return this.notifications.inbox(u.id, q, [BROADCAST_TEMPLATE]);
+  }
 
   @Get('chats')
   chats(@CurrentUser() u: UserPrincipal) {

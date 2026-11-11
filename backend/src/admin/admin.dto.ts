@@ -356,3 +356,39 @@ export class UpdatePromoDto {
   @IsOptional() @IsBoolean() public?: boolean;
   @IsOptional() @IsBoolean() active?: boolean;
 }
+
+export class BroadcastDto {
+  /** drivers | customers | all | user (one person, by phone) */
+  @ApiProperty({ enum: ['drivers', 'customers', 'all', 'user'] })
+  @IsIn(['drivers', 'customers', 'all', 'user'])
+  audience: 'drivers' | 'customers' | 'all' | 'user';
+
+  /** Driver's or customer's phone, when audience = user. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  phone?: string;
+
+  @ApiProperty()
+  @IsString()
+  @Length(1, 65)
+  title: string;
+
+  @ApiProperty()
+  @IsString()
+  @Length(1, 500)
+  body: string;
+}
+
+export class BroadcastCountQuery {
+  @ApiProperty({ enum: ['drivers', 'customers', 'all', 'user'] })
+  @IsIn(['drivers', 'customers', 'all', 'user'])
+  audience: 'drivers' | 'customers' | 'all' | 'user';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  phone?: string;
+}

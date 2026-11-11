@@ -75,6 +75,7 @@ class DriverState(
             }
             is RealtimeEvent.DriverLocationChanged -> Unit
             is RealtimeEvent.ChatMessageReceived -> Unit // handled by the chat screen
+            is RealtimeEvent.MessageReceived -> Unit // shown as a notification by DriverApp
         }
     }
 

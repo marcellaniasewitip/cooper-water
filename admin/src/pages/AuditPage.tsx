@@ -13,7 +13,7 @@ import { Empty, QueryState } from '@/components/QueryState';
 import { m } from '@/i18n';
 import { formatDateTime } from '@/lib/time';
 
-const ENTITIES = ['order', 'user', 'driver', 'driver_document', 'truck', 'depot', 'package', 'setting', 'topup_request', 'payment', 'payout', 'wallet', 'dispute', 'notification_template', 'role', 'admin_user'];
+const ENTITIES = ['order', 'user', 'driver', 'driver_document', 'truck', 'depot', 'package', 'setting', 'topup_request', 'payment', 'payout', 'wallet', 'dispute', 'notification_template', 'broadcast', 'role', 'admin_user'];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function AuditPage() {

@@ -593,3 +593,30 @@ export interface PlatformWallet {
   wallet: Wallet;
   entries: Page<LedgerEntry>;
 }
+
+/** Who a push message goes to. */
+export type BroadcastAudience = 'drivers' | 'customers' | 'all' | 'user';
+
+/** An admin push message (Notifications → Push messages). */
+export interface Broadcast {
+  id: string;
+  audience: BroadcastAudience;
+  userId: string | null;
+  title: string;
+  body: string;
+  /** People it was sent to (each also sees it in the app). */
+  recipients: number;
+  /** Of those, how many phones the push reached (people without a push token still see it in the app). */
+  pushed?: number;
+  sentBy?: string | null;
+  user?: { id: string; name: string | null; phone: string; role: 'driver' | 'customer' } | null;
+  createdAt: ISO;
+}
+
+export interface BroadcastCount {
+  recipients: number;
+  /** Firebase push is set up: closed apps get it too. Otherwise it reaches open/online apps and the in-app Inbox. */
+  pushEnabled: boolean;
+  name?: string | null;
+  role?: 'driver' | 'customer';
+}

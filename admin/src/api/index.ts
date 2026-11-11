@@ -117,6 +117,11 @@ export const api = {
     investigate: (id: string) => http.post<T.Dispute>(`/admin/disputes/${id}/investigate`),
     resolve: (id: string, body: Dto<'ResolveDisputeDto'>) => http.post<T.Dispute>(`/admin/disputes/${id}/resolve`, body),
   },
+  broadcasts: {
+    list: (q: ListQuery) => http.get<T.Page<T.Broadcast>>('/admin/broadcasts', q),
+    count: (audience: T.BroadcastAudience, phone?: string) => http.get<T.BroadcastCount>('/admin/broadcasts/count', { audience, phone: phone || undefined }),
+    send: (body: Dto<'BroadcastDto'>) => http.post<T.Broadcast>('/admin/broadcasts', body),
+  },
   templates: {
     list: () => http.get<T.NotificationTemplate[]>('/admin/notification-templates'),
     update: (key: string, body: Dto<'TemplateDto'>) => http.put<T.NotificationTemplate>(`/admin/notification-templates/${enc(key)}`, body),

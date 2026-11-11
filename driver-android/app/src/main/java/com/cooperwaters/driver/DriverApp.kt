@@ -15,6 +15,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.cooperwaters.core.money.Money
+import com.cooperwaters.core.realtime.RealtimeEvent
 import com.cooperwaters.driver.alert.OfferAlarm
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -75,6 +76,10 @@ class DriverApp : Application() {
                 if (!c.foreground.value) notifyOffer(offer.orderId, offer.shortCode, Money.format(offer.earningsToea), silent = true)
             }
         }
+        // Push messages from the admin arrive live over the socket (while online / app open): show them as notifications.
+        c.appScope.launch {
+            c.realtime.events.collect { e -> if (e is RealtimeEvent.MessageReceived) notifyMessage(e.id, e.title, e.body) }
+        }
         // Stop ringing once nothing is waiting: accepted, declined, taken by someone else, expired, offline or signed out.
         c.appScope.launch {
             combine(c.state.offers, c.state.activeOrder, c.state.profile, c.loggedIn) { offers, active, p, inSession ->
@@ -82,6 +87,27 @@ class DriverApp : Application() {
             }
                 .distinctUntilChanged()
                 .collect { waiting -> if (!waiting) offerAlarm.stop() }
+        }
+    }
+
+    /** Admin push message. The id is the broadcast id, so the socket copy and an FCM copy share one notification. */
+    fun notifyMessage(id: String, title: String, body: String) {
+        val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val pi = PendingIntent.getActivity(this, 3, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val n = NotificationCompat.Builder(this, getString(R.string.notification_channel_jobs_id))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title.ifBlank { getString(R.string.app_name) })
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOnlyAlertOnce(true)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .build()
+        try {
+            NotificationManagerCompat.from(this).notify(id.hashCode(), n)
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS not granted.
         }
     }
 
