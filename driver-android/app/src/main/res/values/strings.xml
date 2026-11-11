@@ -14,8 +14,9 @@
     <string name="action_save">Save</string>
 
     <!-- Notifications -->
-    <string name="notification_channel_offers_id" translatable="false">offers</string>
+    <string name="notification_channel_offers_id" translatable="false">offer_requests</string>
     <string name="notification_channel_offers">New job offers</string>
+    <string name="notification_channel_offers_desc">Rings when a customer near you requests water.</string>
     <string name="notification_channel_jobs_id" translatable="false">jobs</string>
     <string name="notification_channel_jobs">Job and wallet updates</string>
     <string name="notification_channel_tracking_id" translatable="false">tracking</string>
