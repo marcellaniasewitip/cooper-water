@@ -113,7 +113,13 @@ class DriverState(
 
     suspend fun refreshOffers() {
         val r = repo.offers()
-        if (r is ApiResult.Success) _offers.value = pruneExpired(r.value)
+        if (r is ApiResult.Success) {
+            val known = _offers.value.map { it.orderId }.toSet()
+            val fresh = pruneExpired(r.value)
+            _offers.value = fresh
+            // An offer picked up by polling (socket was down) alerts the driver just like a pushed one.
+            fresh.lastOrNull { it.orderId !in known }?.let { _newOffers.value = it }
+        }
     }
 
     suspend fun refreshActive() {

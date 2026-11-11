@@ -23,6 +23,9 @@ class DriverMessagingService : FirebaseMessagingService() {
         val body = message.notification?.body ?: message.data["body"] ?: return
         val isOffer = message.data["template"]?.contains("offer") == true || message.data.containsKey("earnings")
         val channel = getString(if (isOffer) R.string.notification_channel_offers_id else R.string.notification_channel_jobs_id)
+        // Ring like a call for offers; the notification itself then stays silent so the tone doesn't play twice.
+        val app = application as DriverApp
+        if (isOffer && container.state.activeOrder.value == null) app.offerAlarm.start()
         val pi = PendingIntent.getActivity(
             this, 2, Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -33,6 +36,7 @@ class DriverMessagingService : FirebaseMessagingService() {
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(if (isOffer) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
+            .setSilent(isOffer && app.offerAlarm.isRinging)
             .setAutoCancel(true)
             .setContentIntent(pi)
             .build()
