@@ -26,9 +26,17 @@ import kotlinx.coroutines.launch
 
 enum class OrderStep { PACKAGE, LOCATION, PAYMENT, REVIEW }
 
+/** Package first (the "Water delivery" tile). */
+val PACKAGE_FIRST: List<OrderStep> = listOf(OrderStep.PACKAGE, OrderStep.LOCATION, OrderStep.PAYMENT, OrderStep.REVIEW)
+
+/** Address first ("Where should we deliver?" and saved-place shortcuts, like StarTrip's "Where to?"). */
+val LOCATION_FIRST: List<OrderStep> = listOf(OrderStep.LOCATION, OrderStep.PACKAGE, OrderStep.PAYMENT, OrderStep.REVIEW)
+
 data class NewOrderState(
     val loading: Boolean = true,
-    val step: OrderStep = OrderStep.PACKAGE,
+    /** Order the steps are walked in. */
+    val steps: List<OrderStep> = PACKAGE_FIRST,
+    val step: OrderStep = steps.first(),
     val packages: List<WaterPackage> = emptyList(),
     val packageId: String? = null,
     val quantity: Int = 1,
@@ -81,8 +89,19 @@ class NewOrderViewModel(
     initialLocationId: String? = null,
     /** Promo picked on the Offers screen; applied once a package is chosen. */
     initialPromoCode: String? = null,
+    /** Ask for the delivery address before the package (started from "Where should we deliver?" or a saved place). */
+    locationFirst: Boolean = false,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(NewOrderState(msisdn = accountPhone, locationId = initialLocationId, promoInput = initialPromoCode.orEmpty()))
+    private val _state = MutableStateFlow(
+        NewOrderState(
+            msisdn = accountPhone,
+            locationId = initialLocationId,
+            promoInput = initialPromoCode.orEmpty(),
+            steps = if (locationFirst) LOCATION_FIRST else PACKAGE_FIRST,
+            // A saved place was tapped: the address is already chosen, so open on the package step.
+            step = if (locationFirst && initialLocationId == null) OrderStep.LOCATION else OrderStep.PACKAGE,
+        ),
+    )
     val state: StateFlow<NewOrderState> = _state.asStateFlow()
 
     private var quoteJob: Job? = null
@@ -192,16 +211,16 @@ class NewOrderViewModel(
             _state.update { it.copy(error = err) }
             return
         }
-        val nextStep = OrderStep.entries.getOrNull(s.step.ordinal + 1) ?: return
+        val nextStep = s.steps.getOrNull(s.steps.indexOf(s.step) + 1) ?: return
         _state.update { it.copy(step = nextStep, error = null) }
     }
 
     /** @return false when already at the first step (screen should close). */
     fun back(): Boolean {
         val s = _state.value
-        if (s.step == OrderStep.PACKAGE || s.placing) return s.placing
+        if (s.step == s.steps.first() || s.placing) return s.placing
         if (s.unsent && s.step == OrderStep.REVIEW) return false
-        _state.update { it.copy(step = OrderStep.entries[s.step.ordinal - 1], error = null) }
+        _state.update { it.copy(step = s.steps[s.steps.indexOf(s.step) - 1], error = null) }
         return true
     }
 
@@ -319,7 +338,7 @@ class NewOrderViewModel(
         viewModelScope.launch {
             repo.queue.discard(a.key)
             pending = null
-            _state.update { it.copy(unsent = false, error = null, step = OrderStep.PACKAGE) }
+            _state.update { it.copy(unsent = false, error = null, step = it.steps.first()) }
         }
     }
 

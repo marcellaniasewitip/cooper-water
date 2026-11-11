@@ -99,6 +99,32 @@ class NewOrderViewModelTest {
         waitUntil { vm.state.value.quotedPriceToea == 24_000L }
     }
 
+    @Test fun whereToStartsOnTheAddressThenGoesToThePackage() {
+        val vm = NewOrderViewModel(testRepository(server, tmp.root, 3), accountPhone = "+67571000001", locationFirst = true)
+        waitUntil { !vm.state.value.loading }
+        assertEquals(OrderStep.LOCATION, vm.state.value.step)
+        assertFalse(vm.back()) // first step: Back closes the screen
+        vm.next()
+        assertEquals(OrderStep.PACKAGE, vm.state.value.step)
+        vm.next()
+        assertEquals(OrderStep.PAYMENT, vm.state.value.step)
+        assertTrue(vm.back())
+        assertEquals(OrderStep.PACKAGE, vm.state.value.step)
+    }
+
+    @Test fun savedPlaceShortcutOpensOnThePackageWithTheAddressBehindIt() {
+        val vm = NewOrderViewModel(
+            testRepository(server, tmp.root, 3),
+            accountPhone = "+67571000001",
+            initialLocationId = "33333333-3333-3333-3333-333333333333",
+            locationFirst = true,
+        )
+        waitUntil { !vm.state.value.loading }
+        assertEquals(OrderStep.PACKAGE, vm.state.value.step)
+        assertTrue(vm.back()) // Back changes the address
+        assertEquals(OrderStep.LOCATION, vm.state.value.step)
+    }
+
     @Test fun cellMoneyNeedsANumber() {
         val vm = readyViewModel()
         vm.next() // package -> location
