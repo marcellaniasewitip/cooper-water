@@ -247,6 +247,15 @@ struct OffersScreen: View {
                 let o = try await session.customer.checkOffer(code)
                 use(o.code)
                 input = ""
+            } catch let e as APIError where e.code == "promo_is_referral" {
+                // A friend's Refer & Earn code: apply it as a referral instead.
+                do {
+                    let r = try await session.customer.applyReferral(code)
+                    input = ""
+                    message = "\(code) is a Refer & Earn code — applied! You and your friend each get \(Money.format(r.rewardToea)) in your wallet after your first completed order."
+                } catch {
+                    self.error = error.localizedDescription
+                }
             } catch {
                 self.error = error.localizedDescription
             }

@@ -281,6 +281,7 @@ private fun PromoField(state: NewOrderState, vm: NewOrderViewModel) {
         }
     }
     state.promoError?.let { Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+    state.promoInfo?.let { Text(it.asString(), color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodyMedium) }
 }
 
 @Composable

@@ -9,6 +9,7 @@ import com.cooperwaters.core.net.ApiResult
 import com.cooperwaters.core.net.AppliedPromo
 import com.cooperwaters.core.net.CreateOrderRequest
 import com.cooperwaters.core.net.QuoteRequest
+import com.cooperwaters.core.net.ReferralApplyRequest
 import com.cooperwaters.core.net.SavedLocation
 import com.cooperwaters.core.net.WaterPackage
 import com.cooperwaters.core.net.apiCall
@@ -56,6 +57,8 @@ data class NewOrderState(
     val discountToea: Long = 0,
     val promoChecking: Boolean = false,
     val promoError: UiText? = null,
+    /** Success note under the promo box (e.g. a Refer & Earn code was applied instead). */
+    val promoInfo: UiText? = null,
     val placing: Boolean = false,
     /** A previous "Place order" is saved but unconfirmed: retry it with the same Idempotency-Key. */
     val unsent: Boolean = false,
@@ -248,7 +251,7 @@ class NewOrderViewModel(
     }
 
     fun onPromoInput(v: String) {
-        if (!_state.value.locked) _state.update { it.copy(promoInput = v.uppercase().filter { c -> c.isLetterOrDigit() || c == '-' || c == '_' }.take(30), promoError = null) }
+        if (!_state.value.locked) _state.update { it.copy(promoInput = v.uppercase().filter { c -> c.isLetterOrDigit() || c == '-' || c == '_' }.take(30), promoError = null, promoInfo = null) }
     }
 
     /** Check the typed code against the current package/quantity (the server also checks it again when ordering). */
@@ -257,14 +260,33 @@ class NewOrderViewModel(
         val pkg = s.packageId ?: return
         val code = s.promoInput.trim()
         if (code.length < 3 || s.locked || s.promoChecking) return
-        _state.update { it.copy(promoChecking = true, promoError = null) }
+        _state.update { it.copy(promoChecking = true, promoError = null, promoInfo = null) }
         viewModelScope.launch {
             when (val r = apiCall { repo.api.quote(QuoteRequest(pkg, s.quantity, code)) }) {
                 is ApiResult.Success -> _state.update {
                     it.copy(promoChecking = false, appliedPromo = r.value.promo, discountToea = r.value.discountToea, quotedPriceToea = r.value.priceToea)
                 }
-                is ApiResult.Failure -> _state.update { it.copy(promoChecking = false, appliedPromo = null, discountToea = 0, promoError = r.error.toUiText()) }
+                is ApiResult.Failure ->
+                    if (r.error.code == "promo_is_referral") {
+                        applyAsReferral(code)
+                    } else {
+                        _state.update { it.copy(promoChecking = false, appliedPromo = null, discountToea = 0, promoError = r.error.toUiText()) }
+                    }
             }
+        }
+    }
+
+    /** A friend's Refer & Earn code was typed in the promo box: apply it as a referral (wallet credit after the first order). */
+    private suspend fun applyAsReferral(code: String) {
+        when (val r = apiCall { repo.api.applyReferral(ReferralApplyRequest(code)) }) {
+            is ApiResult.Success -> _state.update {
+                it.copy(
+                    promoChecking = false,
+                    promoInput = "",
+                    promoInfo = UiText.res(R.string.order_referral_applied, code.uppercase(), Money.format(r.value.rewardToea)),
+                )
+            }
+            is ApiResult.Failure -> _state.update { it.copy(promoChecking = false, promoError = r.error.toUiText()) }
         }
     }
 

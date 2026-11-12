@@ -34,6 +34,8 @@ final class NewOrderModel: ObservableObject {
     @Published var promoInput = ""
     @Published var appliedPromo: String?
     @Published var promoError: String?
+    /** Success note under the promo box (e.g. a Refer & Earn code was applied instead). */
+    @Published var promoInfo: String?
     @Published var promoChecking = false
     @Published var placing = false
     @Published var error: String?
@@ -112,9 +114,21 @@ final class NewOrderModel: ObservableObject {
         guard code.count >= 3, let pid = packageId else { return }
         promoChecking = true
         promoError = nil
+        promoInfo = nil
         do {
             quote = try await s.customer.quote(QuoteRequest(packageId: pid, quantity: quantity, promoCode: code))
             appliedPromo = quote?.promo?.code ?? code
+        } catch let e as APIError where e.code == "promo_is_referral" {
+            // A friend's Refer & Earn code: apply it as a referral (wallet credit after the first order).
+            do {
+                let r = try await s.customer.applyReferral(code)
+                promoInput = ""
+                promoInfo = "\(code) is a Refer & Earn code — applied! You and your friend each get \(Money.format(r.rewardToea)) in your wallet after your first completed order."
+            } catch {
+                promoError = error.localizedDescription
+            }
+            if PromoStore.selected == code { PromoStore.selected = nil }
+            await requestQuote(s)
         } catch {
             promoError = error.localizedDescription
             appliedPromo = nil
@@ -355,6 +369,7 @@ struct NewOrderScreen: View {
                 }
             }
             if let e = model.promoError { Text(e).font(.subheadline).foregroundColor(.cwRed) }
+            if let i = model.promoInfo { Text(i).font(.subheadline).foregroundColor(.cwGreen) }
             Text("You can cancel for free until a driver accepts.").font(.caption).foregroundColor(.secondary)
         }
     }
