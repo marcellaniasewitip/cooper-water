@@ -49,7 +49,14 @@ export class PromosService {
     const code = normalisePromoCode(codeInput);
     if (tx) await tx.$queryRaw`SELECT id FROM promo_codes WHERE code = ${code} FOR UPDATE`;
     const promo = await db.promoCode.findUnique({ where: { code } });
-    if (!promo || !promo.active) throw Errors.invalid('promo_not_found', 'This promo code is not valid');
+    if (!promo || !promo.active) {
+      // People often type a friend's Refer & Earn code (CW + 6 characters) here. Say so, so the app can apply
+      // it as a referral instead of showing a dead "not valid".
+      if (!promo && (await db.user.findFirst({ where: { referralCode: code }, select: { id: true } }))) {
+        throw Errors.invalid('promo_is_referral', 'This is a Refer & Earn code, not a promo code');
+      }
+      throw Errors.invalid('promo_not_found', 'This promo code is not valid');
+    }
     const now = new Date();
     if (promo.startsAt && promo.startsAt > now) throw Errors.invalid('promo_not_started', 'This promo code is not active yet');
     if (promo.expiresAt && promo.expiresAt <= now) throw Errors.invalid('promo_expired', 'This promo code has expired');

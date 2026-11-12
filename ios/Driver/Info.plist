@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key><string>en</string>
+	<key>CFBundleDisplayName</key><string>CW Driver</string>
+	<key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+	<key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key><true/>
+	<key>API_BASE_URL</key><string>$(API_BASE_URL)</string>
+	<key>GIT_SHA</key><string>$(GIT_SHA)</string>
+	<key>ITSAppUsesNonExemptEncryption</key><false/>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key><string>LaunchBackground</string>
+	</dict>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key><false/>
+	</dict>
+	<key>UISupportedInterfaceOrientations</key>
+	<array><string>UIInterfaceOrientationPortrait</string></array>
+	<key>UIRequiresFullScreen</key><true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key><true/>
+	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key><string>Your location is used to go online at a depot and to guide you to customers.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key><string>While you are online, your location is shared with Cooper Waters so customers can track their delivery and you receive nearby jobs.</string>
+	<key>NSCameraUsageDescription</key><string>The camera is used to photograph your documents, truck and proof of delivery.</string>
+	<key>NSPhotoLibraryUsageDescription</key><string>Choose photos of your documents, truck, receipts or proof of delivery.</string>
+	<key>UIBackgroundModes</key>
+	<array><string>location</string></array>
+</dict>
+</plist>

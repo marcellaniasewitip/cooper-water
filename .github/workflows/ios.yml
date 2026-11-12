@@ -1,0 +1,121 @@
+name: iOS apps
+
+# Builds the Cooper Waters iPhone apps (ios/) on a GitHub macOS runner:
+#  - every push / PR that touches ios/: CooperKit unit tests + a simulator build of both apps (compile check);
+#  - on main (or run by hand): signed App Store builds of both apps uploaded to TestFlight.
+#
+# One-time setup for TestFlight (see docs/ios.md):
+#   repo variable  APPLE_TEAM_ID         10-character Apple Developer Team ID
+#   repo secrets   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64 (App Store Connect API key, base64 of the .p8)
+#   App Store Connect: app records for com.cooperwaters.customer and com.cooperwaters.driver
+# The API address comes from the repo variable API_PUBLIC_URL (same as the Android test APKs).
+
+on:
+  push:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)"
+          xcodebuild -version
+      - name: XcodeGen
+        run: brew install xcodegen && xcodegen generate
+      - name: CooperKit unit tests
+        working-directory: ios/CooperKit
+        run: swift test
+      - name: Build both apps for the simulator
+        if: always()
+        run: |
+          for scheme in Customer Driver; do
+            xcodebuild -project CooperWaters.xcodeproj -scheme "$scheme" -configuration Debug \
+              -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build -quiet
+          done
+
+  testflight:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: ios
+    env:
+      TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+      API_BASE_URL: ${{ vars.API_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Apple setup
+        id: setup
+        run: |
+          if [ -z "$TEAM_ID" ] || [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8_BASE64" ]; then
+            echo "::warning::TestFlight upload skipped: set APPLE_TEAM_ID (variable) and ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64 (secrets). See docs/ios.md."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$API_BASE_URL" ]; then
+            echo "::error::Repo variable API_PUBLIC_URL is empty; the apps would not reach the server."
+            exit 1
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Xcode
+        if: steps.setup.outputs.ready == 'true'
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)"
+      - name: XcodeGen
+        if: steps.setup.outputs.ready == 'true'
+        run: brew install xcodegen && xcodegen generate
+      - name: App Store Connect key
+        if: steps.setup.outputs.ready == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/asc"
+          echo "$ASC_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/asc/AuthKey.p8"
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          EOF
+      - name: Archive and upload to TestFlight
+        if: steps.setup.outputs.ready == 'true'
+        run: |
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          # Build numbers must always go up: 1000 + the workflow run number.
+          BUILD=$((1000 + ${{ github.run_number }}))
+          for scheme in Customer Driver; do
+            xcodebuild -project CooperWaters.xcodeproj -scheme "$scheme" -configuration Release \
+              -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/$scheme.xcarchive" \
+              DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="$BUILD" API_BASE_URL="$API_BASE_URL" GIT_SHA="${GITHUB_SHA::7}" \
+              "${AUTH[@]}" archive -quiet
+            xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/$scheme.xcarchive" \
+              -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export-$scheme" "${AUTH[@]}"
+            echo "::notice::$scheme build $BUILD uploaded to App Store Connect (TestFlight processing takes ~10-30 min)."
+          done
+      - name: Clean up key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/asc"

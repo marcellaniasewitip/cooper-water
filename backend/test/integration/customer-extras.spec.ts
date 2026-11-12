@@ -145,6 +145,19 @@ describe('customer wallet, offers, referrals, inbox and chat (integration)', () 
     expect((await h.http().get('/api/v1/customer/referral').set(bearer(referrer.token))).body).toMatchObject({ invitedCount: 1, rewardedCount: 1, earnedToea: 1000 });
   });
 
+  it('a Refer & Earn code typed in the promo box is recognised (not "not valid")', async () => {
+    const referrer = await customer(h);
+    const friend = await customer(h);
+    const code = (await h.http().get('/api/v1/customer/referral').set(bearer(referrer.token)).expect(200)).body.code;
+    const check = await h.http().post('/api/v1/customer/offers/check').set(bearer(friend.token)).send({ code });
+    expect(check.status).toBe(422);
+    expect(check.body.error.code).toBe('promo_is_referral');
+    const quote = await h.http().post('/api/v1/customer/quote').set(bearer(friend.token)).send({ packageId: pkgId, quantity: 1, promoCode: code });
+    expect(quote.body.error.code).toBe('promo_is_referral');
+    // The app then applies it as a referral.
+    await h.http().post('/api/v1/customer/referral/apply').set(bearer(friend.token)).send({ code }).expect(200);
+  });
+
   it('inbox lists the customer’s notifications, newest first', async () => {
     const c = await customer(h);
     await topUp(c.token, 5000);

@@ -14,6 +14,7 @@ import okhttp3.mockwebserver.RecordedRequest
 import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -43,9 +44,15 @@ class NewOrderViewModelTest {
                     path.endsWith("/customer/packages") -> json(Fixtures.PACKAGES)
                     path.endsWith("/customer/locations") -> json(Fixtures.LOCATIONS)
                     path.endsWith("/customer/quote") -> {
-                        val qty = Regex("\"quantity\":(\\d+)").find(request.body.readUtf8())!!.groupValues[1].toInt()
-                        json(Fixtures.quote(qty, 8000))
+                        val body = request.body.readUtf8()
+                        if (body.contains("CWFRIEND")) {
+                            MockResponse().setResponseCode(422).setBody("""{"error":{"code":"promo_is_referral","message":"This is a Refer & Earn code, not a promo code"}}""")
+                        } else {
+                            val qty = Regex("\"quantity\":(\\d+)").find(body)!!.groupValues[1].toInt()
+                            json(Fixtures.quote(qty, 8000))
+                        }
                     }
+                    path.endsWith("/customer/referral/apply") -> json("""{"enabled":true,"code":"CWMINE1","rewardToea":1000,"referredByCode":"CWFRIEND","canApplyCode":false}""")
                     path.endsWith("/customer/orders") && request.method == "POST" -> {
                         orderKeys += request.getHeader("Idempotency-Key").orEmpty()
                         orderBodies += request.body.readUtf8()
@@ -123,6 +130,19 @@ class NewOrderViewModelTest {
         assertEquals(OrderStep.PACKAGE, vm.state.value.step)
         assertTrue(vm.back()) // Back changes the address
         assertEquals(OrderStep.LOCATION, vm.state.value.step)
+    }
+
+    @Test fun referralCodeInThePromoBoxIsAppliedAsAReferral() {
+        val vm = readyViewModel()
+        vm.onPromoInput("cwfriend")
+        vm.applyPromo()
+        waitUntil { !vm.state.value.promoChecking && vm.state.value.promoInfo != null }
+        val s = vm.state.value
+        assertNull(s.promoError)
+        assertNull(s.appliedPromo)
+        assertEquals("", s.promoInput)
+        val info = s.promoInfo as UiText.Res
+        assertEquals(listOf<Any>("CWFRIEND", "K10.00"), info.args)
     }
 
     @Test fun cellMoneyNeedsANumber() {

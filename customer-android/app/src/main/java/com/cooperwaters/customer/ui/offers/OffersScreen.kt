@@ -37,6 +37,7 @@ import com.cooperwaters.core.money.Money
 import com.cooperwaters.core.net.ApiResult
 import com.cooperwaters.core.net.CustomerApi
 import com.cooperwaters.core.net.PromoCheckRequest
+import com.cooperwaters.core.net.ReferralApplyRequest
 import com.cooperwaters.core.net.PromoOffer
 import com.cooperwaters.core.net.apiCall
 import com.cooperwaters.core.time.PomTime
@@ -88,7 +89,18 @@ class OffersViewModel(private val api: CustomerApi, private val store: PromoStor
                     store.selected = r.value.code
                     _ui.update { it.copy(checking = false, input = "", selected = r.value.code, message = UiText.res(R.string.offers_saved, r.value.code)) }
                 }
-                is ApiResult.Failure -> _ui.update { it.copy(checking = false, error = r.error.toUiText()) }
+                is ApiResult.Failure ->
+                    if (r.error.code == "promo_is_referral") {
+                        // A friend's Refer & Earn code: apply it as a referral instead.
+                        when (val ref = apiCall { api.applyReferral(ReferralApplyRequest(code)) }) {
+                            is ApiResult.Success -> _ui.update {
+                                it.copy(checking = false, input = "", message = UiText.res(R.string.order_referral_applied, code.uppercase(), Money.format(ref.value.rewardToea)))
+                            }
+                            is ApiResult.Failure -> _ui.update { it.copy(checking = false, error = ref.error.toUiText()) }
+                        }
+                    } else {
+                        _ui.update { it.copy(checking = false, error = r.error.toUiText()) }
+                    }
             }
         }
     }
