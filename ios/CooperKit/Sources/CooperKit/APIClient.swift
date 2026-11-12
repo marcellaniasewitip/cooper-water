@@ -109,11 +109,16 @@ public final class APIClient {
     // MARK: Auth (no bearer)
 
     public func requestOtp(phone: String) async throws -> OtpRequestResponse {
-        try await raw("POST", "auth/otp/request", body: OtpRequest(phone: phone), authorized: false)
+        guard let r: OtpRequestResponse = try await raw("POST", "auth/otp/request", body: OtpRequest(phone: phone), authorized: false) else {
+            throw APIError(kind: .parse, status: 200, code: "empty", serverMessage: nil)
+        }
+        return r
     }
 
     public func verifyOtp(phone: String, code: String, app: String, name: String?) async throws -> AuthResponse {
-        let r: AuthResponse = try await raw("POST", "auth/otp/verify", body: OtpVerifyRequest(phone: phone, code: code, app: app, name: name), authorized: false)
+        guard let r: AuthResponse = try await raw("POST", "auth/otp/verify", body: OtpVerifyRequest(phone: phone, code: code, app: app, name: name), authorized: false) else {
+            throw APIError(kind: .parse, status: 200, code: "empty", serverMessage: nil)
+        }
         tokens.save(access: r.accessToken, refresh: r.refreshToken)
         tokens.saveUser(r.user)
         return r

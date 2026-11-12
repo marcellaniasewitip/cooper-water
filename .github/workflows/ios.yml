@@ -43,6 +43,7 @@ jobs:
         working-directory: ios/CooperKit
         run: swift test
       - name: Build both apps for the simulator
+        if: always()
         run: |
           for scheme in Customer Driver; do
             xcodebuild -project CooperWaters.xcodeproj -scheme "$scheme" -configuration Debug \
