@@ -1,0 +1,5 @@
+CooperWaters.xcodeproj/
+.build/
+CooperKit/.build/
+CooperKit/.swiftpm/
+DerivedData/

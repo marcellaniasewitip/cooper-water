@@ -1,0 +1,51 @@
+# Xcode project for the Cooper Waters iPhone apps. Generate with `xcodegen generate` (CI does this).
+name: CooperWaters
+options:
+  bundleIdPrefix: com.cooperwaters
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1"
+    # Overridden by CI with the live API (repo variable API_PUBLIC_URL).
+    API_BASE_URL: "http://localhost:3100"
+    ENABLE_PREVIEWS: YES
+    GIT_SHA: dev
+packages:
+  CooperKit:
+    path: CooperKit
+targets:
+  Customer:
+    type: application
+    platform: iOS
+    sources: [Customer]
+    dependencies:
+      - package: CooperKit
+    scheme: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cooperwaters.customer
+        PRODUCT_NAME: CooperWaters
+        INFOPLIST_FILE: Customer/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+  Driver:
+    type: application
+    platform: iOS
+    sources: [Driver]
+    dependencies:
+      - package: CooperKit
+    scheme: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cooperwaters.driver
+        PRODUCT_NAME: CooperWatersDriver
+        INFOPLIST_FILE: Driver/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
