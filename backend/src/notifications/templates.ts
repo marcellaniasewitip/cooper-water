@@ -155,6 +155,12 @@ export const DEFAULT_TEMPLATES: TemplateDef[] = [
     critical: true,
   },
   {
+    key: 'wallet.adjusted',
+    pushTitle: 'Wallet updated',
+    pushBody: '{{amount}} {{direction}} your wallet by Cooper Waters: {{reason}}. New balance {{balance}}.',
+    critical: false,
+  },
+  {
     key: 'payout.paid',
     pushTitle: 'Withdrawal paid',
     pushBody: '{{amount}} has been paid out to you.',

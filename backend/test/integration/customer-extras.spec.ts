@@ -66,6 +66,27 @@ describe('customer wallet, offers, referrals, inbox and chat (integration)', () 
     expect(entries.body.items.map((e: any) => e.type)).toEqual(['refund', 'order_payment', 'topup']);
   });
 
+  it('admins can see a customer wallet and top it up / deduct from it; the customer is notified', async () => {
+    const c = await customer(h);
+    const admin = await adminLogin(h);
+    const detail = (await h.http().get(`/api/v1/admin/customers/${c.userId}`).set(bearer(admin)).expect(200)).body;
+    expect(detail.wallet).toMatchObject({ balanceToea: 0 });
+    const adjust = (amountToea: number, reason: string) =>
+      h.http().post(`/api/v1/admin/wallets/${detail.wallet.id}/adjustments`).set(bearer(admin)).set('Idempotency-Key', idem()).send({ amountToea, reason });
+    await adjust(5000, 'Cash received at office, receipt 77').expect(201);
+    await adjust(-1000, 'Correction').expect(201);
+    expect((await h.http().get('/api/v1/customer/wallet').set(bearer(c.token)).expect(200)).body.balanceToea).toBe(4000);
+    const inbox = (await h.http().get('/api/v1/customer/inbox').set(bearer(c.token)).expect(200)).body.items;
+    expect(inbox.map((i: any) => i.template)).toEqual(['wallet.adjusted', 'wallet.adjusted']);
+    expect(inbox[1].body).toContain('K50.00 was added to your wallet');
+    const entries = (await h.http().get(`/api/v1/admin/wallets/${detail.wallet.id}/entries`).set(bearer(admin)).expect(200)).body.items;
+    expect(entries).toHaveLength(2);
+    // Can pay for an order with it.
+    const paid = await order(c.token, { paymentMethod: 'wallet' });
+    expect(paid.status).toBe(422); // K300 package > K40 balance
+    expect(paid.body.error.code).toBe('wallet_insufficient');
+  });
+
   it('drivers can top up by cash too (admin approves)', async () => {
     const d = await approvedDriver(h, { balanceToea: 0, online: false });
     const t = await h.http().post('/api/v1/driver/wallet/topups').set(bearer(d.token)).set('Idempotency-Key', idem()).send({ method: 'cash', amountToea: 5000, referenceText: 'RCPT-9' }).expect(201);

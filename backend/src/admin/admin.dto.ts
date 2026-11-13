@@ -198,6 +198,12 @@ export class AdjustmentDto {
   @IsString()
   @Length(3, 300)
   reason: string;
+
+  /** Deduct this withdrawal (payout) from the driver's wallet: amountToea must be minus its amount. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  payoutId?: string;
 }
 
 export class PayoutActionDto {

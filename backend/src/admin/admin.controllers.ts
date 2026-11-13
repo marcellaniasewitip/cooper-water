@@ -439,7 +439,7 @@ export class AdminMoneyController {
   @RequirePermissions('wallet.adjust')
   adjust(@CurrentAdmin() a: AdminPrincipal, @Param('walletId', ParseUUIDPipe) walletId: string, @Body() dto: AdjustmentDto, @IdempotencyKey() key: string, @Ip() ip: string) {
     if (dto.amountToea === 0) throw Errors.invalid('zero_amount', 'Amount cannot be zero');
-    return this.wallet.adjust(a.id, walletId, dto.amountToea, dto.reason, key, ip);
+    return this.wallet.adjust(a.id, walletId, dto.amountToea, dto.reason, key, ip, dto.payoutId);
   }
 
   // Cell money transactions & reconciliation (§10)

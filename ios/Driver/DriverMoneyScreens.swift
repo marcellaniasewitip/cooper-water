@@ -22,6 +22,9 @@ struct DriverWalletScreen: View {
                         Text("You can take jobs (minimum \(Money.format(summary?.minBalanceToea))).").font(.subheadline).foregroundColor(.cwGreen)
                     }
                     if let w = summary?.withdrawableToea { Text("Available to withdraw: \(Money.format(w))").font(.caption).foregroundColor(.secondary) }
+                    if let p = summary?.pendingPayouts, (p.count ?? 0) > 0 {
+                        Text("Withdrawals waiting (\(p.count ?? 0)): \(Money.format(p.amountToea))").font(.caption).foregroundColor(.orange)
+                    }
                 }
                 HStack {
                     Button { router.go(.topup) } label: { Label("Top up", systemImage: "plus.circle.fill") }.buttonStyle(.borderedProminent)
@@ -189,12 +192,13 @@ struct WithdrawScreen: View {
             if let done {
                 Section {
                     Text("Withdrawal of \(Money.format(done.amountToea)) requested.").font(.headline)
-                    Text("Cooper Waters will send it to \(done.destination ?? "") shortly.")
+                    Text("Cooper Waters will send it to \(done.destination ?? ""). Your balance stays the same until it's paid and deducted.")
                     PrimaryButton("Back to wallet") { router.back() }.listRowInsets(EdgeInsets())
                 }
             } else {
-                Section {
+                Section(footer: Text("Nothing is taken from your wallet now: Cooper Waters pays you, then deducts it from your wallet.")) {
                     LabelValue("Available", Money.format(summary?.withdrawableToea))
+                    if let p = summary?.pendingPayouts, (p.count ?? 0) > 0 { LabelValue("Already requested", Money.format(p.amountToea)) }
                     if let m = summary?.payoutMinToea { LabelValue("Minimum", Money.format(m)) }
                 }
                 Section {

@@ -7,6 +7,8 @@ import { api } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { ActionModal } from '@/components/ActionModal';
 import { InfoGrid } from '@/components/InfoGrid';
+import { LedgerTable, WalletAdjustModal } from '@/components/Ledger';
+import { Money } from '@/components/Money';
 import { MapBase } from '@/components/MapBase';
 import { PageHeader } from '@/components/PageHeader';
 import { Empty, QueryState } from '@/components/QueryState';
@@ -20,6 +22,7 @@ export default function CustomerDetailPage() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['customer', id], queryFn: () => api.customers.get(id) });
   const [modal, setModal] = useState(false);
+  const [adjust, setAdjust] = useState(false);
   const c = q.data;
   const suspended = c?.status === 'suspended';
 
@@ -118,7 +121,28 @@ export default function CustomerDetailPage() {
                 )}
               </Card>
             </Grid.Col>
+            {c.wallet && can('wallet.view') && (
+              <Grid.Col span={12}>
+                <Card withBorder data-testid="customer-wallet">
+                  <Group justify="space-between" mb="sm" align="flex-start">
+                    <div>
+                      <Title order={5}>{m.wallet.customerTitle}</Title>
+                      <Money toea={c.wallet.balanceToea} fz={28} fw={700} />
+                    </div>
+                    {can('wallet.adjust') && (
+                      <Button variant="light" onClick={() => setAdjust(true)} data-testid="customer-wallet-adjust">
+                        {m.wallet.adjust}
+                      </Button>
+                    )}
+                  </Group>
+                  <LedgerTable walletId={c.wallet.id} />
+                </Card>
+              </Grid.Col>
+            )}
           </Grid>
+          {adjust && c.wallet && (
+            <WalletAdjustModal walletId={c.wallet.id} opened onClose={() => setAdjust(false)} invalidate={[['customer', id], ['customers']]} />
+          )}
           <ActionModal
             opened={modal}
             onClose={() => setModal(false)}

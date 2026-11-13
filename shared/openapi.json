@@ -5453,6 +5453,10 @@
       "AdjustmentDto": {
         "type": "object",
         "properties": {
+          "payoutId": {
+            "type": "string",
+            "description": "Deduct this withdrawal (payout) from the driver's wallet: amountToea must be minus its amount."
+          },
           "amountToea": {
             "type": "number",
             "description": "Signed toea: positive credits the wallet, negative debits it."

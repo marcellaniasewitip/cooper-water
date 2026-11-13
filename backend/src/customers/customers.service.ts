@@ -80,6 +80,12 @@ export class CustomersService {
     const u = await this.prisma.user.findFirst({ where: { id, role: 'customer' }, include: { locations: { where: { deletedAt: null } } } });
     if (!u) throw Errors.notFound('Customer');
     const stats = await this.prisma.order.groupBy({ by: ['status'], where: { customerId: id }, _count: true });
+    // Customer wallet (created on first use), so admins can see the balance and top up / deduct.
+    const wallet = await this.prisma.wallet.upsert({
+      where: { ownerType_ownerId: { ownerType: 'customer', ownerId: id } },
+      create: { ownerType: 'customer', ownerId: id },
+      update: {},
+    });
     return {
       id: u.id,
       phone: u.phone,
@@ -89,6 +95,7 @@ export class CustomersService {
       phoneVerifiedAt: u.phoneVerifiedAt,
       locations: u.locations,
       orderCounts: Object.fromEntries(stats.map((s) => [s.status, s._count])),
+      wallet: { id: wallet.id, balanceToea: wallet.balanceToea },
     };
   }
 

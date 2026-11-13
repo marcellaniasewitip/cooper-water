@@ -235,23 +235,63 @@ describe('payments, wallets & refunds (integration)', () => {
     expect(await h.prisma.auditLog.count({ where: { action: 'topup.approve' } })).toBe(1);
   });
 
-  it('withdrawals: limited to balance above the minimum, reserved at request, returned on reject', async () => {
+  it('withdrawals: nothing is deducted at request; an admin deducts it manually from the wallet, once', async () => {
     const d = await approvedDriver(h, { balanceToea: 20000, online: false });
-    const tooMuch = await h.http().post('/api/v1/driver/wallet/withdrawals').set(bearer(d.token)).set('Idempotency-Key', idem()).send({ amountToea: 15001, method: 'cellmoney', destination: '+67571234567' });
+    const send = (amountToea: number, extra: Record<string, unknown> = {}) =>
+      h.http().post('/api/v1/driver/wallet/withdrawals').set(bearer(d.token)).set('Idempotency-Key', idem()).send({ amountToea, method: 'cellmoney', destination: '+67571234567', ...extra });
+
+    const tooMuch = await send(15001);
     expect(tooMuch.status).toBe(422);
     expect(tooMuch.body.error.code).toBe('insufficient_balance');
-    const ok = await h.http().post('/api/v1/driver/wallet/withdrawals').set(bearer(d.token)).set('Idempotency-Key', idem()).send({ amountToea: 15000, method: 'cellmoney', destination: '+67571234567' });
+    const ok = await send(10000);
     expect(ok.status).toBe(201);
-    expect(await walletBalance(h, 'driver', d.driverId)).toBe(5000);
-    const finance = await adminLogin(h, 'finance');
-    await h.http().post(`/api/v1/admin/payouts/${ok.body.id}/paid`).set(bearer(finance)).send({}).expect(422); // ref required
-    await h.http().post(`/api/v1/admin/payouts/${ok.body.id}/reject`).set(bearer(finance)).send({ notes: 'Wrong number' }).expect(200);
+    // Not deducted: the balance stays until an admin deducts it.
     expect(await walletBalance(h, 'driver', d.driverId)).toBe(20000);
+    const summary = (await h.http().get('/api/v1/driver/wallet').set(bearer(d.token)).expect(200)).body;
+    expect(summary).toMatchObject({ balanceToea: 20000, withdrawableToea: 5000, pendingPayouts: { count: 1, amountToea: 10000 } });
+    // The waiting request still counts: can't request the same money twice.
+    expect((await send(6000)).body.error.code).toBe('insufficient_balance');
 
-    const again = await h.http().post('/api/v1/driver/wallet/withdrawals').set(bearer(d.token)).set('Idempotency-Key', idem()).send({ amountToea: 10000, method: 'bank_transfer', destination: 'BSP 1234567' });
-    await h.http().post(`/api/v1/admin/payouts/${again.body.id}/paid`).set(bearer(finance)).send({ externalRef: 'BSP-TX-77' }).expect(200);
+    const finance = await adminLogin(h, 'finance');
+    const queue = (await h.http().get('/api/v1/admin/payouts?status=requested').set(bearer(finance)).expect(200)).body.items;
+    expect(queue[0]).toMatchObject({ id: ok.body.id, deducted: false, walletBalanceToea: 20000 });
+    const walletId = queue[0].walletId;
+
+    // Approve with a note (the admin dashboard flow), then pay.
+    await h.http().post(`/api/v1/admin/payouts/${ok.body.id}/approve`).set(bearer(finance)).send({ notes: 'Checked with driver' }).expect(200);
+    await h.http().post(`/api/v1/admin/payouts/${ok.body.id}/paid`).set(bearer(finance)).send({}).expect(422); // ref required
+    await h.http().post(`/api/v1/admin/payouts/${ok.body.id}/paid`).set(bearer(finance)).send({ externalRef: 'MP-TX-77' }).expect(200);
+    expect(await walletBalance(h, 'driver', d.driverId)).toBe(20000); // still manual
+
+    // Manual deduction from the driver's wallet, linked to the withdrawal.
+    const adjust = (body: Record<string, unknown>) => h.http().post(`/api/v1/admin/wallets/${walletId}/adjustments`).set(bearer(finance)).set('Idempotency-Key', idem()).send(body);
+    expect((await adjust({ amountToea: -5000, reason: 'Withdrawal paid MP-TX-77', payoutId: ok.body.id })).body.error.code).toBe('payout_amount_mismatch');
+    await adjust({ amountToea: -10000, reason: 'Withdrawal paid MP-TX-77', payoutId: ok.body.id }).expect(201);
     expect(await walletBalance(h, 'driver', d.driverId)).toBe(10000);
+    expect((await adjust({ amountToea: -10000, reason: 'Again', payoutId: ok.body.id })).body.error.code).toBe('payout_already_deducted');
+    const paid = (await h.http().get('/api/v1/admin/payouts?status=paid').set(bearer(finance)).expect(200)).body.items;
+    expect(paid[0]).toMatchObject({ deducted: true, notes: 'Checked with driver' });
+    expect((await h.http().get('/api/v1/driver/wallet').set(bearer(d.token))).body).toMatchObject({ withdrawableToea: 5000, pendingPayouts: { count: 0 } });
     expect(await h.prisma.payment.count({ where: { purpose: 'payout', status: 'succeeded' } })).toBe(1);
+
+    // Rejecting a request that was never deducted gives nothing back (nothing was taken).
+    const other = await send(3000);
+    await h.http().post(`/api/v1/admin/payouts/${other.body.id}/reject`).set(bearer(finance)).send({ notes: 'Wrong number' }).expect(200);
+    expect(await walletBalance(h, 'driver', d.driverId)).toBe(10000);
+    expect((await adjust({ amountToea: -3000, reason: 'Rejected one', payoutId: other.body.id })).body.error.code).toBe('payout_state');
+  });
+
+  it('withdrawals made before this change (already deducted) are returned when rejected', async () => {
+    const d = await approvedDriver(h, { balanceToea: 20000, online: false });
+    const ok = await h.http().post('/api/v1/driver/wallet/withdrawals').set(bearer(d.token)).set('Idempotency-Key', idem()).send({ amountToea: 8000, method: 'cellmoney', destination: '+67571234567' }).expect(201);
+    // Simulate the old automatic deduction.
+    const w = await h.prisma.wallet.findUniqueOrThrow({ where: { ownerType_ownerId: { ownerType: 'driver', ownerId: d.driverId } } });
+    await h.prisma.ledgerEntry.create({ data: { walletId: w.id, amountToea: -8000, balanceAfter: 12000, type: 'payout', referenceType: 'payout', referenceId: ok.body.id, idempotencyKey: `payout:${ok.body.id}`, createdBy: 'test' } });
+    await h.prisma.wallet.update({ where: { id: w.id }, data: { balanceToea: 12000 } });
+    expect((await h.http().get('/api/v1/driver/wallet').set(bearer(d.token))).body).toMatchObject({ withdrawableToea: 7000, pendingPayouts: { count: 0 } });
+    const finance = await adminLogin(h, 'finance');
+    await h.http().post(`/api/v1/admin/payouts/${ok.body.id}/reject`).set(bearer(finance)).send({ notes: 'Duplicate' }).expect(200);
+    expect(await walletBalance(h, 'driver', d.driverId)).toBe(20000);
   });
 
   it('dispute resolved for the customer after delivery: refund + clawback from the driver', async () => {

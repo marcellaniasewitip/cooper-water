@@ -37,6 +37,8 @@ export class WalletService {
       _sum: { amountToea: true },
       _count: true,
     });
+    const pendingPayouts = await this.undeductedPayouts(driverId);
+    const pendingPayoutsToea = pendingPayouts.reduce((s, p) => s + p.amountToea, 0);
     return {
       walletId: wallet.id,
       balanceToea: wallet.balanceToea,
@@ -44,9 +46,12 @@ export class WalletService {
       blocked: wallet.balanceToea < min,
       /** Needed to reach the minimum and take jobs again. */
       shortfallToea: Math.max(0, min - wallet.balanceToea),
-      withdrawableToea: Math.max(0, wallet.balanceToea - min),
+      /** Balance above the minimum, less withdrawals already requested but not yet deducted. */
+      withdrawableToea: Math.max(0, wallet.balanceToea - min - pendingPayoutsToea),
       payoutMinToea: payoutMin,
       pendingTopups: { count: pendingTopups._count, amountToea: pendingTopups._sum.amountToea ?? 0 },
+      /** Withdrawals waiting for Cooper Waters (not yet deducted from the balance). */
+      pendingPayouts: { count: pendingPayouts.length, amountToea: pendingPayoutsToea },
     };
   }
 
@@ -251,34 +256,51 @@ export class WalletService {
 
   // ───────────── Payouts (§8.3, manual in MVP) ─────────────
 
-  /** Withdrawal of balance above the minimum. Funds are reserved (payout entry) at request time. */
+  /**
+   * Withdrawals that still count against the balance: requested, approved or paid, and not yet deducted
+   * from the wallet. The deduction is a ledger entry with key `payout:<id>`, posted by an admin from the
+   * driver's wallet (older withdrawals were deducted automatically at request time, with the same key).
+   */
+  async undeductedPayouts(driverId: string, db: Tx | PrismaService = this.prisma) {
+    const open = await db.payout.findMany({ where: { driverId, status: { in: ['requested', 'approved', 'paid'] } }, select: { id: true, amountToea: true, status: true } });
+    if (open.length === 0) return [];
+    const deducted = await this.deductedPayoutIds(open.map((p) => p.id), db);
+    return open.filter((p) => !deducted.has(p.id));
+  }
+
+  /** Which of these payouts have been deducted from the driver's wallet. */
+  async deductedPayoutIds(ids: string[], db: Tx | PrismaService = this.prisma): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+    const rows = await db.ledgerEntry.findMany({ where: { idempotencyKey: { in: ids.map((id) => `payout:${id}`) } }, select: { idempotencyKey: true } });
+    return new Set(rows.map((r) => r.idempotencyKey.slice('payout:'.length)));
+  }
+
+  /**
+   * Withdrawal request. Nothing is deducted now: the request waits in the admin payout queue, and an admin
+   * deducts it manually from the driver's wallet when paying. The amount must fit in the balance above the
+   * minimum, less other withdrawals still waiting to be deducted.
+   */
   async requestPayout(driverId: string, dto: { amountToea: number; method: string; destination: string }, idempotencyKey: string) {
     const existing = await this.prisma.payout.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
     const [min, payoutMin] = await Promise.all([this.settings.get('wallet.min_balance_toea'), this.settings.get('payout.min_toea')]);
     if (dto.amountToea < payoutMin) throw Errors.invalid('payout_too_small', `The minimum withdrawal is ${formatKina(payoutMin)}`);
-    return this.prisma.tx(async (tx) => {
+    const payout = await this.prisma.tx(async (tx) => {
       const wallet = await this.ledger.driverWallet(driverId, tx);
+      // Lock the wallet so two requests at once can't both pass the check.
       const locked = await this.ledger.lockWallet(tx, wallet.id);
-      const available = locked.balanceToea - min;
+      const pending = (await this.undeductedPayouts(driverId, tx)).reduce((s, p) => s + p.amountToea, 0);
+      const available = locked.balanceToea - min - pending;
       if (dto.amountToea > available) {
-        throw Errors.invalid('insufficient_balance', `You can withdraw up to ${formatKina(Math.max(0, available))} (your balance above the ${formatKina(min)} minimum)`);
+        const why = pending > 0 ? ` (your balance above the ${formatKina(min)} minimum, less ${formatKina(pending)} already requested)` : ` (your balance above the ${formatKina(min)} minimum)`;
+        throw Errors.invalid('insufficient_balance', `You can withdraw up to ${formatKina(Math.max(0, available))}${why}`);
       }
-      const payout = await tx.payout.create({
+      return tx.payout.create({
         data: { driverId, amountToea: dto.amountToea, method: dto.method, destination: dto.destination, idempotencyKey },
       });
-      await this.ledger.post(tx, {
-        walletId: wallet.id,
-        amountToea: -dto.amountToea,
-        type: 'payout',
-        referenceType: 'payout',
-        referenceId: payout.id,
-        idempotencyKey: `payout:${payout.id}`,
-        createdBy: `driver:${driverId}`,
-        description: `Withdrawal to ${dto.method}`,
-      });
-      return payout;
     });
+    this.realtime.toAdmins('payout.requested', { payoutId: payout.id, driverId, amountToea: payout.amountToea });
+    return payout;
   }
 
   async listPayouts(where: Prisma.PayoutWhereInput, q: CursorQuery) {
@@ -289,7 +311,19 @@ export class WalletService {
       take: limit + 1,
       include: { driver: { include: { user: { select: { name: true, phone: true } } } } },
     });
-    return toPage(rows, limit);
+    const page = toPage(rows, limit);
+    const deducted = await this.deductedPayoutIds(page.items.map((p) => p.id));
+    const wallets = await this.prisma.wallet.findMany({
+      where: { ownerType: 'driver', ownerId: { in: [...new Set(page.items.map((p) => p.driverId))] } },
+      select: { id: true, ownerId: true, balanceToea: true },
+    });
+    return {
+      items: page.items.map((p) => {
+        const w = wallets.find((x) => x.ownerId === p.driverId);
+        return { ...p, deducted: deducted.has(p.id), walletId: w?.id ?? null, walletBalanceToea: w?.balanceToea ?? null };
+      }),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async processPayout(adminId: string, payoutId: string, action: 'approve' | 'paid' | 'reject', body: { externalRef?: string; notes?: string }, ip: string | null) {
@@ -305,7 +339,8 @@ export class WalletService {
         where: { id: p.id },
         data: { status, processedBy: adminId, processedAt: new Date(), externalRef: body.externalRef ?? p.externalRef, notes: body.notes ?? p.notes },
       });
-      if (action === 'reject') {
+      // Only give money back if it was actually taken out (older requests, or deducted before rejecting).
+      if (action === 'reject' && (await this.deductedPayoutIds([p.id], tx)).has(p.id)) {
         const wallet = await this.ledger.driverWallet(p.driverId, tx);
         await this.ledger.post(tx, {
           walletId: wallet.id,
@@ -350,7 +385,39 @@ export class WalletService {
 
   // ───────────── Admin adjustments ─────────────
 
-  async adjust(adminId: string, walletId: string, amountToea: number, reason: string, idempotencyKey: string, ip: string | null) {
+  async adjust(adminId: string, walletId: string, amountToea: number, reason: string, idempotencyKey: string, ip: string | null, payoutId?: string) {
+    const entry = payoutId ? await this.deductPayout(adminId, walletId, payoutId, amountToea, reason, ip) : await this.postAdjustment(adminId, walletId, amountToea, reason, idempotencyKey, ip);
+    await this.afterAdjust(walletId, entry.amountToea, reason, entry.createdAt);
+    return entry;
+  }
+
+  /** Tell the customer or driver: live balance update in the app plus a notification (top-up or deduction). */
+  private async afterAdjust(walletId: string, amountToea: number, reason: string, at: Date) {
+    // Only for a fresh entry (an idempotent replay returns an older one).
+    if (Date.now() - at.getTime() > 60_000) return;
+    const w = await this.prisma.wallet.findUnique({ where: { id: walletId } });
+    if (!w) return;
+    let userId: string | null = null;
+    let payload: Record<string, unknown> = { balanceToea: w.balanceToea };
+    if (w.ownerType === 'customer') {
+      userId = w.ownerId;
+    } else if (w.ownerType === 'driver') {
+      const driver = await this.prisma.driver.findUnique({ where: { id: w.ownerId } });
+      const min = await this.settings.get('wallet.min_balance_toea');
+      userId = driver?.userId ?? null;
+      payload = { balanceToea: w.balanceToea, minBalanceToea: min, blocked: w.balanceToea < min };
+    }
+    if (!userId) return;
+    this.realtime.toUser(userId, 'wallet.updated', payload);
+    await this.notifications.notify(userId, 'wallet.adjusted', {
+      amount: formatKina(Math.abs(amountToea)),
+      direction: amountToea >= 0 ? 'was added to' : 'was deducted from',
+      reason,
+      balance: formatKina(w.balanceToea),
+    });
+  }
+
+  private async postAdjustment(adminId: string, walletId: string, amountToea: number, reason: string, idempotencyKey: string, ip: string | null) {
     return this.prisma.tx(async (tx) => {
       const { entry, created } = await this.ledger.post(tx, {
         walletId,
@@ -365,6 +432,35 @@ export class WalletService {
       if (created) {
         await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'wallet.adjust', entity: 'wallet', entityId: walletId, after: entry, ip }, tx);
       }
+      return entry;
+    });
+  }
+
+  /**
+   * Manual deduction of a withdrawal from the driver's wallet (admin → driver → Wallet, "Deduct" on the
+   * payout). Linked to the payout with key `payout:<id>`, so the same withdrawal can never be deducted twice.
+   */
+  private async deductPayout(adminId: string, walletId: string, payoutId: string, amountToea: number, reason: string, ip: string | null) {
+    return this.prisma.tx(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM payouts WHERE id = ${payoutId}::uuid FOR UPDATE`;
+      const p = await tx.payout.findUnique({ where: { id: payoutId } });
+      if (!p) throw Errors.notFound('Withdrawal');
+      const wallet = await this.ledger.driverWallet(p.driverId, tx);
+      if (wallet.id !== walletId) throw Errors.invalid('payout_wallet_mismatch', 'This withdrawal belongs to another driver');
+      if (p.status === 'rejected') throw Errors.conflict('payout_state', 'This withdrawal was rejected, so there is nothing to deduct');
+      if (amountToea !== -p.amountToea) throw Errors.invalid('payout_amount_mismatch', `Deduct exactly ${formatKina(p.amountToea)} for this withdrawal`);
+      const { entry, created } = await this.ledger.post(tx, {
+        walletId,
+        amountToea: -p.amountToea,
+        type: 'payout',
+        referenceType: 'payout',
+        referenceId: p.id,
+        idempotencyKey: `payout:${p.id}`,
+        createdBy: `admin:${adminId}`,
+        description: reason,
+      });
+      if (!created) throw Errors.conflict('payout_already_deducted', 'This withdrawal has already been deducted from the wallet');
+      await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'payout.deduct', entity: 'payout', entityId: p.id, after: entry, ip }, tx);
       return entry;
     });
   }

@@ -350,6 +350,8 @@ export interface CustomerDetail {
   phoneVerifiedAt: ISO | null;
   locations: CustomerLocation[];
   orderCounts: Partial<Record<OrderStatus, number>>;
+  /** Customer wallet (Cooper Waters Cash). */
+  wallet?: { id: string; balanceToea: number };
 }
 
 // ───────────── Catalogue ─────────────
@@ -456,6 +458,10 @@ export interface Payout {
   notes: string | null;
   createdAt: ISO;
   driver: { id: string; user: { name: string | null; phone: string } };
+  /** Deducted from the driver's wallet (manually by an admin, or automatically for older requests). */
+  deducted?: boolean;
+  walletId?: string | null;
+  walletBalanceToea?: number | null;
 }
 
 // ───────────── Disputes ─────────────

@@ -84,6 +84,9 @@ fun WalletScreen(onBack: () -> Unit, onTopup: () -> Unit, onWithdraw: () -> Unit
                             if (s.pendingTopups.count > 0) {
                                 LabelValue(stringResource(R.string.wallet_pending_topups, s.pendingTopups.count), Money.format(s.pendingTopups.amountToea))
                             }
+                            if (s.pendingPayouts.count > 0) {
+                                LabelValue(stringResource(R.string.wallet_pending_withdrawals, s.pendingPayouts.count), Money.format(s.pendingPayouts.amountToea))
+                            }
                             if (s.blocked) {
                                 Text(
                                     stringResource(R.string.wallet_blocked_body, Money.format(s.balanceToea), Money.format(s.minBalanceToea), Money.format(s.shortfallToea)),
@@ -224,6 +227,9 @@ fun WithdrawScreen(onDone: () -> Unit) {
             ui.summary?.let { s ->
                 LabelValue(stringResource(R.string.wallet_balance), Money.format(s.balanceToea))
                 LabelValue(stringResource(R.string.wallet_withdrawable), Money.format(s.withdrawableToea))
+                if (s.pendingPayouts.count > 0) {
+                    LabelValue(stringResource(R.string.wallet_pending_withdrawals, s.pendingPayouts.count), Money.format(s.pendingPayouts.amountToea))
+                }
                 Text(stringResource(R.string.withdraw_help, Money.format(s.minBalanceToea), Money.format(s.payoutMinToea)), style = MaterialTheme.typography.bodySmall)
             }
             OutlinedTextField(
