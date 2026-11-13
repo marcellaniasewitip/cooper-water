@@ -68,11 +68,30 @@ export function LedgerTable({ walletId }: { walletId: string }) {
  * Manual wallet adjustment (needs wallet.adjust). Two steps: enter, then confirm.
  * One Idempotency-Key per action; retrying the same amount + reason reuses it.
  */
-export function WalletAdjustModal({ walletId, opened, onClose, invalidate = [] }: { walletId: string; opened: boolean; onClose: () => void; invalidate?: string[][] }) {
+export function WalletAdjustModal({
+  walletId,
+  opened,
+  onClose,
+  invalidate = [],
+  initialAmount = '',
+  initialReason = '',
+  payoutId,
+  note,
+}: {
+  walletId: string;
+  opened: boolean;
+  onClose: () => void;
+  invalidate?: string[][];
+  initialAmount?: string;
+  initialReason?: string;
+  /** Deduct this withdrawal: links the entry to the payout so it can only be deducted once. */
+  payoutId?: string;
+  note?: string;
+}) {
   const qc = useQueryClient();
   const keeper = useMemo(() => new IdempotencyKeeper(), []);
-  const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
+  const [amount, setAmount] = useState(initialAmount);
+  const [reason, setReason] = useState(initialReason);
   const [step, setStep] = useState<'edit' | 'confirm'>('edit');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +113,7 @@ export function WalletAdjustModal({ walletId, opened, onClose, invalidate = [] }
 
   const submit = async () => {
     if (!valid || toea === null) return;
-    const body = { amountToea: toea, reason: reason.trim() };
+    const body = { amountToea: toea, reason: reason.trim(), ...(payoutId ? { payoutId } : {}) };
     setBusy(true);
     setError(null);
     try {
@@ -115,6 +134,11 @@ export function WalletAdjustModal({ walletId, opened, onClose, invalidate = [] }
     <Modal opened={opened} onClose={close} title={<Text fw={600}>{m.wallet.adjustTitle}</Text>} centered size="lg">
       <Stack>
         <Text size="sm">{m.wallet.adjustBody}</Text>
+        {note && (
+          <Alert color="blue" variant="light">
+            {note}
+          </Alert>
+        )}
         <TextInput
           label={m.wallet.signedAmount}
           leftSection="K"

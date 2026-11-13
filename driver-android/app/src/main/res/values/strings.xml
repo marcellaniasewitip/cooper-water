@@ -163,6 +163,7 @@
     <string name="wallet_balance">Balance</string>
     <string name="wallet_minimum">Minimum to take jobs</string>
     <string name="wallet_withdrawable">Available to withdraw</string>
+    <string name="wallet_pending_withdrawals">Withdrawals waiting (%1$d)</string>
     <string name="wallet_pending_topups">Top-ups in review (%1$d)</string>
     <string name="wallet_blocked_title">Top up to keep working</string>
     <string name="wallet_blocked_body">Your balance is %1$s. You need at least %2$s to go online and accept jobs. Top up %3$s or more.</string>
@@ -208,7 +209,7 @@
 
     <!-- Withdrawal -->
     <string name="withdraw_title">Withdraw</string>
-    <string name="withdraw_help">You can withdraw your balance above the %1$s minimum. The smallest withdrawal is %2$s. Finance pays out manually.</string>
+    <string name="withdraw_help">You can withdraw your balance above the %1$s minimum, less withdrawals still waiting. The smallest withdrawal is %2$s. Nothing is taken from your wallet now: Cooper Waters pays you, then deducts it from your wallet.</string>
     <string name="withdraw_amount">Amount</string>
     <string name="withdraw_all">Withdraw everything available</string>
     <string name="withdraw_bank">Bank account</string>
@@ -218,7 +219,7 @@
     <string name="withdraw_min">The minimum withdrawal is %1$s.</string>
     <string name="withdraw_max">You can withdraw up to %1$s.</string>
     <string name="withdraw_submit">Request withdrawal</string>
-    <string name="withdraw_done">Withdrawal requested. You will be notified when it is paid.</string>
+    <string name="withdraw_done">Withdrawal requested. Your balance stays the same until Cooper Waters pays you and deducts it. You will be notified when it is paid.</string>
     <string name="withdraw_unsent_resume">Your last withdrawal request was not confirmed yet. Tap \"Send again\" — it will not be submitted twice.</string>
 
     <!-- Earnings & history -->

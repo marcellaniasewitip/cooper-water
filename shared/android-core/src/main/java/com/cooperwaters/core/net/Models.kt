@@ -453,6 +453,8 @@ data class WalletSummary(
     val withdrawableToea: Long = 0,
     val payoutMinToea: Long = 0,
     val pendingTopups: PendingTopups = PendingTopups(),
+    /** Withdrawals requested but not yet deducted (Cooper Waters deducts them when paying). */
+    val pendingPayouts: PendingTopups = PendingTopups(),
 )
 
 @Serializable

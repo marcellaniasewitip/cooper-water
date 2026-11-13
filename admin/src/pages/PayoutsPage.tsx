@@ -1,8 +1,9 @@
-import { Anchor, Button, Card, Group, SegmentedControl, Stack, Table, Text } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Card, Group, SegmentedControl, Stack, Table, Text } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, type Payout } from '@/api';
+import { useAuth } from '@/auth/AuthContext';
 import { ActionModal } from '@/components/ActionModal';
 import { LoadMore } from '@/components/CursorList';
 import { useCursorList } from '@/components/useCursorList';
@@ -18,6 +19,8 @@ type PayoutAction = 'approve' | 'paid' | 'reject';
 
 export default function PayoutsPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { can } = useAuth();
   const [status, setStatus] = useState('requested,approved');
   const [action, setAction] = useState<{ p: Payout; a: PayoutAction } | null>(null);
   const query = { status: status === 'all' ? undefined : status };
@@ -33,7 +36,16 @@ export default function PayoutsPage() {
       approve: { title: fmt(m.payouts.approveTitle, { amount }), body: fmt(m.payouts.approveBody, { driver }), color: 'blue', label: m.payouts.approve, fields: [{ name: 'notes', label: m.common.notes, type: 'textarea' as const, maxLength: 500 }] },
       paid: {
         title: fmt(m.payouts.paidTitle, { amount }),
-        body: fmt(m.payouts.paidBody, { destination: `${label(m.enums.payoutMethod, p.method)} ${p.destination}` }),
+        body: (
+          <Stack gap="xs">
+            <Text size="sm">{fmt(m.payouts.paidBody, { destination: `${label(m.enums.payoutMethod, p.method)} ${p.destination}` })}</Text>
+            {!p.deducted && (
+              <Alert color="blue" variant="light">
+                {m.payouts.paidNote}
+              </Alert>
+            )}
+          </Stack>
+        ),
         color: 'teal',
         label: m.payouts.markPaid,
         fields: [
@@ -63,7 +75,7 @@ export default function PayoutsPage() {
 
   return (
     <>
-      <PageHeader title={m.payouts.title} />
+      <PageHeader title={m.payouts.title} subtitle={m.payouts.help} />
       <Card withBorder mb="md">
         <SegmentedControl
           value={status}
@@ -93,6 +105,7 @@ export default function PayoutsPage() {
                     <Table.Th>{m.common.method}</Table.Th>
                     <Table.Th>{m.payouts.destination}</Table.Th>
                     <Table.Th>{m.common.status}</Table.Th>
+                    <Table.Th>{m.payouts.wallet}</Table.Th>
                     <Table.Th />
                   </Table.Tr>
                 </Table.Thead>
@@ -131,6 +144,35 @@ export default function PayoutsPage() {
                         </Stack>
                       </Table.Td>
                       <Table.Td>
+                        <Stack gap={4}>
+                          {p.status === 'rejected' ? (
+                            <Text size="xs" c="dimmed">
+                              —
+                            </Text>
+                          ) : p.deducted ? (
+                            <Badge color="teal" variant="light" tt="none">
+                              {m.payouts.deducted}
+                            </Badge>
+                          ) : (
+                            <>
+                              <Badge color="orange" variant="light" tt="none">
+                                {m.payouts.notDeducted}
+                              </Badge>
+                              {p.walletBalanceToea != null && (
+                                <Text size="xs" c="dimmed">
+                                  {fmt(m.payouts.balance, { amount: formatKina(p.walletBalanceToea) })}
+                                </Text>
+                              )}
+                              {can('wallet.adjust') && p.walletId && (
+                                <Button size="compact-xs" variant="light" color="orange" onClick={() => navigate(deductLink(p))} data-testid="payout-deduct">
+                                  {m.payouts.deduct}
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td>
                         <Group gap="xs" wrap="nowrap" justify="flex-end">
                           {p.status === 'requested' && (
                             <Button size="xs" variant="light" onClick={() => setAction({ p, a: 'approve' })}>
@@ -161,4 +203,12 @@ export default function PayoutsPage() {
       {modal}
     </>
   );
+}
+
+/** Driver page with the wallet adjustment pre-filled to deduct this withdrawal (the admin confirms it there). */
+function deductLink(p: Payout): string {
+  const ref = p.externalRef ? ` · ref ${p.externalRef}` : '';
+  const reason = fmt(m.payouts.deductReason, { method: label(m.enums.payoutMethod, p.method), destination: p.destination, ref });
+  const q = new URLSearchParams({ deductPayout: p.id, amount: String(p.amountToea), reason });
+  return `/drivers/${p.driverId}?${q.toString()}`;
 }

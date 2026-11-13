@@ -7,6 +7,7 @@ import { api } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { filterByPermission } from '@/auth/permissions';
 import { config } from '@/config';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { m } from '@/i18n';
 import { NAV, type NavItem } from '@/nav';
 import { useRealtime } from '@/realtime/RealtimeProvider';
@@ -36,6 +37,7 @@ function NavEntry({ item, counts, onNavigate }: { item: NavItem; counts?: Record
 }
 
 export function AppLayout() {
+  const { pathname } = useLocation();
   const [opened, { toggle, close }] = useDisclosure();
   const { me, signOut, can } = useAuth();
   const { connected } = useRealtime();
@@ -128,7 +130,9 @@ export function AppLayout() {
         </ScrollArea>
       </AppShell.Navbar>
       <AppShell.Main>
-        <Outlet />
+        <ErrorBoundary resetKey={pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </AppShell.Main>
     </AppShell>
   );

@@ -2312,6 +2312,8 @@ export interface components {
             reason: string;
         };
         AdjustmentDto: {
+            /** @description Deduct this withdrawal (payout) from the driver's wallet: amountToea must be minus its amount. */
+            payoutId?: string;
             /** @description Signed toea: positive credits the wallet, negative debits it. */
             amountToea: number;
             reason: string;

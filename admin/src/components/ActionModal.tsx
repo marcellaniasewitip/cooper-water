@@ -98,7 +98,11 @@ export function ActionModal({ opened, onClose, title, body, fields = [], confirm
             withAsterisk: f.required,
             value: values[f.name] ?? '',
             error: touched ? errors[f.name] : undefined,
-            onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setValues((s) => ({ ...s, [f.name]: e.currentTarget.value })),
+            onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+              // Read the value now: React clears currentTarget after the event, before the state updater runs.
+              const value = e.currentTarget.value;
+              setValues((s) => ({ ...s, [f.name]: value }));
+            },
             'data-autofocus': f === fields[0] ? true : undefined,
           };
           return f.type === 'textarea' ? (

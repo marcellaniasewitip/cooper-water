@@ -570,6 +570,8 @@ public struct WalletSummary: Decodable {
     public let withdrawableToea: Int64?
     public let payoutMinToea: Int64?
     public let pendingTopups: PendingTopups?
+    /** Withdrawals requested but not yet deducted (Cooper Waters deducts them when paying). */
+    public let pendingPayouts: PendingTopups?
 }
 public struct TopupResponse: Decodable {
     public let topup: Topup

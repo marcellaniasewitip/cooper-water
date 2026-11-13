@@ -2,7 +2,7 @@ import { Alert, Anchor, Badge, Button, Card, Grid, Group, Image, SimpleGrid, Sta
 import { IconCheck, IconFileTypePdf, IconX } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, type DriverDetail, type DriverDocument } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { ActionModal } from '@/components/ActionModal';
@@ -14,6 +14,7 @@ import { Empty, QueryState } from '@/components/QueryState';
 import { OrderStatusBadge, StatusBadge } from '@/components/StatusBadge';
 import { fmt, label, m } from '@/i18n';
 import { formatDateTime, timeAgo } from '@/lib/time';
+import { formatKina, toeaToKinaInput } from '@/lib/money';
 
 type DriverAction = 'approve' | 'reject' | 'suspend' | 'reinstate';
 
@@ -92,6 +93,17 @@ export default function DriverDetailPage() {
   const [action, setAction] = useState<DriverAction | null>(null);
   const [review, setReview] = useState<{ doc: DriverDocument; status: 'approved' | 'rejected' } | null>(null);
   const [adjust, setAdjust] = useState(false);
+  // From the payouts queue: "Deduct from wallet" opens the adjustment pre-filled for that withdrawal.
+  const [params, setParams] = useSearchParams();
+  const deductPayout = params.get('deductPayout');
+  const deductAmount = Number(params.get('amount') ?? 0);
+  const deductReason = params.get('reason') ?? '';
+  const closeDeduct = () => {
+    params.delete('deductPayout');
+    params.delete('amount');
+    params.delete('reason');
+    setParams(params, { replace: true });
+  };
   const d = q.data;
 
   const refresh = () =>
@@ -301,6 +313,18 @@ export default function DriverDetailPage() {
                 await api.drivers.reviewDocument(review.doc.id, { status: review.status, notes: v.notes || undefined });
                 await refresh();
               }}
+            />
+          )}
+          {deductPayout && can('wallet.adjust') && Number.isSafeInteger(deductAmount) && deductAmount > 0 && (
+            <WalletAdjustModal
+              walletId={d.wallet.id}
+              opened
+              onClose={closeDeduct}
+              payoutId={deductPayout}
+              initialAmount={toeaToKinaInput(-deductAmount)}
+              initialReason={deductReason}
+              note={fmt(m.payouts.deductHint, { amount: formatKina(deductAmount), driver: d.name ?? d.phone })}
+              invalidate={[['driver', id], ['driver-wallet', id], ['drivers'], ['payouts']]}
             />
           )}
           {adjust && (
