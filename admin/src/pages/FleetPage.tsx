@@ -1,6 +1,6 @@
 import { Anchor, Badge, Card, Grid, Group, ScrollArea, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
-import { Circle, CircleMarker, Polygon, Popup, Tooltip } from 'react-leaflet';
+import { Circle, CircleMarker, Polygon, Polyline, Popup, Tooltip } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import { api, type FleetDriver } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
@@ -13,7 +13,8 @@ import { fmt, m } from '@/i18n';
 import { timeAgo } from '@/lib/time';
 import { useRealtime } from '@/realtime/RealtimeProvider';
 
-type MarkerKind = 'active' | 'online' | 'stale' | 'offline';
+/** online = free (green), active = busy on a job (orange), stale = free but GPS not updated, offline = grey. */
+type MarkerKind = 'online' | 'active' | 'stale' | 'offline';
 
 function markerKind(d: FleetDriver): MarkerKind {
   if (d.activeOrder) return 'active';
@@ -21,8 +22,16 @@ function markerKind(d: FleetDriver): MarkerKind {
   return d.stale ? 'stale' : 'online';
 }
 
-const COLORS: Record<MarkerKind, string> = { active: '#7048e8', online: '#2f9e44', stale: '#f08c00', offline: '#868e96' };
-const LABELS: Record<MarkerKind, string> = { active: m.fleet.legendActive, online: m.fleet.legendOnline, stale: m.fleet.legendStale, offline: m.fleet.legendOffline };
+const GREEN = '#2f9e44';
+const ORANGE = '#f76707';
+const COLORS: Record<MarkerKind, string> = { online: GREEN, active: ORANGE, stale: '#8ce99a', offline: '#868e96' };
+const LABELS: Record<MarkerKind, string> = { online: m.fleet.legendOnline, active: m.fleet.legendActive, stale: m.fleet.legendStale, offline: m.fleet.legendOffline };
+/** Free first, then busy, then the rest (list order). */
+const ORDER: Record<MarkerKind, number> = { online: 0, stale: 1, active: 2, offline: 3 };
+
+function stageLabel(d: FleetDriver): string | null {
+  return d.activeOrder ? (m.fleet.stage[d.activeOrder.status] ?? null) : null;
+}
 
 export default function FleetPage() {
   const { connected } = useRealtime();
@@ -32,11 +41,13 @@ export default function FleetPage() {
   const settings = useQuery({ queryKey: ['settings'], queryFn: api.settings.all, staleTime: 300_000, retry: false, enabled: can('settings.edit') });
   const defaultRadius = (settings.data?.['depot.geofence_radius_m']?.value as number | undefined) ?? 150;
   const drivers = (fleet.data ?? []).filter((d) => d.lat !== null && d.lng !== null);
-  const online = drivers.filter((d) => d.online).length;
+  const free = drivers.filter((d) => d.online && !d.activeOrder).length;
+  const busy = drivers.filter((d) => d.activeOrder).length;
+  const listed = [...drivers].sort((a, b) => ORDER[markerKind(a)] - ORDER[markerKind(b)]);
 
   return (
     <>
-      <PageHeader title={m.fleet.title} subtitle={`${fmt(m.fleet.drivers, { count: drivers.length })} · ${fmt(m.fleet.onlineCount, { count: online })}`} />
+      <PageHeader title={m.fleet.title} subtitle={`${fmt(m.fleet.drivers, { count: drivers.length })} · ${fmt(m.fleet.freeCount, { count: free })} · ${fmt(m.fleet.busyCount, { count: busy })}`} />
       <QueryState isPending={fleet.isPending} error={fleet.error} refetch={fleet.refetch}>
         <Grid className="cw-fleet">
           <Grid.Col span={{ base: 12, md: 9 }}>
@@ -53,16 +64,32 @@ export default function FleetPage() {
                     </Circle>
                   ),
                 )}
+                {/* Busy drivers: dashed orange line from the truck to the customer. */}
+                {drivers
+                  .filter((d) => d.activeOrder)
+                  .map((d) => (
+                    <Polyline
+                      key={`route-${d.driverId}`}
+                      positions={[
+                        [d.lat!, d.lng!],
+                        [d.activeOrder!.deliveryLat, d.activeOrder!.deliveryLng],
+                      ]}
+                      pathOptions={{ color: ORANGE, weight: 3, opacity: 0.7, dashArray: '6 6' }}
+                    >
+                      <Tooltip>{`${m.fleet.toCustomer} · ${d.activeOrder!.shortCode}`}</Tooltip>
+                    </Polyline>
+                  ))}
                 {drivers.map((d) => {
                   const kind = markerKind(d);
                   return (
                     <CircleMarker
                       key={d.driverId}
                       center={[d.lat!, d.lng!]}
-                      radius={kind === 'active' ? 10 : 8}
-                      pathOptions={{ color: '#fff', weight: 2, fillColor: COLORS[kind], fillOpacity: 0.95 }}
+                      radius={kind === 'active' ? 11 : 9}
+                      // Stale GPS: dashed outline so it's clear the dot may not be the exact spot right now.
+                      pathOptions={{ color: kind === 'stale' ? GREEN : '#fff', weight: kind === 'stale' ? 2 : 3, dashArray: kind === 'stale' || (kind === 'active' && d.stale) ? '3 3' : undefined, fillColor: COLORS[kind], fillOpacity: 0.95 }}
                     >
-                      <Tooltip>{`${d.name ?? d.phone} · ${d.plate ?? ''}`}</Tooltip>
+                      <Tooltip>{`${d.name ?? d.phone} · ${d.plate ?? ''} · ${stageLabel(d) ?? LABELS[kind]}`}</Tooltip>
                       <Popup>
                         <Stack gap={4}>
                           <Anchor component={Link} to={`/drivers/${d.driverId}`} fw={600}>
@@ -74,6 +101,11 @@ export default function FleetPage() {
                           <Text size="xs">
                             {LABELS[kind]} · {m.fleet.lastSeen} {timeAgo(d.lastSeenAt)}
                           </Text>
+                          {stageLabel(d) && (
+                            <Text size="xs" fw={600} c={ORANGE}>
+                              {stageLabel(d)}
+                            </Text>
+                          )}
                           {d.activeOrder && (
                             <Group gap={4}>
                               <Anchor component={Link} to={`/orders/${d.activeOrder.id}`} size="xs">
@@ -90,7 +122,7 @@ export default function FleetPage() {
                 {drivers
                   .filter((d) => d.activeOrder)
                   .map((d) => (
-                    <CircleMarker key={`dest-${d.driverId}`} center={[d.activeOrder!.deliveryLat, d.activeOrder!.deliveryLng]} radius={5} pathOptions={{ color: COLORS.active, dashArray: '2 3', fillOpacity: 0.2 }}>
+                    <CircleMarker key={`dest-${d.driverId}`} center={[d.activeOrder!.deliveryLat, d.activeOrder!.deliveryLng]} radius={6} pathOptions={{ color: ORANGE, weight: 2, fillColor: '#fff', fillOpacity: 1 }}>
                       <Tooltip>{d.activeOrder!.shortCode}</Tooltip>
                     </CircleMarker>
                   ))}
@@ -109,7 +141,7 @@ export default function FleetPage() {
               <ScrollArea.Autosize mah="var(--cw-list-h)">
                 <Stack gap="xs" data-testid="fleet-list">
                   {drivers.length === 0 && <Text c="dimmed">{m.fleet.noLocation}</Text>}
-                  {drivers.map((d) => (
+                  {listed.map((d) => (
                     <Group key={d.driverId} justify="space-between" wrap="nowrap">
                       <Stack gap={0}>
                         <Anchor component={Link} to={`/drivers/${d.driverId}`} size="sm">
@@ -118,8 +150,13 @@ export default function FleetPage() {
                         <Text size="xs" c="dimmed">
                           {d.plate ?? '—'} · {timeAgo(d.lastSeenAt)}
                         </Text>
+                        {d.activeOrder && (
+                          <Text size="xs" c={ORANGE}>
+                            {d.activeOrder.shortCode} · {stageLabel(d) ?? d.activeOrder.status}
+                          </Text>
+                        )}
                       </Stack>
-                      <Badge size="xs" style={{ background: COLORS[markerKind(d)] }}>
+                      <Badge size="xs" style={{ background: COLORS[markerKind(d)], color: markerKind(d) === 'stale' ? '#1b5e20' : undefined }}>
                         {LABELS[markerKind(d)]}
                       </Badge>
                     </Group>
