@@ -1,4 +1,4 @@
-import { Button, Stack, Table, Text, TextInput, Textarea, Alert, Modal, Group } from '@mantine/core';
+import { Alert, Button, Group, Modal, SegmentedControl, Stack, Table, Text, TextInput, Textarea } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { api, errorMessage, type LedgerEntry } from '@/api';
@@ -90,13 +90,16 @@ export function WalletAdjustModal({
 }) {
   const qc = useQueryClient();
   const keeper = useMemo(() => new IdempotencyKeeper(), []);
-  const [amount, setAmount] = useState(initialAmount);
+  // Prefilled negative amounts (e.g. deducting a withdrawal) open in Deduct mode.
+  const [mode, setMode] = useState<'credit' | 'debit'>(initialAmount.trim().startsWith('-') ? 'debit' : 'credit');
+  const [amount, setAmount] = useState(initialAmount.trim().replace(/^-/, ''));
   const [reason, setReason] = useState(initialReason);
   const [step, setStep] = useState<'edit' | 'confirm'>('edit');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toea = parseKinaToToea(amount, { allowNegative: true });
+  const abs = parseKinaToToea(amount);
+  const toea = abs === null ? null : mode === 'debit' ? -abs : abs;
   const amountError = amount && toea === null ? m.common.invalidAmount : toea === 0 ? m.wallet.zero : null;
   const reasonError = reason.trim().length > 0 && reason.trim().length < 3 ? m.wallet.reasonMin : null;
   const valid = toea !== null && toea !== 0 && reason.trim().length >= 3 && reason.trim().length <= 300;
@@ -105,6 +108,7 @@ export function WalletAdjustModal({
     if (busy) return;
     setAmount('');
     setReason('');
+    setMode('credit');
     setStep('edit');
     setError(null);
     keeper.reset();
@@ -139,11 +143,22 @@ export function WalletAdjustModal({
             {note}
           </Alert>
         )}
+        <SegmentedControl
+          value={mode}
+          onChange={(v) => setMode(v as 'credit' | 'debit')}
+          disabled={step === 'confirm' || !!payoutId}
+          data={[
+            { value: 'credit', label: m.wallet.topUp },
+            { value: 'debit', label: m.wallet.deduct },
+          ]}
+          color={mode === 'debit' ? 'red' : 'teal'}
+          data-testid="wallet-adjust-mode"
+        />
         <TextInput
-          label={m.wallet.signedAmount}
+          label={m.wallet.amount}
           leftSection="K"
           inputMode="decimal"
-          placeholder="-25.00 / 100.00"
+          placeholder="25.00"
           value={amount}
           disabled={step === 'confirm'}
           onChange={(e) => setAmount(e.currentTarget.value)}
@@ -153,6 +168,7 @@ export function WalletAdjustModal({
         />
         <Textarea
           label={m.common.reason}
+          placeholder={m.wallet.reasonPlaceholder}
           value={reason}
           disabled={step === 'confirm'}
           onChange={(e) => setReason(e.currentTarget.value)}
@@ -164,7 +180,7 @@ export function WalletAdjustModal({
         />
         {step === 'confirm' && toea !== null && (
           <Alert color={toea < 0 ? 'red' : 'teal'} variant="light">
-            {fmt(m.wallet.adjustConfirm, { amount: formatKina(toea, { signed: true }) })}
+            {fmt(toea < 0 ? m.wallet.deductConfirm : m.wallet.topUpConfirm, { amount: formatKina(Math.abs(toea)) })}
           </Alert>
         )}
         {error && <Alert color="red">{error}</Alert>}
@@ -178,7 +194,7 @@ export function WalletAdjustModal({
             </Button>
           ) : (
             <Button color={toea !== null && toea < 0 ? 'red' : 'teal'} loading={busy} onClick={submit}>
-              {m.wallet.adjust}
+              {toea !== null && toea < 0 ? m.wallet.deduct : m.wallet.topUp}
             </Button>
           )}
         </Group>

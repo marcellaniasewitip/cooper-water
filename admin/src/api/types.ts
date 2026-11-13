@@ -350,6 +350,8 @@ export interface CustomerDetail {
   phoneVerifiedAt: ISO | null;
   locations: CustomerLocation[];
   orderCounts: Partial<Record<OrderStatus, number>>;
+  /** Customer wallet (Cooper Waters Cash). */
+  wallet?: { id: string; balanceToea: number };
 }
 
 // ───────────── Catalogue ─────────────

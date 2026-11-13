@@ -386,7 +386,38 @@ export class WalletService {
   // ───────────── Admin adjustments ─────────────
 
   async adjust(adminId: string, walletId: string, amountToea: number, reason: string, idempotencyKey: string, ip: string | null, payoutId?: string) {
-    if (payoutId) return this.deductPayout(adminId, walletId, payoutId, amountToea, reason, ip);
+    const entry = payoutId ? await this.deductPayout(adminId, walletId, payoutId, amountToea, reason, ip) : await this.postAdjustment(adminId, walletId, amountToea, reason, idempotencyKey, ip);
+    await this.afterAdjust(walletId, entry.amountToea, reason, entry.createdAt);
+    return entry;
+  }
+
+  /** Tell the customer or driver: live balance update in the app plus a notification (top-up or deduction). */
+  private async afterAdjust(walletId: string, amountToea: number, reason: string, at: Date) {
+    // Only for a fresh entry (an idempotent replay returns an older one).
+    if (Date.now() - at.getTime() > 60_000) return;
+    const w = await this.prisma.wallet.findUnique({ where: { id: walletId } });
+    if (!w) return;
+    let userId: string | null = null;
+    let payload: Record<string, unknown> = { balanceToea: w.balanceToea };
+    if (w.ownerType === 'customer') {
+      userId = w.ownerId;
+    } else if (w.ownerType === 'driver') {
+      const driver = await this.prisma.driver.findUnique({ where: { id: w.ownerId } });
+      const min = await this.settings.get('wallet.min_balance_toea');
+      userId = driver?.userId ?? null;
+      payload = { balanceToea: w.balanceToea, minBalanceToea: min, blocked: w.balanceToea < min };
+    }
+    if (!userId) return;
+    this.realtime.toUser(userId, 'wallet.updated', payload);
+    await this.notifications.notify(userId, 'wallet.adjusted', {
+      amount: formatKina(Math.abs(amountToea)),
+      direction: amountToea >= 0 ? 'was added to' : 'was deducted from',
+      reason,
+      balance: formatKina(w.balanceToea),
+    });
+  }
+
+  private async postAdjustment(adminId: string, walletId: string, amountToea: number, reason: string, idempotencyKey: string, ip: string | null) {
     return this.prisma.tx(async (tx) => {
       const { entry, created } = await this.ledger.post(tx, {
         walletId,
