@@ -126,7 +126,8 @@ class NewOrderViewModelTest {
             initialLocationId = "33333333-3333-3333-3333-333333333333",
             locationFirst = true,
         )
-        waitUntil { !vm.state.value.loading }
+        // Also wait for the background quote, so it can't land on Main while tearDown resets it.
+        waitUntil { !vm.state.value.loading && vm.state.value.quotedPriceToea != null }
         assertEquals(OrderStep.PACKAGE, vm.state.value.step)
         assertTrue(vm.back()) // Back changes the address
         assertEquals(OrderStep.LOCATION, vm.state.value.step)
