@@ -1,5 +1,12 @@
 package com.cooperwaters.customer.ui.locations
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import com.cooperwaters.core.net.GeoPlace
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -64,13 +71,27 @@ data class LocationEditState(
     val saving: Boolean = false,
     val saved: Boolean = false,
     val error: UiText? = null,
+    /** Google address search is set up on the server. */
+    val searchAvailable: Boolean = false,
+    val query: String = "",
+    val results: List<GeoPlace> = emptyList(),
+    val searching: Boolean = false,
+    /** The address was filled from the map (so moving the pin may update it); false once the user types. */
+    val addressFromMap: Boolean = false,
 )
 
 class LocationEditViewModel(private val repo: CustomerRepository, private val locationId: String?) : ViewModel() {
     private val _state = MutableStateFlow(LocationEditState(id = locationId))
     val state: StateFlow<LocationEditState> = _state.asStateFlow()
 
+    private var searchJob: Job? = null
+    private var reverseJob: Job? = null
+
     init {
+        viewModelScope.launch {
+            val ok = (apiCall { repo.api.geoStatus() } as? ApiResult.Success)?.value?.search == true
+            _state.update { it.copy(searchAvailable = ok) }
+        }
         if (locationId != null) {
             viewModelScope.launch {
                 repo.locations().value?.firstOrNull { it.id == locationId }?.let { l ->
@@ -83,11 +104,65 @@ class LocationEditViewModel(private val repo: CustomerRepository, private val lo
     }
 
     fun onLabel(v: String) = _state.update { it.copy(label = v.take(50), error = null) }
-    fun onAddress(v: String) = _state.update { it.copy(address = v.take(300), error = null) }
+    fun onAddress(v: String) = _state.update { it.copy(address = v.take(300), error = null, addressFromMap = false) }
+
+    /** Address search (Google Places), debounced. */
+    fun onQuery(v: String) {
+        _state.update { it.copy(query = v.take(120)) }
+        searchJob?.cancel()
+        val q = v.trim()
+        if (q.length < 2) {
+            _state.update { it.copy(results = emptyList(), searching = false) }
+            return
+        }
+        searchJob = viewModelScope.launch {
+            delay(400)
+            _state.update { it.copy(searching = true) }
+            val s = _state.value
+            val r = apiCall { repo.api.geoSearch(q, s.lat, s.lng) }
+            _state.update { it.copy(searching = false, results = (r as? ApiResult.Success)?.value?.items ?: emptyList()) }
+        }
+    }
+
+    /** Picked a search result: move the pin there and use its address. */
+    fun pick(p: GeoPlace) {
+        searchJob?.cancel()
+        _state.update {
+            it.copy(
+                lat = p.lat,
+                lng = p.lng,
+                cameraVersion = it.cameraVersion + 1,
+                address = p.address.ifBlank { p.name }.take(300),
+                addressFromMap = true,
+                label = it.label.ifBlank { p.name.take(50) },
+                query = "",
+                results = emptyList(),
+            )
+        }
+    }
+
+    /** Fill the address from the pin (Google reverse geocoding) unless the customer typed their own. */
+    private fun lookupAddress(lat: Double, lng: Double) {
+        val s = _state.value
+        if (!s.searchAvailable || (s.address.isNotBlank() && !s.addressFromMap)) return
+        reverseJob?.cancel()
+        reverseJob = viewModelScope.launch {
+            delay(700)
+            val place = (apiCall { repo.api.geoReverse(lat, lng) } as? ApiResult.Success)?.value?.place ?: return@launch
+            _state.update { st ->
+                if (st.address.isNotBlank() && !st.addressFromMap) st else st.copy(address = place.address.ifBlank { place.name }.take(300), addressFromMap = true)
+            }
+        }
+    }
     fun onNotes(v: String) = _state.update { it.copy(notes = v.take(500), error = null) }
 
     /** User panned the map: the pin (map centre) moved. */
-    fun onPinMoved(lat: Double, lng: Double) = _state.update { it.copy(lat = lat, lng = lng) }
+    fun onPinMoved(lat: Double, lng: Double) {
+        val before = _state.value
+        _state.update { it.copy(lat = lat, lng = lng) }
+        // Ignore tiny jitter (the map reports its centre when it settles).
+        if (Math.abs(before.lat - lat) > 0.00005 || Math.abs(before.lng - lng) > 0.00005 || before.address.isBlank()) lookupAddress(lat, lng)
+    }
 
     fun setLocating(b: Boolean) = _state.update { it.copy(locating = b) }
 
@@ -162,6 +237,30 @@ fun LocationEditScreen(locationId: String?, onDone: () -> Unit) {
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (state.searchAvailable) {
+                    OutlinedTextField(
+                        value = state.query,
+                        onValueChange = vm::onQuery,
+                        label = { Text(stringResource(R.string.location_search)) },
+                        placeholder = { Text(stringResource(R.string.location_search_hint)) },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        trailingIcon = { if (state.searching) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    state.results.forEach { p ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { vm.pick(p) }.padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Filled.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Column(Modifier.padding(start = 10.dp)) {
+                                Text(p.name, style = MaterialTheme.typography.bodyLarge)
+                                if (p.address.isNotBlank() && p.address != p.name) Text(p.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
                 Text(stringResource(R.string.location_drag_hint), style = MaterialTheme.typography.bodySmall)
                 OutlinedButton(
                     onClick = { if (LocationHelper.hasPermission(context)) locate() else permission.launch(LocationHelper.PERMISSIONS) },

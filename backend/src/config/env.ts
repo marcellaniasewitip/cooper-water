@@ -46,6 +46,8 @@ export interface Env {
   clicksend: { username: string; apiKey: string; from: string };
   pushProvider: string;
   fcmServiceAccountB64?: string;
+  /** Google Maps Platform server key (Places API (New) + Geocoding API). Unset = address search off. */
+  googleMapsServerKey?: string;
   mockCellmoneyWebhookSecret: string;
   sentryDsn?: string;
   logLevel: string;
@@ -87,6 +89,7 @@ export function loadEnv(): Env {
     },
     pushProvider: str('PUSH_PROVIDER', 'mock'),
     fcmServiceAccountB64: process.env.FCM_SERVICE_ACCOUNT_B64?.trim() || undefined,
+    googleMapsServerKey: process.env.GOOGLE_MAPS_SERVER_KEY?.trim() || undefined,
     mockCellmoneyWebhookSecret: str('MOCK_CELLMONEY_WEBHOOK_SECRET', devDefault('dev-webhook-secret')),
     sentryDsn: process.env.SENTRY_DSN?.trim() || undefined,
     logLevel: str('LOG_LEVEL', 'info'),

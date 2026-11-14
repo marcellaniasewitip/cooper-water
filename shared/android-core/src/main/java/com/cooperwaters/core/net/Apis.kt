@@ -125,6 +125,16 @@ interface CustomerApi {
     @GET("customer/chats")
     suspend fun chats(): List<ChatConversation>
 
+    // Google Maps address search (the key stays on the server). 503 geo_unavailable when not set up.
+    @GET("geo/status")
+    suspend fun geoStatus(): GeoStatus
+
+    @GET("geo/search")
+    suspend fun geoSearch(@Query("q") q: String, @Query("lat") lat: Double? = null, @Query("lng") lng: Double? = null): GeoSearchResult
+
+    @GET("geo/reverse")
+    suspend fun geoReverse(@Query("lat") lat: Double, @Query("lng") lng: Double): GeoReverseResult
+
     @GET("customer/orders/{id}/messages")
     suspend fun messages(@Path("id") orderId: String): ChatThread
 

@@ -20,6 +20,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CooperWaters"
         android:usesCleartextTraffic="${usesCleartextTraffic}">
+        <!-- Google Maps SDK key (empty = the app uses OpenStreetMap). Set at build time: -Pcw.googleMapsKey. -->
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${googleMapsKey}" />
+
 
         <activity
             android:name=".MainActivity"

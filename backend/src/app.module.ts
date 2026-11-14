@@ -52,6 +52,8 @@ import { PromosService } from './promos/promos.service';
 import { ReferralsService } from './referrals/referrals.service';
 import { ChatService } from './chat/chat.service';
 import { BroadcastsService } from './notifications/broadcasts.service';
+import { MapsService } from './geo/maps.service';
+import { MapsController } from './geo/maps.controller';
 
 /**
  * Domain services live in one module: they form a small, acyclic graph
@@ -90,6 +92,7 @@ import { BroadcastsService } from './notifications/broadcasts.service';
     AdminDisputesController,
     AdminTemplatesController,
     AdminBroadcastsController,
+    MapsController,
     AdminAccessController,
     AdminReportsController,
   ],
@@ -117,6 +120,7 @@ import { BroadcastsService } from './notifications/broadcasts.service';
     ReferralsService,
     ChatService,
     BroadcastsService,
+    MapsService,
   ],
 })
 export class AppModule {}
