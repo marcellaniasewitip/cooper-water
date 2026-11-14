@@ -72,6 +72,14 @@ struct PlaceEditScreen: View {
     @State private var busy = false
     @State private var error: String?
     @State private var loaded = false
+    @State private var searchAvailable = false
+    @State private var query = ""
+    @State private var results: [GeoPlace] = []
+    @State private var searching = false
+    @State private var searchTask: Task<Void, Never>?
+    @State private var reverseTask: Task<Void, Never>?
+    @State private var addressTyped = false
+    @State private var autoAddress = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -79,6 +87,7 @@ struct PlaceEditScreen: View {
                 CwMap(center: center, followCenter: true, showsUser: true) { la, ln in
                     lat = la
                     lng = ln
+                    lookupAddress(la, ln)
                 }
                 Image(systemName: "mappin").font(.system(size: 40)).foregroundColor(.cwRed).offset(y: -18).allowsHitTesting(false)
                 VStack {
@@ -94,9 +103,31 @@ struct PlaceEditScreen: View {
             }
             .frame(height: 300)
             Form {
+                if searchAvailable {
+                    Section {
+                        HStack {
+                            Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+                            TextField("Search address (e.g. Vision City, Waigani)", text: $query)
+                                .autocorrectionDisabled()
+                                .onChange(of: query) { q in onQuery(q) }
+                            if searching { ProgressView() }
+                        }
+                        ForEach(results) { place in
+                            Button { pick(place) } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(place.name).foregroundColor(.primary)
+                                    if !place.address.isEmpty {
+                                        Text(place.address).font(.caption).foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 Section(footer: Text("Move the map so the pin is on your gate or tank.")) {
                     TextField("Name (e.g. Home, Office)", text: $label)
                     TextField("Address / area (e.g. Section 101, Gordons)", text: $address)
+                        .onChange(of: address) { a in if a != autoAddress { addressTyped = true } }
                     TextField("Landmark for the driver (optional)", text: $landmark)
                 }
                 if let error { Section { ErrorBanner(error) } }
@@ -113,6 +144,7 @@ struct PlaceEditScreen: View {
     private func load() async {
         guard !loaded else { return }
         loaded = true
+        if let status = try? await session.customer.geoStatus() { searchAvailable = status.search }
         if let id = locationId, let p = try? await session.customer.locations().first(where: { $0.id == id }) {
             label = p.label
             address = p.addressText
@@ -120,9 +152,57 @@ struct PlaceEditScreen: View {
             lat = p.lat
             lng = p.lng
             center = MapCenter(lat: p.lat, lng: p.lng, zoom: 17)
+            addressTyped = true
         } else if locationId == nil {
             await useMyLocation()
         }
+    }
+
+    /// Search as the customer types (after a short pause), near the current pin.
+    private func onQuery(_ q: String) {
+        searchTask?.cancel()
+        let text = q.trimmingCharacters(in: .whitespaces)
+        guard text.count >= 3 else { results = []; searching = false; return }
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            if Task.isCancelled { return }
+            searching = true
+            let found = (try? await session.customer.geoSearch(text, lat: lat, lng: lng).items) ?? []
+            if Task.isCancelled { return }
+            results = found
+            searching = false
+        }
+    }
+
+    private func pick(_ place: GeoPlace) {
+        searchTask?.cancel()
+        reverseTask?.cancel()
+        results = []
+        query = ""
+        searching = false
+        lat = place.lat
+        lng = place.lng
+        center = MapCenter(lat: place.lat, lng: place.lng, zoom: 17)
+        setAddress(place.address.isEmpty ? place.name : place.address)
+        addressTyped = true
+        if label.trimmingCharacters(in: .whitespaces).isEmpty { label = place.name }
+    }
+
+    /// Fill the address from the pin position, unless the customer typed one.
+    private func lookupAddress(_ la: Double, _ ln: Double) {
+        guard searchAvailable, !addressTyped else { return }
+        reverseTask?.cancel()
+        reverseTask = Task {
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            if Task.isCancelled { return }
+            guard let place = try? await session.customer.geoReverse(lat: la, lng: ln).place, !Task.isCancelled, !addressTyped else { return }
+            setAddress(place.address.isEmpty ? place.name : place.address)
+        }
+    }
+
+    private func setAddress(_ value: String) {
+        autoAddress = value
+        address = value
     }
 
     private func useMyLocation() async {
