@@ -40,7 +40,28 @@ struct CustomerAPI {
     func chats() async throws -> [ChatConversation] { try await api.get("customer/chats") }
     func messages(_ orderId: String) async throws -> ChatThread { try await api.get("customer/orders/\(orderId)/messages") }
     func send(_ orderId: String, body: String) async throws -> ChatMessage { try await api.post("customer/orders/\(orderId)/messages", ChatSendRequest(body: body)) }
+
+    // Address search (Google Places on the server; hidden when the server has no key).
+    func geoStatus() async throws -> GeoStatus { try await api.get("geo/status") }
+    func geoSearch(_ q: String, lat: Double?, lng: Double?) async throws -> GeoSearchResult {
+        try await api.get("geo/search", query: ["q": q, "lat": lat.map { String($0) }, "lng": lng.map { String($0) }])
+    }
+    func geoReverse(lat: Double, lng: Double) async throws -> GeoReverseResult {
+        try await api.get("geo/reverse", query: ["lat": String(lat), "lng": String(lng)])
+    }
 }
+
+struct GeoStatus: Decodable { let search: Bool; let provider: String? }
+struct GeoPlace: Decodable, Identifiable {
+    let placeId: String
+    let name: String
+    let address: String
+    let lat: Double
+    let lng: Double
+    var id: String { placeId }
+}
+struct GeoSearchResult: Decodable { let items: [GeoPlace] }
+struct GeoReverseResult: Decodable { let place: GeoPlace? }
 
 extension AppSession {
     var customer: CustomerAPI { CustomerAPI(api: api) }
