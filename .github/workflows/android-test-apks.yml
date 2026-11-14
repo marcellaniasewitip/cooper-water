@@ -43,7 +43,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew
       - name: Build APK pointed at the live API
-        run: ./gradlew --no-daemon assembleDebug -Pcw.apiBaseUrl="${{ vars.API_PUBLIC_URL }}" -Pcw.gitSha="${{ github.sha }}"
+        env:
+          # Google Maps SDK for Android key; empty = OpenStreetMap maps. See docs/google-maps.md.
+          GOOGLE_MAPS_ANDROID_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY }}
+        run: ./gradlew --no-daemon assembleDebug -Pcw.apiBaseUrl="${{ vars.API_PUBLIC_URL }}" -Pcw.gitSha="${{ github.sha }}" -Pcw.googleMapsKey="$GOOGLE_MAPS_ANDROID_KEY"
       - name: Rename APK
         run: |
           mkdir -p out

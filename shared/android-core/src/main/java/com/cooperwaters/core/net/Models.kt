@@ -623,3 +623,23 @@ data class ChatThread(
 
 @Serializable
 data class ChatSendRequest(val body: String)
+
+// ───────────── Google Maps address search (GET /geo/*) ─────────────
+
+@Serializable
+data class GeoStatus(val search: Boolean = false, val provider: String? = null)
+
+@Serializable
+data class GeoPlace(
+    val placeId: String? = null,
+    val name: String = "",
+    val address: String = "",
+    val lat: Double,
+    val lng: Double,
+)
+
+@Serializable
+data class GeoSearchResult(val items: List<GeoPlace> = emptyList())
+
+@Serializable
+data class GeoReverseResult(val place: GeoPlace? = null)

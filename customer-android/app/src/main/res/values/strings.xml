@@ -313,4 +313,6 @@
     <string name="chat_send">Send</string>
     <string name="tracking_message_driver">Message driver</string>
     <string name="order_referral_applied">%1$s is a Refer &amp; Earn code — applied! You and your friend each get %2$s in your wallet after your first completed order.</string>
+    <string name="location_search">Search address</string>
+    <string name="location_search_hint">e.g. Vision City, Waigani or Section 101</string>
 </resources>

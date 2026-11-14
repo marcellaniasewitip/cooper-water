@@ -3811,6 +3811,65 @@
         ]
       }
     },
+    "/api/v1/geo/status": {
+      "get": {
+        "operationId": "MapsController_status",
+        "summary": "",
+        "description": "Whether address search is set up (apps hide the search box when it isn't).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "geo"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/geo/search": {
+      "get": {
+        "operationId": "MapsController_search",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "geo"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/geo/reverse": {
+      "get": {
+        "operationId": "MapsController_reverse",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "geo"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/permissions": {
       "get": {
         "operationId": "AdminAccessController_permissions",

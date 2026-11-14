@@ -16,6 +16,8 @@ if (file("google-services.json").exists()) {
 val apiBaseUrl: String = (findProperty("cw.apiBaseUrl") as String?) ?: "http://10.0.2.2:3100"
 /** Short commit id shown on the sign-in screen so testers can tell builds apart (CI passes -Pcw.gitSha). */
 val gitSha: String = (findProperty("cw.gitSha") as String?)?.take(7) ?: "dev"
+/** Google Maps SDK for Android key (CI: GOOGLE_MAPS_ANDROID_KEY). Empty = OpenStreetMap maps. */
+val googleMapsKey: String = (findProperty("cw.googleMapsKey") as String?)?.trim() ?: ""
 val apiBaseUrlRelease: String = (findProperty("cw.apiBaseUrlRelease") as String?) ?: apiBaseUrl
 
 android {
@@ -31,6 +33,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
+        manifestPlaceholders["googleMapsKey"] = googleMapsKey
     }
 
     signingConfigs {
