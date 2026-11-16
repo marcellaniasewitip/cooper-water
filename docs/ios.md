@@ -70,6 +70,22 @@ App Store Connect → each app → **TestFlight**:
 
 Testers install **TestFlight** from the App Store, open the invite or link, and tap **Install**.
 
+## Install without TestFlight (.ipa download + Sideloadly)
+
+Every merge to `main` (or **Actions → iOS apps → Run workflow**) also builds unsigned `.ipa` files:
+open the run, scroll to **Artifacts**, and download `cooper-waters-customer-iphone-ipa` /
+`cooper-waters-driver-iphone-ipa` (unzip to get the `.ipa`). An iPhone can't open these directly; install them
+from a Windows PC or Mac:
+
+1. Install **iTunes** (Windows, from apple.com, not the Microsoft Store version) and **Sideloadly** (sideloadly.io).
+2. Plug the iPhone in with a cable and tap **Trust** on the phone.
+3. Open Sideloadly, drag the `.ipa` in, enter your Apple ID, and click **Start**.
+4. On the iPhone: **Settings → General → VPN & Device Management** → your Apple ID → **Trust**.
+   On iOS 16+ also turn on **Settings → Privacy & Security → Developer Mode** (the phone restarts).
+
+With a free Apple ID the app stops opening after **7 days** (install again to renew) and you can have 3 sideloaded
+apps. With the paid Apple Developer account it lasts a year. For real testers, TestFlight (above) is easier.
+
 ## Notes
 
 - **Push notifications** to closed apps need Firebase/APNs set up (same as Android). Until then, messages and
