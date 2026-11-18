@@ -19,6 +19,9 @@
     <!-- Notifications -->
     <string name="notification_channel_orders_id" translatable="false">orders</string>
     <string name="notification_channel_orders">Order updates</string>
+    <string name="notification_channel_chat">Messages</string>
+    <string name="notification_channel_chat_desc">Messages from your driver.</string>
+    <string name="notification_chat_title">Message from your driver · %1$s</string>
 
     <!-- Sign in -->
     <string name="app_version">Version %1$s · %2$s</string>

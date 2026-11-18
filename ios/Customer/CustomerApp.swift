@@ -78,6 +78,18 @@ struct RootView: View {
         }
         .onChange(of: phase) { _ in syncRealtime() }
         .onChange(of: session.signedIn) { _ in syncRealtime() }
+        // Message from the driver: banner at the top of the screen (not while that chat is open).
+        .onReceive(session.realtime.events) { e in
+            if case .chatMessage(let orderId, let code, let m) = e, m.mine != true {
+                LocalNotifications.showChat(orderId: orderId, messageId: m.id, title: "Message from your driver · \(code)", body: m.body)
+            }
+        }
+        // Tapped a message banner: open that chat.
+        .onReceive(NotificationRouter.shared.$pendingChatOrderId) { id in
+            guard let id, session.signedIn else { return }
+            NotificationRouter.shared.pendingChatOrderId = nil
+            router.go(.chat(orderId: id))
+        }
     }
 
     /// Live updates only while the app is open and signed in.

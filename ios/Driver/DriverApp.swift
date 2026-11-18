@@ -106,6 +106,12 @@ struct DriverRoot: View {
             }
         }
         .onChange(of: state.profile?.online) { _ in syncRealtime() }
+        // Tapped a message banner: open that chat.
+        .onReceive(NotificationRouter.shared.$pendingChatOrderId) { id in
+            guard let id, session.signedIn else { return }
+            NotificationRouter.shared.pendingChatOrderId = nil
+            router.go(.chat(orderId: id))
+        }
     }
 
     /// Live connection while the app is visible OR the driver is online (offers are time-critical).

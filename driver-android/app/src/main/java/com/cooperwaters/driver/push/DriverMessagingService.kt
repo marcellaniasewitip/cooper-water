@@ -21,6 +21,11 @@ class DriverMessagingService : FirebaseMessagingService() {
         container.onPush(message.data)
         val title = message.notification?.title ?: message.data["title"] ?: getString(R.string.app_name)
         val body = message.notification?.body ?: message.data["body"] ?: return
+        val chatOrderId = message.data["orderId"]
+        if (message.data["template"] == "chat.message" && chatOrderId != null) {
+            (application as DriverApp).notifyChat(chatOrderId, message.data["shortCode"].orEmpty(), message.data["messageId"], message.data["preview"] ?: body)
+            return
+        }
         val isOffer = message.data["template"]?.contains("offer") == true || message.data.containsKey("earnings")
         val channel = getString(if (isOffer) R.string.notification_channel_offers_id else R.string.notification_channel_jobs_id)
         // Ring like a call for offers; the notification itself then stays silent so the tone doesn't play twice.

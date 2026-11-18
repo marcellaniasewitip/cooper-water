@@ -28,9 +28,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cooperwaters.core.android.TrackOpenChat
 import com.cooperwaters.core.android.ui.ErrorCard
 import com.cooperwaters.core.net.ChatMessage
 import com.cooperwaters.core.time.PomTime
@@ -41,6 +43,7 @@ import com.cooperwaters.driver.ui.common.containerViewModel
 /** Chat with the customer for one job (StarTrip-style bubbles). */
 @Composable
 fun ChatScreen(orderId: String, onBack: () -> Unit) {
+    TrackOpenChat(LocalContext.current.applicationContext, orderId)
     val vm = containerViewModel(key = "chat-$orderId") { c -> ChatViewModel(c.repository.api, c.realtime.events, orderId) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()

@@ -70,8 +70,9 @@ final class DriverState: ObservableObject {
             }
             if o.status != OrderStatus.searching { removeOffer(o.id) }
         case .chatMessage(let orderId, let code, let m):
-            if m.mine != true { LocalNotifications.show(id: "chat-\(m.id)", title: "Message · \(code)", body: m.body) }
-            _ = orderId
+            if m.mine != true {
+                LocalNotifications.showChat(orderId: orderId, messageId: m.id, title: "Message from customer · \(code)", body: m.body)
+            }
         default:
             break
         }

@@ -34,6 +34,8 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key><string>While you are online, your location is shared with Cooper Waters so customers can track their delivery and you receive nearby jobs.</string>
 	<key>NSCameraUsageDescription</key><string>The camera is used to photograph your documents, truck and proof of delivery.</string>
 	<key>NSPhotoLibraryUsageDescription</key><string>Choose photos of your documents, truck, receipts or proof of delivery.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array><string>comgooglemaps</string></array>
 	<key>UIBackgroundModes</key>
 	<array><string>location</string></array>
 </dict>

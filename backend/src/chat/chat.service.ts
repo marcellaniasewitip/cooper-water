@@ -61,6 +61,7 @@ export class ChatService {
       shortCode: order.shortCode,
       preview: m.body.length > 80 ? `${m.body.slice(0, 77)}...` : m.body,
       orderId,
+      messageId: m.id,
     });
     return { ...view, mine: true };
   }

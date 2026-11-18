@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.cooperwaters.core.android.ChatNotifications
 import com.cooperwaters.core.realtime.RealtimeEvent
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -26,7 +27,7 @@ class CustomerApp : Application() {
         container = AppContainer(this)
         createNotificationChannels()
 
-        // Realtime only while the app is visible; FCM push is the backup channel in the background.
+        // Realtime while signed in (also in the background, so driver messages pop up); FCM push covers a closed app.
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 container.foreground.value = true
@@ -37,13 +38,19 @@ class CustomerApp : Application() {
             }
         })
         container.appScope.launch {
-            combine(container.foreground, container.loggedIn) { fg, inSession -> fg && inSession }
+            container.loggedIn
                 .distinctUntilChanged()
                 .collect { if (it) container.realtime.connect() else container.realtime.disconnect() }
         }
-        // Push messages from the admin arrive live over the socket while the app is open: show them as notifications.
+        // Push messages from the admin and chat messages from the driver arrive live over the socket: show them as notifications.
         container.appScope.launch {
-            container.realtime.events.collect { e -> if (e is RealtimeEvent.MessageReceived) notifyMessage(e.id, e.title, e.body) }
+            container.realtime.events.collect { e ->
+                when (e) {
+                    is RealtimeEvent.MessageReceived -> notifyMessage(e.id, e.title, e.body)
+                    is RealtimeEvent.ChatMessageReceived -> if (!e.message.mine) notifyChat(e.orderId, e.shortCode, e.message.id, e.message.body)
+                    else -> Unit
+                }
+            }
         }
         // Resend saved idempotent requests (same keys) whenever we're signed in and back online.
         container.appScope.launch {
@@ -78,7 +85,24 @@ class CustomerApp : Application() {
         }
     }
 
+    /** Driver chat message: heads-up banner; tapping it opens the chat. Shown once even if push and socket both deliver it. */
+    fun notifyChat(orderId: String, shortCode: String, messageId: String?, body: String) {
+        val intent = Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(MainActivity.EXTRA_CHAT_ORDER_ID, orderId)
+        val pi = PendingIntent.getActivity(this, ChatNotifications.notificationId(orderId), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        ChatNotifications.show(
+            this, orderId, messageId,
+            title = getString(R.string.notification_chat_title, shortCode),
+            body = body,
+            smallIcon = R.drawable.ic_notification,
+            tapIntent = pi,
+            appInForeground = container.foreground.value,
+        )
+    }
+
     private fun createNotificationChannels() {
+        ChatNotifications.createChannel(this, getString(R.string.notification_channel_chat), getString(R.string.notification_channel_chat_desc))
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(

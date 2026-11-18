@@ -6,12 +6,17 @@ import android.content.Intent
 import android.net.Uri
 
 object Intents {
-    /** Turn-by-turn navigation in the installed maps app; falls back to a Google Maps web URL, then a geo: URI. */
+    /**
+     * Turn-by-turn driving directions in Google Maps, starting straight away. Falls back to any app that handles
+     * navigation, then Google Maps directions in the browser, then a plain map pin.
+     */
     fun navigateTo(context: Context, lat: Double, lng: Double, label: String?): Boolean {
+        val nav = "google.navigation:q=$lat,$lng&mode=d"
         val candidates = listOf(
-            Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$lat,$lng")),
+            Intent(Intent.ACTION_VIEW, Uri.parse(nav)).setPackage(GOOGLE_MAPS),
+            Intent(Intent.ACTION_VIEW, Uri.parse(nav)),
+            Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving&dir_action=navigate")),
             Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label ?: "")})")),
-            Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$lat,$lng")),
         )
         for (i in candidates) {
             try {
@@ -23,6 +28,8 @@ object Intents {
         }
         return false
     }
+
+    private const val GOOGLE_MAPS = "com.google.android.apps.maps"
 
     fun dial(context: Context, phone: String): Boolean = try {
         context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

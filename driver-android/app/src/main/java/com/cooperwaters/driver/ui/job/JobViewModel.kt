@@ -19,9 +19,12 @@ import com.cooperwaters.core.util.Geo
 import com.cooperwaters.driver.R
 import com.cooperwaters.driver.data.DriverRepository
 import com.cooperwaters.driver.data.DriverState
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -75,6 +78,11 @@ class JobViewModel(
 ) : ViewModel() {
     private val _ui = MutableStateFlow(JobUi())
     val ui: StateFlow<JobUi> = _ui.asStateFlow()
+
+    private val _openNavigation = Channel<Unit>(Channel.CONFLATED)
+
+    /** Fires once when the water is loaded: the screen opens Google Maps directions to the customer. */
+    val openNavigation: Flow<Unit> = _openNavigation.receiveAsFlow()
 
     init {
         viewModelScope.launch {
@@ -147,6 +155,7 @@ class JobViewModel(
                 is ApiResult.Success -> {
                     apply(r.value)
                     _ui.update { it.copy(busy = false, proofPhoto = if (step == JobStep.MARK_DELIVERED) null else it.proofPhoto) }
+                    if (step == JobStep.CONFIRM_LOADED) _openNavigation.trySend(Unit)
                 }
                 is ApiResult.Failure -> {
                     val msg = if (r.error.hasCode(ErrorCodes.NOT_AT_DEPOT)) {

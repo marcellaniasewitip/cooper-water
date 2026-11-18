@@ -61,6 +61,11 @@ struct DriverChatScreen: View {
             error: error,
             onSend: send
         )
+        .onAppear {
+            LocalNotifications.openChatOrderId = orderId
+            LocalNotifications.cancel(id: LocalNotifications.chatNotificationId(orderId))
+        }
+        .onDisappear { if LocalNotifications.openChatOrderId == orderId { LocalNotifications.openChatOrderId = nil } }
         .task { await load() }
         .onReceive(session.realtime.events) { e in
             if case .chatMessage(let id, _, _) = e, id == orderId { Task { await load() } }
