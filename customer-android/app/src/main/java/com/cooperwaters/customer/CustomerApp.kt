@@ -39,7 +39,6 @@ class CustomerApp : Application() {
         })
         container.appScope.launch {
             container.loggedIn
-                .distinctUntilChanged()
                 .collect { if (it) container.realtime.connect() else container.realtime.disconnect() }
         }
         // Push messages from the admin and chat messages from the driver arrive live over the socket: show them as notifications.
