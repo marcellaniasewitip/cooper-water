@@ -2986,6 +2986,43 @@
             "bearer": []
           }
         ]
+      },
+      "post": {
+        "operationId": "AdminMoneyController_createTopup",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key per logical request (UUID recommended)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminTopupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
       }
     },
     "/api/v1/admin/topups/{id}/approve": {
@@ -3001,6 +3038,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveTopupDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": ""
@@ -5494,6 +5541,56 @@
         },
         "required": [
           "value"
+        ]
+      },
+      "ApproveTopupDto": {
+        "type": "object",
+        "properties": {
+          "amountToea": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000000,
+            "description": "Toea to credit instead of the requested amount"
+          }
+        }
+      },
+      "AdminTopupDto": {
+        "type": "object",
+        "properties": {
+          "referenceText": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "ownerType": {
+            "type": "string",
+            "enum": [
+              "driver",
+              "customer"
+            ]
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "Driver id (driver) or user id (customer)."
+          },
+          "amountToea": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000000
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "bank_transfer",
+              "cellmoney"
+            ]
+          }
+        },
+        "required": [
+          "ownerType",
+          "ownerId",
+          "amountToea",
+          "method"
         ]
       },
       "ReasonDto": {

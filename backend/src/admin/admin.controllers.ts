@@ -35,6 +35,8 @@ import {
   PromoDto,
   UpdatePromoDto,
   AdjustmentDto,
+  AdminTopupDto,
+  ApproveTopupDto,
   AuditQuery,
   CompleteRefundDto,
   ConfirmPaymentDto,
@@ -410,8 +412,16 @@ export class AdminMoneyController {
   @Post('topups/:id/approve')
   @HttpCode(200)
   @RequirePermissions('wallet.approve_topup')
-  approveTopup(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Ip() ip: string) {
-    return this.wallet.approveTopup(a.id, id, ip);
+  approveTopup(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ApproveTopupDto, @Ip() ip: string) {
+    return this.wallet.approveTopup(a.id, id, ip, dto?.amountToea);
+  }
+
+  /** Top up a driver's or customer's wallet directly (typed amount). */
+  @Post('topups')
+  @Idempotent()
+  @RequirePermissions('wallet.approve_topup')
+  createTopup(@CurrentAdmin() a: AdminPrincipal, @Body() dto: AdminTopupDto, @IdempotencyKey() key: string, @Ip() ip: string) {
+    return this.wallet.adminTopup(a.id, dto, key, ip);
   }
 
   @Post('topups/:id/reject')

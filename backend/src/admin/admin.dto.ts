@@ -190,6 +190,40 @@ export class IssueRefundDto {
   reason: string;
 }
 
+/** Approve a top-up, optionally crediting a different amount than requested (what was actually received). */
+export class ApproveTopupDto {
+  @ApiPropertyOptional({ description: 'Toea to credit instead of the requested amount' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10_000_000)
+  amountToea?: number;
+}
+
+/** Admin tops up a driver's or customer's wallet directly (cash or transfer received at the office). */
+export class AdminTopupDto {
+  @IsIn(['driver', 'customer'])
+  ownerType: 'driver' | 'customer';
+
+  /** Driver id (driver) or user id (customer). */
+  @IsUUID()
+  ownerId: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(10_000_000)
+  amountToea: number;
+
+  @IsIn(['cash', 'bank_transfer', 'cellmoney'])
+  method: 'cash' | 'bank_transfer' | 'cellmoney';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  referenceText?: string;
+}
+
 export class AdjustmentDto {
   /** Signed toea: positive credits the wallet, negative debits it. */
   @IsInt()

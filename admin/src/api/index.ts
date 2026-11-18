@@ -87,7 +87,9 @@ export const api = {
   },
   topups: {
     list: (q: ListQuery) => http.get<T.Page<T.Topup>>('/admin/topups', q),
-    approve: (id: string) => http.post<T.Topup>(`/admin/topups/${id}/approve`),
+    approve: (id: string, amountToea?: number) =>
+      http.post<T.Topup>(`/admin/topups/${id}/approve`, (amountToea !== undefined ? { amountToea } : {}) satisfies Dto<'ApproveTopupDto'>),
+    create: (body: Dto<'AdminTopupDto'>, idempotencyKey: string) => http.post<T.Topup>('/admin/topups', body, { 'Idempotency-Key': idempotencyKey }),
     reject: (id: string, reason: string) => http.post<T.Topup>(`/admin/topups/${id}/reject`, { reason } satisfies Dto<'ReasonDto'>),
   },
   wallets: {

@@ -1361,7 +1361,7 @@ export interface paths {
         };
         get: operations["AdminMoneyController_topups"];
         put?: never;
-        post?: never;
+        post: operations["AdminMoneyController_createTopup"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2356,6 +2356,20 @@ export interface components {
         SettingValueDto: {
             /** @description Any JSON value (number, string, boolean or list) */
             value: number | string | boolean | unknown[];
+        };
+        ApproveTopupDto: {
+            /** @description Toea to credit instead of the requested amount */
+            amountToea?: number;
+        };
+        AdminTopupDto: {
+            referenceText?: string;
+            /** @enum {string} */
+            ownerType: "driver" | "customer";
+            /** @description Driver id (driver) or user id (customer). */
+            ownerId: string;
+            amountToea: number;
+            /** @enum {string} */
+            method: "cash" | "bank_transfer" | "cellmoney";
         };
         ReasonDto: {
             reason: string;
@@ -4466,6 +4480,30 @@ export interface operations {
             };
         };
     };
+    AdminMoneyController_createTopup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Unique key per logical request (UUID recommended) */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminTopupDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminMoneyController_approveTopup: {
         parameters: {
             query?: never;
@@ -4475,7 +4513,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveTopupDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

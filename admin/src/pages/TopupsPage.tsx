@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { api, type Topup } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { ActionModal } from '@/components/ActionModal';
+import { AdminTopupModal } from '@/components/AdminTopupModal';
 import { LoadMore } from '@/components/CursorList';
 import { useCursorList } from '@/components/useCursorList';
 import { Money } from '@/components/Money';
@@ -12,7 +13,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { Empty, QueryState } from '@/components/QueryState';
 import { StatusBadge } from '@/components/StatusBadge';
 import { fmt, label, m } from '@/i18n';
-import { formatKina } from '@/lib/money';
+import { formatKina, parseKinaToToea, toeaToKinaInput } from '@/lib/money';
 import { formatDateTime } from '@/lib/time';
 
 function Proof({ t }: { t: Topup }) {
@@ -65,6 +66,7 @@ export default function TopupsPage() {
   const qc = useQueryClient();
   const [status, setStatus] = useState('pending');
   const [action, setAction] = useState<{ t: Topup; kind: 'approve' | 'reject' } | null>(null);
+  const [creating, setCreating] = useState(false);
   const query = { status: status === 'all' ? undefined : status };
   const list = useCursorList<Topup>(['topups', query], (p) => api.topups.list({ ...query, ...p }));
 
@@ -72,7 +74,17 @@ export default function TopupsPage() {
 
   return (
     <>
-      <PageHeader title={m.topups.title} subtitle={m.topups.pendingFirst} />
+      <PageHeader
+        title={m.topups.title}
+        subtitle={m.topups.pendingFirst}
+        actions={
+          can('wallet.approve_topup') && (
+            <Button color="teal" onClick={() => setCreating(true)} data-testid="admin-topup-open">
+              {m.topups.adminButton}
+            </Button>
+          )
+        }
+      />
       <Card withBorder mb="md">
         <SegmentedControl
           value={status}
@@ -176,15 +188,35 @@ export default function TopupsPage() {
           body={action.kind === 'approve' ? fmt(m.topups.approveBody, { amount: formatKina(action.t.amountToea), driver: action.t.customer?.name ?? action.t.customer?.phone ?? action.t.driver?.user.name ?? action.t.driver?.user.phone ?? '' }) : undefined}
           color={action.kind === 'approve' ? 'teal' : 'red'}
           confirmLabel={action.kind === 'approve' ? m.topups.approve : m.topups.reject}
-          fields={action.kind === 'reject' ? [{ name: 'reason', label: m.common.reason, type: 'textarea', required: true, maxLength: 500 }] : []}
+          fields={
+            action.kind === 'reject'
+              ? [{ name: 'reason', label: m.common.reason, type: 'textarea', required: true, maxLength: 500 }]
+              : action.t.paymentId
+                ? []
+                : [
+                    {
+                      name: 'amount',
+                      label: m.topups.approveAmount,
+                      type: 'kina',
+                      required: true,
+                      initial: toeaToKinaInput(action.t.amountToea),
+                      description: fmt(m.topups.approveAmountHelp, { amount: formatKina(action.t.amountToea) }),
+                    },
+                  ]
+          }
+          validate={(v) => (action.kind === 'approve' && v.amount !== undefined && (parseKinaToToea(v.amount) ?? 0) <= 0 ? m.common.invalidAmount : null)}
           successMessage={action.kind === 'approve' ? m.topups.approved : m.topups.rejected}
           onSubmit={async (v) => {
-            if (action.kind === 'approve') await api.topups.approve(action.t.id);
+            if (action.kind === 'approve') {
+              const toea = v.amount !== undefined ? parseKinaToToea(v.amount) : null;
+              await api.topups.approve(action.t.id, toea !== null && toea !== action.t.amountToea ? toea : undefined);
+            }
             else await api.topups.reject(action.t.id, v.reason);
             await refresh();
           }}
         />
       )}
+      <AdminTopupModal opened={creating} onClose={() => setCreating(false)} onDone={refresh} />
     </>
   );
 }

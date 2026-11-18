@@ -96,6 +96,40 @@ describe('customer wallet, offers, referrals, inbox and chat (integration)', () 
     expect(await walletBalance(h, 'driver', d.driverId)).toBe(5000);
   });
 
+  it('admin can approve a top-up for a different (typed) amount than requested', async () => {
+    const d = await approvedDriver(h, { balanceToea: 0, online: false });
+    const t = await h.http().post('/api/v1/driver/wallet/topups').set(bearer(d.token)).set('Idempotency-Key', idem()).send({ method: 'cash', amountToea: 12400, referenceText: 'RCPT-7' }).expect(201);
+    const admin = await adminLogin(h);
+    const a = await h.http().post(`/api/v1/admin/topups/${t.body.topup.id}/approve`).set(bearer(admin)).send({ amountToea: 12000 }).expect(200);
+    expect(a.body).toMatchObject({ status: 'approved', amountToea: 12000 });
+    expect(await walletBalance(h, 'driver', d.driverId)).toBe(12000);
+    const audit = await h.prisma.auditLog.findFirst({ where: { action: 'topup.approve', entityId: t.body.topup.id } });
+    expect(audit?.before).toMatchObject({ amountToea: 12400 });
+  });
+
+  it('admin can top up any driver or customer wallet directly with a typed amount (once per click)', async () => {
+    const d = await approvedDriver(h, { balanceToea: 0, online: false });
+    const c = await customer(h);
+    const admin = await adminLogin(h);
+    const key = idem();
+    const body = { ownerType: 'driver', ownerId: d.driverId, amountToea: 15050, method: 'cash', referenceText: 'Office receipt 88' };
+    const r1 = await h.http().post('/api/v1/admin/topups').set(bearer(admin)).set('Idempotency-Key', key).send(body).expect(201);
+    expect(r1.body).toMatchObject({ status: 'approved', amountToea: 15050, driverId: d.driverId, referenceText: 'Office receipt 88' });
+    // A double click (same key) does not credit twice.
+    await h.http().post('/api/v1/admin/topups').set(bearer(admin)).set('Idempotency-Key', key).send(body);
+    expect(await walletBalance(h, 'driver', d.driverId)).toBe(15050);
+
+    await h.http().post('/api/v1/admin/topups').set(bearer(admin)).set('Idempotency-Key', idem())
+      .send({ ownerType: 'customer', ownerId: c.userId, amountToea: 50000, method: 'bank_transfer' }).expect(201);
+    expect(await walletBalance(h, 'customer', c.userId)).toBe(50000);
+    const list = await h.http().get('/api/v1/admin/topups').query({ status: 'approved' }).set(bearer(admin)).expect(200);
+    expect(list.body.items).toHaveLength(2);
+
+    // An id that isn't a customer is rejected.
+    await h.http().post('/api/v1/admin/topups').set(bearer(admin)).set('Idempotency-Key', idem())
+      .send({ ownerType: 'customer', ownerId: d.userId, amountToea: 100, method: 'cash' }).expect(404);
+  });
+
   it('a wallet-paid order settles the driver from the full price', async () => {
     const c = await customer(h);
     const d = await approvedDriver(h);
