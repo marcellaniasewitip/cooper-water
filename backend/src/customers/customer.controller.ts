@@ -67,7 +67,7 @@ export class CustomerController {
       cancelFreeUntil: await this.settings.get('order.customer_cancel_free_until'),
       maxQuantity: await this.settings.get('order.max_quantity'),
       disputeCategories: await this.settings.get('dispute.categories'),
-      paymentMethods: ['cod', 'cellmoney'],
+      paymentMethods: ['cod', 'cellmoney', 'wallet'],
       cellmoneyTimeoutSec: await this.settings.get('payment.cellmoney.timeout_sec'),
       autoCompleteAfterSec: await this.settings.get('order.auto_complete_after_sec'),
     };

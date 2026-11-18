@@ -215,20 +215,71 @@ export class WalletService {
     });
   }
 
-  async approveTopup(adminId: string, topupId: string, ip: string | null) {
+  /**
+   * Approve a pending top-up. `amountToea` credits a different amount than requested (what the admin actually
+   * received, e.g. the driver asked for K124 but handed in K120); the change is kept in the audit log.
+   */
+  async approveTopup(adminId: string, topupId: string, ip: string | null, amountToea?: number) {
     const effects = new AfterCommit();
     const result = await this.prisma.tx(async (tx) => {
       await tx.$queryRaw`SELECT id FROM topup_requests WHERE id = ${topupId}::uuid FOR UPDATE`;
-      const t = await tx.topupRequest.findUnique({ where: { id: topupId } });
-      if (!t) throw Errors.notFound('Top-up');
-      if (t.status !== 'pending') throw Errors.conflict('topup_not_pending', `This top-up is already ${t.status}`);
+      const found = await tx.topupRequest.findUnique({ where: { id: topupId } });
+      if (!found) throw Errors.notFound('Top-up');
+      if (found.status !== 'pending') throw Errors.conflict('topup_not_pending', `This top-up is already ${found.status}`);
+      let t = found;
+      if (amountToea !== undefined && amountToea !== found.amountToea) {
+        if (found.paymentId) throw Errors.invalid('topup_amount_fixed', 'The amount of a cell money payment cannot be changed');
+        t = await tx.topupRequest.update({ where: { id: found.id }, data: { amountToea } });
+      }
       if (t.paymentId) {
         // Manual cell money top-up matched by an admin: the collection succeeded.
         await tx.payment.update({ where: { id: t.paymentId }, data: { status: 'succeeded', settledAt: new Date() } });
       }
       await this.creditTopup(tx, t, `admin:${adminId}`, effects, adminId);
       const after = await tx.topupRequest.findUniqueOrThrow({ where: { id: t.id } });
-      await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'topup.approve', entity: 'topup_request', entityId: t.id, before: t, after, ip }, tx);
+      await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'topup.approve', entity: 'topup_request', entityId: t.id, before: found, after, ip }, tx);
+      return after;
+    });
+    await effects.run();
+    return result;
+  }
+
+  /**
+   * Admin tops up a wallet directly (money received at the office, by transfer or cell money). Recorded as an
+   * approved top-up so it shows in the Wallet top-ups list and the owner's history, and credited at once.
+   * The Idempotency-Key makes a double click credit only once.
+   */
+  async adminTopup(
+    adminId: string,
+    dto: { ownerType: 'driver' | 'customer'; ownerId: string; amountToea: number; method: 'cash' | 'bank_transfer' | 'cellmoney'; referenceText?: string },
+    key: string,
+    ip: string | null,
+  ) {
+    const idempotencyKey = `admin-topup:${key}`;
+    const existing = await this.prisma.topupRequest.findUnique({ where: { idempotencyKey } });
+    if (existing) return existing;
+    if (dto.ownerType === 'driver') {
+      const d = await this.prisma.driver.findUnique({ where: { id: dto.ownerId } });
+      if (!d) throw Errors.notFound('Driver');
+    } else {
+      const u = await this.prisma.user.findUnique({ where: { id: dto.ownerId } });
+      if (!u || u.role !== 'customer') throw Errors.notFound('Customer');
+    }
+    const effects = new AfterCommit();
+    const result = await this.prisma.tx(async (tx) => {
+      const t = await tx.topupRequest.create({
+        data: {
+          driverId: dto.ownerType === 'driver' ? dto.ownerId : null,
+          customerId: dto.ownerType === 'customer' ? dto.ownerId : null,
+          method: dto.method,
+          amountToea: dto.amountToea,
+          referenceText: (dto.referenceText ?? '').trim() || 'Admin top-up',
+          idempotencyKey,
+        },
+      });
+      await this.creditTopup(tx, t, `admin:${adminId}`, effects, adminId);
+      const after = await tx.topupRequest.findUniqueOrThrow({ where: { id: t.id } });
+      await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'topup.admin_create', entity: 'topup_request', entityId: t.id, after, ip }, tx);
       return after;
     });
     await effects.run();
