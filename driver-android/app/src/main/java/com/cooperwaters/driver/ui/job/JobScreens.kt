@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -79,6 +80,12 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit, on
     val doStep = {
         if (LocationHelper.hasPermission(context)) stepWithLocation() else permission.launch(LocationHelper.PERMISSIONS)
     }
+    // Water loaded: go straight into Google Maps turn-by-turn to the customer's drop-off.
+    LaunchedEffect(vm) {
+        vm.openNavigation.collect {
+            vm.ui.value.order?.delivery?.let { d -> Intents.navigateTo(context, d.lat, d.lng, d.address) }
+        }
+    }
 
     ScreenScaffold(
         title = ui.order?.shortCode ?: stringResource(R.string.job_title),
@@ -120,6 +127,13 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit, on
                                 }
                             }
                         }
+                        if (delivery != null && ui.step in setOf(JobStep.ARRIVE_DEPOT, JobStep.CONFIRM_LOADED, JobStep.MARK_DELIVERED)) {
+                            OutlinedButton(onClick = { Intents.navigateTo(context, delivery.lat, delivery.lng, delivery.address) }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Filled.Place, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.job_navigate_customer))
+                            }
+                        }
                         if (ui.step != JobStep.DONE) {
                             OutlinedButton(onClick = onChat, modifier = Modifier.fillMaxWidth()) {
                                 Icon(Icons.Filled.Email, contentDescription = null)
@@ -142,6 +156,7 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit, on
                     }
                     JobStep.CONFIRM_LOADED -> {
                         Text(stringResource(R.string.job_loading_help))
+                        Text(stringResource(R.string.job_loaded_navigates), style = MaterialTheme.typography.bodySmall)
                         LoadingButton(stringResource(R.string.job_confirm_loaded), ui.busy, doStep, Modifier.fillMaxWidth())
                     }
                     JobStep.MARK_ARRIVED -> {

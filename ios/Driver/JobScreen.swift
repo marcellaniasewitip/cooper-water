@@ -30,7 +30,7 @@ enum JobStep {
     var help: String {
         switch self {
         case .arriveDepot: return "Drive to a Cooper Waters depot to load the water."
-        case .confirmLoaded: return "Confirm once the tank is loaded, while you're still at the depot."
+        case .confirmLoaded: return "Confirm once the tank is loaded, while you're still at the depot. Google Maps then opens with directions to the customer."
         case .markArrived: return "Drive to the customer. Tap when you arrive."
         case .markDelivered: return "Deliver the water. Add a photo as proof if you can."
         case .awaitCustomer: return "Waiting for the customer to confirm they received the water."
@@ -73,7 +73,11 @@ struct JobScreen: View {
                             HStack(spacing: 10) {
                                 if let phone = o.customer?.phone { Button { Phone.dial(phone) } label: { Label("Call", systemImage: "phone.fill") }.buttonStyle(.bordered) }
                                 Button { router.go(.chat(orderId: orderId)) } label: { Label("Message", systemImage: "message.fill") }.buttonStyle(.bordered)
-                                if let d = o.delivery { Button { navigate(d) } label: { Label("Navigate", systemImage: "location.fill") }.buttonStyle(.bordered) }
+                            }
+                            if let d = o.delivery, step != .done, step != .awaitCustomer {
+                                Button { navigate(d) } label: { Label("Directions to customer", systemImage: "location.fill") }
+                                    .buttonStyle(.borderedProminent)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
                     }
@@ -116,7 +120,12 @@ struct JobScreen: View {
             .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
+    /// Turn-by-turn driving directions: the Google Maps app if installed, else Apple Maps.
     private func navigate(_ d: DeliveryLocation) {
+        if let url = URL(string: "comgooglemaps://?daddr=\(d.lat),\(d.lng)&directionsmode=driving"), UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+            return
+        }
         let item = MKMapItem(placemark: MKPlacemark(coordinate: CLLocationCoordinate2D(latitude: d.lat, longitude: d.lng)))
         item.name = d.address
         item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
@@ -162,6 +171,8 @@ struct JobScreen: View {
                 }
                 order = o
                 state.activeOrder = OrderStatus.isTerminal(o.status) ? nil : o
+                // Water loaded: go straight into directions to the customer.
+                if step == .confirmLoaded, let d = o.delivery ?? order?.delivery { navigate(d) }
             } catch {
                 self.error = error.localizedDescription
             }

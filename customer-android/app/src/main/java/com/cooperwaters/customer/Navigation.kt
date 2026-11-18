@@ -70,11 +70,12 @@ object Routes {
 private fun NavHostController.goHomeClearingStack() = navigate(Routes.HOME) { popUpTo(0) { inclusive = true } }
 
 @Composable
-fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
+fun CustomerNavHost(openOrder: MutableStateFlow<String?>, openChat: MutableStateFlow<String?>) {
     val nav = rememberNavController()
     val container = appContainer()
     val loggedIn by container.loggedIn.collectAsStateWithLifecycle()
     val orderToOpen by openOrder.collectAsStateWithLifecycle()
+    val chatToOpen by openChat.collectAsStateWithLifecycle()
 
     LaunchedEffect(loggedIn) {
         if (!loggedIn && nav.currentDestination?.route != Routes.LOGIN) {
@@ -86,6 +87,13 @@ fun CustomerNavHost(openOrder: MutableStateFlow<String?>) {
         if (id != null && loggedIn) {
             nav.navigate(Routes.tracking(id))
             openOrder.value = null
+        }
+    }
+    LaunchedEffect(chatToOpen, loggedIn) {
+        val id = chatToOpen
+        if (id != null && loggedIn) {
+            nav.navigate(Routes.chat(id)) { launchSingleTop = true }
+            openChat.value = null
         }
     }
 

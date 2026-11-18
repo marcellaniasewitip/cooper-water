@@ -79,13 +79,36 @@ public enum LocalNotifications {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
     }
 
-    public static func show(id: String, title: String, body: String, sound: UNNotificationSound? = .default) {
+    public static func show(id: String, title: String, body: String, sound: UNNotificationSound? = .default, userInfo: [AnyHashable: Any] = [:]) {
         let content = UNMutableNotificationContent()
         content.title = title.isEmpty ? "Cooper Waters" : title
         content.body = body
         content.sound = sound
+        content.userInfo = userInfo
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
     }
+
+    /// Order whose chat is on screen right now: no banner for its messages. Set by the chat screens.
+    public static var openChatOrderId: String?
+    private static var shownChatMessages: [String] = []
+
+    /// Banner for a chat message (one per order, updated with the newest message; tapping opens the chat).
+    /// Skipped while that chat is open, and shown once per message id.
+    /// - Returns: whether a banner was shown.
+    @discardableResult
+    public static func showChat(orderId: String, messageId: String?, title: String, body: String) -> Bool {
+        if openChatOrderId == orderId { return false }
+        if let messageId {
+            if shownChatMessages.contains(messageId) { return false }
+            shownChatMessages.append(messageId)
+            if shownChatMessages.count > 200 { shownChatMessages.removeFirst(shownChatMessages.count - 200) }
+        }
+        show(id: chatNotificationId(orderId), title: title, body: body, userInfo: [chatOrderIdKey: orderId])
+        return true
+    }
+
+    public static func chatNotificationId(_ orderId: String) -> String { "chat-\(orderId)" }
+    public static let chatOrderIdKey = "chatOrderId"
 
     public static func cancel(id: String) {
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id])
@@ -99,6 +122,23 @@ public final class ForegroundNotificationDelegate: NSObject, UNUserNotificationC
     public func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound, .list])
     }
+
+    /// Tapped a notification: a chat message opens its chat.
+    public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let info = response.notification.request.content.userInfo
+        let orderId = (info[LocalNotifications.chatOrderIdKey] as? String)
+            ?? ((info["template"] as? String) == "chat.message" ? info["orderId"] as? String : nil)
+        if let orderId {
+            DispatchQueue.main.async { NotificationRouter.shared.pendingChatOrderId = orderId }
+        }
+        completionHandler()
+    }
+}
+
+/// Where a tapped notification wants to go; the app's root view watches it and opens the screen.
+public final class NotificationRouter: ObservableObject {
+    public static let shared = NotificationRouter()
+    @Published public var pendingChatOrderId: String?
 }
 
 // MARK: - Sign in

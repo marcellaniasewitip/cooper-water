@@ -31,6 +31,7 @@ import com.cooperwaters.driver.ui.support.SupportScreen
 import com.cooperwaters.driver.ui.wallet.TopupScreen
 import com.cooperwaters.driver.ui.wallet.WalletScreen
 import com.cooperwaters.driver.ui.wallet.WithdrawScreen
+import kotlinx.coroutines.flow.MutableStateFlow
 
 object Routes {
     const val LOGIN = "login"
@@ -75,13 +76,22 @@ private fun NavHostController.openFromMenu(route: String) = navigate(route) {
 }
 
 @Composable
-fun DriverNavHost() {
+fun DriverNavHost(openChat: MutableStateFlow<String?> = MutableStateFlow(null)) {
     val nav = rememberNavController()
     val container = appContainer()
     val loggedIn by container.loggedIn.collectAsStateWithLifecycle()
 
     LaunchedEffect(loggedIn) {
         if (!loggedIn && nav.currentDestination?.route != Routes.LOGIN) nav.resetTo(Routes.LOGIN)
+    }
+    // Tapped a message notification: open that chat once signed in and past the gate.
+    val chatToOpen by openChat.collectAsStateWithLifecycle()
+    LaunchedEffect(chatToOpen, loggedIn) {
+        val id = chatToOpen
+        if (id != null && loggedIn) {
+            nav.navigate(Routes.chat(id)) { launchSingleTop = true }
+            openChat.value = null
+        }
     }
 
     NavHost(navController = nav, startDestination = if (loggedIn) Routes.GATE else Routes.LOGIN) {

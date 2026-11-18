@@ -87,6 +87,9 @@ describe('full delivery journey (customer app → admin → driver app)', () => 
     const d1 = await h.http().post(`/api/v1/driver/orders/${order.id}/messages`).set(bearer(driver.token)).send({ body: 'On my way, 20 minutes.' });
     expect(d1.status).toBe(201);
     expect(eventsTo(cust.userId, 'chat.message').length).toBe(1);
+    // ...and a phone notification is queued for it (banner when the app is in the background/closed).
+    const chatPush = await h.prisma.notification.findFirst({ where: { userId: cust.userId, template: 'chat.message', channel: 'push' } });
+    expect(chatPush?.payload).toMatchObject({ orderId: order.id, messageId: d1.body.id, preview: 'On my way, 20 minutes.' });
     const c1 = await h.http().post(`/api/v1/customer/orders/${order.id}/messages`).set(bearer(cust.token)).send({ body: 'Thanks, the gate is open.' });
     expect(c1.status).toBe(201);
     expect(eventsTo(driver.userId, 'chat.message').length).toBe(1);

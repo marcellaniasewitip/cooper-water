@@ -14,6 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.cooperwaters.core.android.ChatNotifications
 import com.cooperwaters.core.money.Money
 import com.cooperwaters.core.realtime.RealtimeEvent
 import com.cooperwaters.driver.alert.OfferAlarm
@@ -78,7 +79,13 @@ class DriverApp : Application() {
         }
         // Push messages from the admin arrive live over the socket (while online / app open): show them as notifications.
         c.appScope.launch {
-            c.realtime.events.collect { e -> if (e is RealtimeEvent.MessageReceived) notifyMessage(e.id, e.title, e.body) }
+            c.realtime.events.collect { e ->
+                when (e) {
+                    is RealtimeEvent.MessageReceived -> notifyMessage(e.id, e.title, e.body)
+                    is RealtimeEvent.ChatMessageReceived -> if (!e.message.mine) notifyChat(e.orderId, e.shortCode, e.message.id, e.message.body)
+                    else -> Unit
+                }
+            }
         }
         // Stop ringing once nothing is waiting: accepted, declined, taken by someone else, expired, offline or signed out.
         c.appScope.launch {
@@ -111,6 +118,22 @@ class DriverApp : Application() {
         }
     }
 
+    /** Customer chat message: heads-up banner; tapping it opens the chat. Shown once even if push and socket both deliver it. */
+    fun notifyChat(orderId: String, shortCode: String, messageId: String?, body: String) {
+        val intent = Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(MainActivity.EXTRA_CHAT_ORDER_ID, orderId)
+        val pi = PendingIntent.getActivity(this, ChatNotifications.notificationId(orderId), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        ChatNotifications.show(
+            this, orderId, messageId,
+            title = getString(R.string.notification_chat_title, shortCode),
+            body = body,
+            smallIcon = R.drawable.ic_notification,
+            tapIntent = pi,
+            appInForeground = container.foreground.value,
+        )
+    }
+
     /** @param silent true when [offerAlarm] is already ringing, so the channel sound doesn't play on top of it. */
     fun notifyOffer(orderId: String, shortCode: String, earnings: String, silent: Boolean = false) {
         val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -133,6 +156,7 @@ class DriverApp : Application() {
     }
 
     private fun createChannels() {
+        ChatNotifications.createChannel(this, getString(R.string.notification_channel_chat), getString(R.string.notification_channel_chat_desc))
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = getSystemService(NotificationManager::class.java)
         // A channel's sound can't change after it is created, so the ringing channel has a new id; drop the old one.

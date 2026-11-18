@@ -21,6 +21,9 @@
     <string name="notification_channel_jobs">Job and wallet updates</string>
     <string name="notification_channel_tracking_id" translatable="false">tracking</string>
     <string name="notification_channel_tracking">Location sharing while online</string>
+    <string name="notification_channel_chat">Messages</string>
+    <string name="notification_channel_chat_desc">Messages from customers about your jobs.</string>
+    <string name="notification_chat_title">Message from customer · %1$s</string>
     <string name="notification_offer_title">New job offer</string>
     <string name="notification_offer_body">%1$s — earn %2$s. Open the app to accept.</string>
     <string name="tracking_notification_title">You are online</string>
@@ -128,6 +131,7 @@
     <string name="job_go_to_depot">Go to a depot to load the water.</string>
     <string name="job_navigate_depot">Navigate to %1$s</string>
     <string name="job_arrive_depot">I am at the depot — start loading</string>
+    <string name="job_loaded_navigates">After you confirm, Google Maps opens with directions to the customer.</string>
     <string name="job_loading_help">Confirm when the tank is full. You must still be at the depot.</string>
     <string name="job_confirm_loaded">Water loaded — start delivery</string>
     <string name="job_navigate_customer">Navigate to customer</string>

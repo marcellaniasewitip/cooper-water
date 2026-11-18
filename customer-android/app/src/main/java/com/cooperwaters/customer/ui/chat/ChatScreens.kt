@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,6 +52,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.cooperwaters.core.android.TrackOpenChat
 import com.cooperwaters.core.android.ui.EmptyState
 import com.cooperwaters.core.android.ui.ErrorCard
 import com.cooperwaters.core.android.ui.UiText
@@ -231,6 +233,7 @@ class ChatThreadViewModel(
 
 @Composable
 fun ChatThreadScreen(orderId: String, onBack: () -> Unit) {
+    TrackOpenChat(LocalContext.current.applicationContext, orderId)
     val vm = containerViewModel(key = "chat-$orderId") { c -> ChatThreadViewModel(c.api.customerApi, c.realtime.events, orderId) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()

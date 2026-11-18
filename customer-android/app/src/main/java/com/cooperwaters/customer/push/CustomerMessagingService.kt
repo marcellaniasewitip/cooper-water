@@ -25,6 +25,10 @@ class CustomerMessagingService : FirebaseMessagingService() {
         val title = message.notification?.title ?: message.data["title"] ?: getString(R.string.app_name)
         val body = message.notification?.body ?: message.data["body"] ?: return
         val orderId = message.data["orderId"]
+        if (message.data["template"] == "chat.message" && orderId != null) {
+            (application as CustomerApp).notifyChat(orderId, message.data["shortCode"].orEmpty(), message.data["messageId"], message.data["preview"] ?: body)
+            return
+        }
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             if (orderId != null) putExtra(MainActivity.EXTRA_ORDER_ID, orderId)
