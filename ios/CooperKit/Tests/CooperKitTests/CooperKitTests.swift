@@ -2,6 +2,17 @@ import XCTest
 @testable import CooperKit
 
 final class CooperKitTests: XCTestCase {
+    func testReceiptRules() {
+        XCTAssertTrue(ReceiptRules.isValidEmail("mary.kila@example.com"))
+        XCTAssertTrue(ReceiptRules.isValidEmail(" a@b.co "))
+        XCTAssertFalse(ReceiptRules.isValidEmail("not-an-email"))
+        XCTAssertFalse(ReceiptRules.isValidEmail("a@b"))
+        XCTAssertTrue(ReceiptRules.statuses.contains(OrderStatus.delivered))
+        XCTAssertFalse(ReceiptRules.statuses.contains(OrderStatus.enRoute))
+        XCTAssertEqual(VehicleType(capacityLitres: 3000).label, "3000 L water tanker")
+        XCTAssertEqual(VehicleType(capacityLitres: 3000, name: "3,000 L water tanker").label, "3,000 L water tanker")
+    }
+
     func testEtaFormat() {
         XCTAssertEqual(EtaFormat.minutes(30), 0)
         XCTAssertEqual(EtaFormat.minutes(111), 2)

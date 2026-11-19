@@ -59,7 +59,12 @@ public struct TokenPair: Decodable {
 }
 public struct UpdateProfileRequest: Encodable {
     public let name: String
-    public init(name: String) { self.name = name }
+    /// Optional email for delivery receipts ("" removes it, nil leaves it unchanged).
+    public let email: String?
+    public init(name: String, email: String? = nil) {
+        self.name = name
+        self.email = email
+    }
 }
 public struct PushTokenRequest: Encodable {
     public let token: String?
@@ -145,6 +150,17 @@ public struct OrderDriver: Codable, Hashable {
 public struct OrderCustomer: Codable, Hashable {
     public let name: String?
     public let phone: String?
+    /// On file for emailed receipts (driver view).
+    public let email: String?
+}
+
+/// Proof of delivery: the customer's signature and the last emailed receipt.
+public struct OrderReceipt: Codable, Hashable {
+    public let signed: Bool?
+    public let signedByName: String?
+    public let signedAt: String?
+    public let email: String?
+    public let sentAt: String?
 }
 
 /// One order as seen by a customer or a driver. Driver-only: commissionToea, earningsToea, customer. Customer-only: driver.
@@ -168,6 +184,7 @@ public struct Order: Codable, Identifiable, Hashable {
     public var commissionToea: Int64?
     public var earningsToea: Int64?
     public var customer: OrderCustomer?
+    public var receipt: OrderReceipt?
 
     public var code: String { shortCode ?? "" }
     /** What the customer pays (price − discount). */
@@ -198,6 +215,7 @@ public struct CustomerProfile: Decodable {
     public let id: String
     public let phone: String
     public let name: String?
+    public let email: String?
 }
 
 public struct CustomerConfig: Decodable {

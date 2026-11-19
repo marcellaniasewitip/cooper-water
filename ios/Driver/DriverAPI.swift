@@ -24,6 +24,9 @@ struct DriverAPI {
     func orders(cursor: String?) async throws -> Page<Order> { try await api.get("driver/orders", query: ["cursor": cursor]) }
     func order(_ id: String) async throws -> Order { try await api.get("driver/orders/\(id)") }
     func eta(_ id: String) async throws -> Eta { try await api.get("driver/orders/\(id)/eta") }
+    func vehicleTypes() async throws -> [VehicleType] { try await api.get("driver/vehicle-types") }
+    func signature(_ id: String, _ r: SignatureRequest) async throws -> SignatureSaved { try await api.post("driver/orders/\(id)/signature", r) }
+    func sendReceipt(_ id: String, email: String) async throws -> ReceiptSent { try await api.post("driver/orders/\(id)/receipt", SendReceiptRequest(email: email)) }
     func arriveDepot(_ id: String, lat: Double, lng: Double) async throws -> Order { try await api.post("driver/orders/\(id)/arrive-depot", PositionRequest(lat: lat, lng: lng)) }
     func loaded(_ id: String, lat: Double, lng: Double) async throws -> Order { try await api.post("driver/orders/\(id)/loaded", PositionRequest(lat: lat, lng: lng)) }
     func arrived(_ id: String, lat: Double?, lng: Double?) async throws -> Order { try await api.post("driver/orders/\(id)/arrived", OptionalPositionRequest(lat: lat, lng: lng)) }
