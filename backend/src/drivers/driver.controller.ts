@@ -21,6 +21,7 @@ import { Errors } from '../common/errors';
 import { ChatService } from '../chat/chat.service';
 import { BROADCAST_TEMPLATE, NotificationsService } from '../notifications/notifications.service';
 import { ChatSendDto } from '../customers/customer.dto';
+import { EtaService } from '../orders/eta.service';
 
 @ApiTags('driver')
 @ApiBearerAuth()
@@ -38,6 +39,7 @@ export class DriverController {
     private readonly settings: SettingsService,
     private readonly chat: ChatService,
     private readonly notifications: NotificationsService,
+    private readonly eta: EtaService,
   ) {}
 
   private async driverId(u: UserPrincipal): Promise<string> {
@@ -173,6 +175,14 @@ export class DriverController {
   @Get('orders/:id')
   async getOrder(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.orders.getForDriver(await this.driverId(u), id);
+  }
+
+  /** Time and distance to the customer along the road (via the depot until the water is loaded). */
+  @Get('orders/:id/eta')
+  async getEta(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    const eta = await this.eta.forDriver(await this.driverId(u), id);
+    if (!eta) throw Errors.notFound('Order');
+    return eta;
   }
 
   /** At the depot: ACCEPTED → LOADING (geofence). */

@@ -39,6 +39,8 @@ export const SETTING_DEFAULTS = {
 
   'driver.required_documents': ['drivers_licence', 'vehicle_registration', 'national_id', 'truck_photo'],
   'driver.location_stale_sec': 120,
+  /** Arrival estimates: minutes a driver spends loading water at the depot, in seconds. */
+  'eta.loading_sec': 600,
 
   /**
    * Training mode (testing only): sign-in codes are NOT sent by SMS; the app shows the code on screen instead.
@@ -95,6 +97,7 @@ export function validateSetting(key: string, value: unknown): string | null {
     'payment.cellmoney.poll_interval_sec',
     'depot.geofence_radius_m',
     'driver.location_stale_sec',
+    'eta.loading_sec',
     'otp.ttl_sec',
     'otp.max_attempts',
     'otp.max_sends_per_phone_per_hour',

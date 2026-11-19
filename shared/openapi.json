@@ -359,6 +359,43 @@
         ]
       }
     },
+    "/api/v1/customer/orders/{id}/eta": {
+      "get": {
+        "operationId": "CustomerController_getEta",
+        "summary": "",
+        "description": "\"Driver is 7 min away\": time to the customer along the driver's road route (via the depot until loaded).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "customer"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/customer/orders/{id}/payment": {
       "post": {
         "operationId": "CustomerController_startPayment",
@@ -1346,6 +1383,43 @@
         "responses": {
           "200": {
             "description": ""
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/driver/orders/{id}/eta": {
+      "get": {
+        "operationId": "DriverController_getEta",
+        "summary": "",
+        "description": "Time and distance to the customer along the road (via the depot until the water is loaded).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [

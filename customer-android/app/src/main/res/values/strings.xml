@@ -318,4 +318,10 @@
     <string name="order_referral_applied">%1$s is a Refer &amp; Earn code — applied! You and your friend each get %2$s in your wallet after your first completed order.</string>
     <string name="location_search">Search address</string>
     <string name="location_search_hint">e.g. Vision City, Waigani or Section 101</string>
+    <string name="tracking_eta_now">Your driver is less than a minute away</string>
+    <string name="tracking_eta_minutes">Your driver is about %1$d min away</string>
+    <string name="tracking_eta_arrive_at">Arriving around %1$s</string>
+    <string name="tracking_eta_via_depot">Includes loading the water at %1$s first</string>
+    <string name="tracking_eta_loading">Loading your water now, then on the way</string>
+    <string name="tracking_eta_arrived">Your driver has arrived</string>
 </resources>

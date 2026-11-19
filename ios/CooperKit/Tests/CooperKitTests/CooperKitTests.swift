@@ -2,6 +2,14 @@ import XCTest
 @testable import CooperKit
 
 final class CooperKitTests: XCTestCase {
+    func testEtaFormat() {
+        XCTAssertEqual(EtaFormat.minutes(30), 0)
+        XCTAssertEqual(EtaFormat.minutes(111), 2)
+        XCTAssertEqual(EtaFormat.minutes(754), 13)
+        XCTAssertEqual(EtaFormat.distance(648), "650 m")
+        XCTAssertEqual(EtaFormat.distance(2310), "2.3 km")
+    }
+
     func testMoneyFormat() {
         XCTAssertEqual(Money.format(Int64(1250)), "K12.50")
         XCTAssertEqual(Money.format(Int64(125_000_00)), "K125,000.00")

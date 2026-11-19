@@ -54,6 +54,7 @@ import { ChatService } from './chat/chat.service';
 import { BroadcastsService } from './notifications/broadcasts.service';
 import { MapsService } from './geo/maps.service';
 import { MapsController } from './geo/maps.controller';
+import { EtaService } from './orders/eta.service';
 
 /**
  * Domain services live in one module: they form a small, acyclic graph
@@ -121,6 +122,7 @@ import { MapsController } from './geo/maps.controller';
     ChatService,
     BroadcastsService,
     MapsService,
+    EtaService,
   ],
 })
 export class AppModule {}

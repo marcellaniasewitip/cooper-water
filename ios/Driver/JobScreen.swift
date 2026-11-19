@@ -50,6 +50,8 @@ struct JobScreen: View {
     @State private var error: String?
     @State private var proof: UIImage?
     @State private var showCamera = false
+    @State private var eta: Eta?
+    private let etaTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ScrollView {
@@ -81,6 +83,18 @@ struct JobScreen: View {
                             }
                         }
                     }
+                    if let e = eta, let sec = e.etaSec, Eta.statuses.contains(o.status) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            let mins = EtaFormat.minutes(sec)
+                            Text(e.arrived == true ? "You have arrived at the customer" : mins == 0 ? "Less than a minute to the customer" : "\(mins) min to the customer")
+                                .font(.headline)
+                            let detail = [e.arrived == true ? nil : e.distanceM.map { EtaFormat.distance($0) }, e.viaDepot == true ? e.depotName.map { "via \($0)" } : nil].compactMap { $0 }
+                            if !detail.isEmpty { Text(detail.joined(separator: " · ")).font(.caption).foregroundColor(.secondary) }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.cwBlueTint))
+                    }
                     Text(step.help).font(.subheadline).foregroundColor(.secondary)
                     if step == .markDelivered {
                         if let proof {
@@ -108,6 +122,7 @@ struct JobScreen: View {
         .onReceive(session.realtime.events) { e in
             if case .orderUpdated(let o) = e, o.id == orderId { Task { await load() } }
         }
+        .onReceive(etaTimer) { _ in Task { await loadEta() } }
         .sheet(isPresented: $showCamera) { PhotoPicker(image: $proof).ignoresSafeArea() }
     }
 
@@ -140,6 +155,16 @@ struct JobScreen: View {
         } catch {
             self.error = error.localizedDescription
         }
+        await loadEta()
+    }
+
+    /// Time and road distance to the customer (via the depot until loaded).
+    private func loadEta() async {
+        guard let o = order, Eta.statuses.contains(o.status) else {
+            eta = nil
+            return
+        }
+        if let e = try? await state.api.eta(orderId) { eta = e }
     }
 
     private func perform(_ step: JobStep) {
@@ -173,6 +198,7 @@ struct JobScreen: View {
                 state.activeOrder = OrderStatus.isTerminal(o.status) ? nil : o
                 // Water loaded: go straight into directions to the customer.
                 if step == .confirmLoaded, let d = o.delivery ?? order?.delivery { navigate(d) }
+                await loadEta()
             } catch {
                 self.error = error.localizedDescription
             }

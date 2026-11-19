@@ -7,7 +7,7 @@ address search is hidden, so nothing breaks while you set this up.
 |---|---|---|---|
 | Android customer + driver apps | The maps in both apps | `GOOGLE_MAPS_ANDROID_KEY` | **Maps SDK for Android** |
 | Admin dashboard | Fleet, depots and order maps | `GOOGLE_MAPS_WEB_KEY` | **Map Tiles API** |
-| Server (API) | "Search address" and the address filled in when a customer moves the pin | `GOOGLE_MAPS_SERVER_KEY` | **Places API (New)**, **Geocoding API** |
+| Server (API) | "Search address", the address filled in when a customer moves the pin, and "Driver is X min away" (road route with traffic) | `GOOGLE_MAPS_SERVER_KEY` | **Places API (New)**, **Geocoding API**, **Routes API** |
 
 The iPhone apps use Apple Maps (built in, no key).
 
@@ -15,8 +15,8 @@ The iPhone apps use Apple Maps (built in, no key).
 
 1. Go to <https://console.cloud.google.com/>, create (or pick) a project, and **enable billing**
    (Google gives a monthly free allowance; set a budget alert under Billing → Budgets).
-2. **APIs & Services → Library**: enable *Maps SDK for Android*, *Map Tiles API*, *Places API (New)* and
-   *Geocoding API*.
+2. **APIs & Services → Library**: enable *Maps SDK for Android*, *Map Tiles API*, *Places API (New)*,
+   *Geocoding API* and *Routes API*.
 
 ## 2. Create three keys (APIs & Services → Credentials → Create credentials → API key)
 
@@ -37,7 +37,11 @@ Restrict each key so it can't be misused if someone copies it:
 
 **Server key**
 - Application restriction: none (the API runs on AWS Fargate with changing IPs).
-- API restriction: **Places API (New)** and **Geocoding API** only. This key never leaves the server.
+- API restriction: **Places API (New)**, **Geocoding API** and **Routes API** only. This key never leaves the server.
+
+Without the Routes API the apps still show an arrival time, estimated from the straight-line distance at
+Port Moresby town speeds (about 30 km/h, roads ≈ 1.4× the straight line). Loading time at the depot is the
+`eta.loading_sec` setting (default 10 minutes).
 
 ## 3. Add them to GitHub
 

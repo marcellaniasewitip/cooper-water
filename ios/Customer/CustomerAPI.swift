@@ -19,6 +19,7 @@ struct CustomerAPI {
     func createOrder(_ r: CreateOrderRequest, key: String) async throws -> CreateOrderResponse { try await api.post("customer/orders", r, idempotencyKey: key) }
     func orders(cursor: String?, limit: Int = 20) async throws -> Page<Order> { try await api.get("customer/orders", query: ["cursor": cursor, "limit": String(limit)]) }
     func order(_ id: String) async throws -> Order { try await api.get("customer/orders/\(id)") }
+    func eta(_ id: String) async throws -> Eta { try await api.get("customer/orders/\(id)/eta") }
     func startPayment(_ id: String, msisdn: String, key: String) async throws -> Payment { try await api.post("customer/orders/\(id)/payment", StartPaymentRequest(msisdn: msisdn), idempotencyKey: key) }
     func payment(_ id: String) async throws -> Payment? { try await api.getOptional("customer/orders/\(id)/payment") }
     func cancel(_ id: String, reason: String) async throws -> Order { try await api.post("customer/orders/\(id)/cancel", CancelRequest(reason: reason)) }

@@ -7,6 +7,7 @@ import com.cooperwaters.core.android.ui.toUiText
 import com.cooperwaters.core.net.ApiResult
 import com.cooperwaters.core.net.DeliveredRequest
 import com.cooperwaters.core.net.Depot
+import com.cooperwaters.core.net.Eta
 import com.cooperwaters.core.net.DisputeRequest
 import com.cooperwaters.core.net.ErrorCodes
 import com.cooperwaters.core.net.OptionalPositionRequest
@@ -20,6 +21,7 @@ import com.cooperwaters.driver.R
 import com.cooperwaters.driver.data.DriverRepository
 import com.cooperwaters.driver.data.DriverState
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -84,6 +86,11 @@ class JobViewModel(
     /** Fires once when the water is loaded: the screen opens Google Maps directions to the customer. */
     val openNavigation: Flow<Unit> = _openNavigation.receiveAsFlow()
 
+    private val _eta = MutableStateFlow<Eta?>(null)
+
+    /** Time and road distance to the customer (via the depot until loaded), refreshed every 30 s. */
+    val eta: StateFlow<Eta?> = _eta.asStateFlow()
+
     init {
         viewModelScope.launch {
             repo.cachedOrder(orderId)?.let { o -> _ui.update { it.copy(order = o, fromCache = true) } }
@@ -95,6 +102,22 @@ class JobViewModel(
         viewModelScope.launch {
             driverState.activeOrder.collect { o -> if (o != null && o.id == orderId) _ui.update { it.copy(order = o, fromCache = false) } }
         }
+        viewModelScope.launch {
+            while (true) {
+                refreshEta()
+                delay(30_000L)
+            }
+        }
+    }
+
+    private suspend fun refreshEta() {
+        val status = _ui.value.order?.status
+        if (status == null || status !in ETA_STATUSES) {
+            _eta.value = null
+            return
+        }
+        val r = apiCall { repo.api.eta(orderId) }
+        if (r is ApiResult.Success) _eta.value = r.value
     }
 
     fun refresh() {
@@ -156,6 +179,7 @@ class JobViewModel(
                     apply(r.value)
                     _ui.update { it.copy(busy = false, proofPhoto = if (step == JobStep.MARK_DELIVERED) null else it.proofPhoto) }
                     if (step == JobStep.CONFIRM_LOADED) _openNavigation.trySend(Unit)
+                    refreshEta()
                 }
                 is ApiResult.Failure -> {
                     val msg = if (r.error.hasCode(ErrorCodes.NOT_AT_DEPOT)) {
@@ -204,4 +228,8 @@ class JobViewModel(
     }
 
     fun consumeIssueSent() = _ui.update { it.copy(issueSent = false, info = UiText.res(R.string.issue_sent)) }
+
+    private companion object {
+        val ETA_STATUSES = setOf(OrderStatus.ACCEPTED, OrderStatus.LOADING, OrderStatus.EN_ROUTE, OrderStatus.ARRIVED)
+    }
 }

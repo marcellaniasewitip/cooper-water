@@ -15,6 +15,8 @@ struct TrackingScreen: View {
     @State private var error: String?
     @State private var info: String?
     @State private var askCancel = false
+    @State private var eta: Eta?
+    @State private var etaAt = Date.distantPast
     private let timer = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -29,6 +31,7 @@ struct TrackingScreen: View {
                     }
                     ErrorBanner(error)
                     if let info { Text(info).foregroundColor(.cwBlue) }
+                    if let eta, Eta.statuses.contains(o.status) { etaCard(eta) }
                     if let d = o.driver, let name = d.name, !name.isEmpty { driverCard(d, name: name) }
                     actions(o)
                     timeline(o)
@@ -60,6 +63,8 @@ struct TrackingScreen: View {
                 Task { await load() }
             case .driverLocation(let id, let lat, let lng, let at) where id == orderId:
                 driverLoc = DriverLocation(lat: lat, lng: lng, at: at)
+                // The driver moved: refresh the arrival time (at most every 30 s).
+                if Date().timeIntervalSince(etaAt) > 30 { Task { await loadEta() } }
             default: break
             }
         }
@@ -166,6 +171,41 @@ struct TrackingScreen: View {
             error = nil
         } catch {
             self.error = error.localizedDescription
+        }
+        await loadEta()
+    }
+
+    /// "Your driver is about 7 min away" while a driver is on the way.
+    private func loadEta() async {
+        guard let o = order, Eta.statuses.contains(o.status) else {
+            eta = nil
+            return
+        }
+        etaAt = Date()
+        if let e = try? await session.customer.eta(orderId) { eta = e }
+    }
+
+    @ViewBuilder
+    private func etaCard(_ e: Eta) -> some View {
+        if let sec = e.etaSec {
+            VStack(alignment: .leading, spacing: 3) {
+                if e.arrived == true {
+                    Text("Your driver has arrived").font(.headline)
+                } else {
+                    let mins = EtaFormat.minutes(sec)
+                    Text(mins == 0 ? "Your driver is less than a minute away" : "Your driver is about \(mins) min away").font(.headline)
+                    let bits = [e.distanceM.map { EtaFormat.distance($0) }, e.arriveAt.map { "Arriving around \(PomTime.formatTime($0))" }].compactMap { $0 }
+                    if !bits.isEmpty { Text(bits.joined(separator: " · ")).font(.subheadline) }
+                    if e.viaDepot == true {
+                        Text("Includes loading the water at \(e.depotName ?? "the depot") first").font(.caption).foregroundColor(.secondary)
+                    } else if e.status == OrderStatus.loading {
+                        Text("Loading your water now, then on the way").font(.caption).foregroundColor(.secondary)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.cwBlueTint))
         }
     }
 

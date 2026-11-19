@@ -100,11 +100,33 @@ describe('full delivery journey (customer app → admin → driver app)', () => 
     expect(adminThread.status).toBe(200);
     expect(JSON.stringify(adminThread.body)).toContain('Thanks, the gate is open.');
 
+    // 5b. Arrival estimate: before loading, the route goes driver → depot → customer, plus loading time.
+    const eta1 = await h.http().get(`/api/v1/customer/orders/${order.id}/eta`).set(bearer(cust.token)).expect(200);
+    expect(eta1.body).toMatchObject({ status: 'ACCEPTED', viaDepot: true, depotName: 'Test Depot', source: 'estimate', arrived: false });
+    expect(eta1.body.etaSec).toBeGreaterThanOrEqual(600); // includes 10 min loading
+    expect(eta1.body.distanceM).toBeGreaterThan(0);
+    const etaDriver = await h.http().get(`/api/v1/driver/orders/${order.id}/eta`).set(bearer(driver.token)).expect(200);
+    expect(etaDriver.body.etaSec).toBe(eta1.body.etaSec);
+    // Another customer can't see it.
+    const other = await customer(h);
+    await h.http().get(`/api/v1/customer/orders/${order.id}/eta`).set(bearer(other.token)).expect(404);
+
     // 6. Driver: depot → loaded → at the customer → delivered.
+    const eta = async () => (await h.http().get(`/api/v1/customer/orders/${order.id}/eta`).set(bearer(cust.token)).expect(200)).body;
     for (const [step, body] of [['arrive-depot', DEPOT], ['loaded', DEPOT], ['arrived', CUSTOMER_POINT], ['delivered', {}]] as [string, object][]) {
       const r = await h.http().post(`/api/v1/driver/orders/${order.id}/${step}`).set(bearer(driver.token)).send(body);
       expect({ step, status: r.status }).toEqual({ step, status: 200 });
+      if (step === 'loaded') {
+        // Water on board: straight to the customer, no loading time left (~650 m away → a couple of minutes).
+        const e = await eta();
+        expect(e).toMatchObject({ status: 'EN_ROUTE', viaDepot: false });
+        expect(e.etaSec).toBeGreaterThan(0);
+        expect(e.etaSec).toBeLessThanOrEqual(eta1.body.etaSec - 600); // the loading time is gone
+      }
+      if (step === 'arrived') expect(await eta()).toMatchObject({ arrived: true, etaSec: 0 });
     }
+    const etaArrived = await h.http().get(`/api/v1/customer/orders/${order.id}/eta`).set(bearer(cust.token)).expect(200);
+    expect(etaArrived.body).toMatchObject({ etaSec: null, arrived: false }); // delivered: no ETA any more
     const customerStatuses = (eventsTo(cust.userId, 'order.updated') as { order: { status: string } }[]).map((p) => p.order.status);
     expect(customerStatuses).toEqual(expect.arrayContaining(['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'DELIVERED']));
 

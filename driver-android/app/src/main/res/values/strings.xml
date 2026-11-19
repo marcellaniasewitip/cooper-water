@@ -309,4 +309,8 @@
     <string name="announcements_title">Announcements</string>
     <string name="announcements_empty">No announcements yet. Messages from Cooper Waters will appear here.</string>
     <string name="announcements_more">Show older</string>
+    <string name="job_eta_minutes">%1$d min to the customer</string>
+    <string name="job_eta_now">Less than a minute to the customer</string>
+    <string name="job_eta_arrived">You have arrived at the customer</string>
+    <string name="job_eta_via_depot">via %1$s</string>
 </resources>
