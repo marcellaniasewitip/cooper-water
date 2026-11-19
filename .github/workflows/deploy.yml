@@ -52,12 +52,19 @@ jobs:
         env:
           # Google Maps server key (Places API (New) + Geocoding API) for address search; empty = off.
           GOOGLE_MAPS_SERVER_KEY: ${{ secrets.GOOGLE_MAPS_SERVER_KEY }}
+          # Emailed delivery receipts: SMTP_URL secret (smtps://user:pass@host:465) + EMAIL_FROM variable; empty = off.
+          SMTP_URL: ${{ secrets.SMTP_URL }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
         run: |
           for svc in api worker migrate; do
             family="$CLUSTER-$svc"
             aws ecs describe-task-definition --task-definition "$family" --query taskDefinition > td.json
-            jq --arg img "$IMAGE" --arg ver "${{ github.sha }}" --arg gkey "$GOOGLE_MAPS_SERVER_KEY" '
-              .containerDefinitions |= map(.image = $img | .environment = ((.environment // []) | map(select(.name != "APP_VERSION" and .name != "GOOGLE_MAPS_SERVER_KEY")) + [{name:"APP_VERSION", value:$ver}] + (if $gkey == "" then [] else [{name:"GOOGLE_MAPS_SERVER_KEY", value:$gkey}] end)))
+            jq --arg img "$IMAGE" --arg ver "${{ github.sha }}" --arg gkey "$GOOGLE_MAPS_SERVER_KEY" --arg smtp "$SMTP_URL" --arg from "$EMAIL_FROM" '
+              .containerDefinitions |= map(.image = $img | .environment = ((.environment // [])
+                | map(select(.name != "APP_VERSION" and .name != "GOOGLE_MAPS_SERVER_KEY" and .name != "SMTP_URL" and .name != "EMAIL_FROM"))
+                + [{name:"APP_VERSION", value:$ver}]
+                + (if $gkey == "" then [] else [{name:"GOOGLE_MAPS_SERVER_KEY", value:$gkey}] end)
+                + (if $smtp == "" or $from == "" then [] else [{name:"SMTP_URL", value:$smtp}, {name:"EMAIL_FROM", value:$from}] end)))
               | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' td.json > td-new.json
             arn=$(aws ecs register-task-definition --cli-input-json file://td-new.json --query taskDefinition.taskDefinitionArn --output text)
             echo "$svc=$arn" >> "$GITHUB_OUTPUT"

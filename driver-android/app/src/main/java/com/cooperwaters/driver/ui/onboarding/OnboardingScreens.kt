@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -32,6 +33,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,7 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,8 +65,8 @@ import com.cooperwaters.driver.ui.common.PhotoPickerButtons
 import com.cooperwaters.driver.ui.common.ScreenScaffold
 import com.cooperwaters.driver.ui.common.appContainer
 import com.cooperwaters.driver.ui.common.compressPhoto
-import com.cooperwaters.driver.ui.common.photoReason
 import com.cooperwaters.driver.ui.common.containerViewModel
+import com.cooperwaters.driver.ui.common.photoReason
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -221,14 +225,36 @@ fun OnboardingScreen(onStageChanged: (DriverStage) -> Unit, onProfile: () -> Uni
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    OutlinedTextField(
-                        state.capacity,
-                        vm::onCapacity,
-                        label = { Text(stringResource(R.string.truck_capacity)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    if (state.vehicleTypes.isNotEmpty()) {
+                        // Choose the vehicle by tank size: orders only go to drivers with the matching size.
+                        Text(stringResource(R.string.vehicle_type_title), style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.vehicle_type_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        state.vehicleTypes.forEach { t ->
+                            val chosen = state.capacity == t.capacityLitres.toString()
+                            Row(
+                                Modifier.fillMaxWidth().selectable(selected = chosen, role = Role.RadioButton, onClick = { vm.onVehicleType(t) }).testTag("vehicle-${t.capacityLitres}"),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(selected = chosen, onClick = null)
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text(t.name.ifBlank { stringResource(R.string.vehicle_type_name, t.capacityLitres) }, style = MaterialTheme.typography.bodyLarge)
+                                    if (t.packages.isNotEmpty()) {
+                                        Text(stringResource(R.string.vehicle_type_serves, t.packages.joinToString(", ")), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        OutlinedTextField(
+                            state.capacity,
+                            vm::onCapacity,
+                            label = { Text(stringResource(R.string.truck_capacity)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                     Text(
                         stringResource(if (state.truckPhotoBytes != null) R.string.truck_photo_ready else R.string.truck_photo_optional),
                         style = MaterialTheme.typography.bodyMedium,

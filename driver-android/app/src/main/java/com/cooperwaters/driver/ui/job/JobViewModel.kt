@@ -8,6 +8,8 @@ import com.cooperwaters.core.net.ApiResult
 import com.cooperwaters.core.net.DeliveredRequest
 import com.cooperwaters.core.net.Depot
 import com.cooperwaters.core.net.Eta
+import com.cooperwaters.core.net.SendReceiptRequest
+import com.cooperwaters.core.net.SignatureRequest
 import com.cooperwaters.core.net.DisputeRequest
 import com.cooperwaters.core.net.ErrorCodes
 import com.cooperwaters.core.net.OptionalPositionRequest
@@ -88,6 +90,11 @@ class JobViewModel(
 
     private val _eta = MutableStateFlow<Eta?>(null)
 
+    private val _receipt = MutableStateFlow(ReceiptUi())
+
+    /** Signature + "Send receipt" box after delivery. */
+    val receipt: StateFlow<ReceiptUi> = _receipt.asStateFlow()
+
     /** Time and road distance to the customer (via the depot until loaded), refreshed every 30 s. */
     val eta: StateFlow<Eta?> = _eta.asStateFlow()
 
@@ -106,6 +113,63 @@ class JobViewModel(
             while (true) {
                 refreshEta()
                 delay(30_000L)
+            }
+        }
+    }
+
+    /**
+     * "Water delivered" with the customer's signature: the signature is saved first (the server accepts it once
+     * the driver has arrived), then the step runs. Without a signature it's the plain step.
+     */
+    fun deliver(signaturePng: String?, signedByName: String) {
+        if (_ui.value.busy) return
+        if (signaturePng == null) {
+            performStep(null, null)
+            return
+        }
+        _ui.update { it.copy(busy = true, error = null) }
+        viewModelScope.launch {
+            when (val r = apiCall { repo.api.signature(orderId, SignatureRequest(signaturePng, signedByName.trim().ifBlank { null })) }) {
+                is ApiResult.Success -> {
+                    _ui.update { it.copy(busy = false) }
+                    performStep(null, null)
+                }
+                is ApiResult.Failure -> _ui.update { it.copy(busy = false, error = r.error.toUiText()) }
+            }
+        }
+    }
+
+    /** Sign after the water was already marked delivered. */
+    fun saveSignature(signaturePng: String, signedByName: String) {
+        if (_receipt.value.busy) return
+        _receipt.update { it.copy(busy = true, error = null, info = null) }
+        viewModelScope.launch {
+            when (val r = apiCall { repo.api.signature(orderId, SignatureRequest(signaturePng, signedByName.trim().ifBlank { null })) }) {
+                is ApiResult.Success -> {
+                    _receipt.update { it.copy(busy = false, info = UiText.res(R.string.receipt_signed)) }
+                    refreshNow()
+                }
+                is ApiResult.Failure -> _receipt.update { it.copy(busy = false, error = r.error.toUiText()) }
+            }
+        }
+    }
+
+    /** Email the receipt (with the signature) to the customer's address on file or one typed at the door. */
+    fun sendReceipt(email: String) {
+        val to = email.trim()
+        if (_receipt.value.busy) return
+        if (!EMAIL.matches(to)) {
+            _receipt.update { it.copy(error = UiText.res(R.string.receipt_email_invalid), info = null) }
+            return
+        }
+        _receipt.update { it.copy(busy = true, error = null, info = null) }
+        viewModelScope.launch {
+            when (val r = apiCall { repo.api.sendReceipt(orderId, SendReceiptRequest(to)) }) {
+                is ApiResult.Success -> {
+                    _receipt.update { it.copy(busy = false, info = UiText.res(R.string.receipt_sent, r.value.email)) }
+                    refreshNow()
+                }
+                is ApiResult.Failure -> _receipt.update { it.copy(busy = false, error = r.error.toUiText()) }
             }
         }
     }
@@ -230,6 +294,9 @@ class JobViewModel(
     fun consumeIssueSent() = _ui.update { it.copy(issueSent = false, info = UiText.res(R.string.issue_sent)) }
 
     private companion object {
+        val EMAIL = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$")
         val ETA_STATUSES = setOf(OrderStatus.ACCEPTED, OrderStatus.LOADING, OrderStatus.EN_ROUTE, OrderStatus.ARRIVED)
     }
 }
+
+data class ReceiptUi(val busy: Boolean = false, val info: UiText? = null, val error: UiText? = null)

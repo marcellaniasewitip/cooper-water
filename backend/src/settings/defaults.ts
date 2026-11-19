@@ -39,6 +39,8 @@ export const SETTING_DEFAULTS = {
 
   'driver.required_documents': ['drivers_licence', 'vehicle_registration', 'national_id', 'truck_photo'],
   'driver.location_stale_sec': 120,
+  /** Only offer an order to drivers whose vehicle size class matches the ordered package (e.g. 3,000 L tanker → 3,000 L orders). */
+  'dispatch.match_vehicle_size': true,
   /** Arrival estimates: minutes a driver spends loading water at the depot, in seconds. */
   'eta.loading_sec': 600,
 

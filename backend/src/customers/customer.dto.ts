@@ -1,9 +1,16 @@
-import { IsIn, IsInt, IsLatitude, IsLongitude, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsLatitude, IsLongitude, IsOptional, IsString, Length, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsString()
   @Length(1, 80)
   name: string;
+
+  /** Optional email for delivery receipts ('' removes it). */
+  @IsOptional()
+  @ValidateIf((o: UpdateProfileDto) => !!o.email)
+  @IsEmail()
+  @MaxLength(200)
+  email?: string;
 }
 
 export class PushTokenDto {

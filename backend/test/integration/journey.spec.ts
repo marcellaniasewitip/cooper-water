@@ -1,5 +1,9 @@
 import { Harness, startApp, resetDb, approvedDriver, customer, idem, adminLogin, walletBalance, CUSTOMER_POINT, DEPOT } from './harness';
 import { RealtimeGateway } from '../../src/realtime/realtime.gateway';
+import { MockEmailProvider } from '../../src/notifications/email.provider';
+
+/** 1×1 PNG standing in for a drawn signature. */
+const SIGNATURE_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
 const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
 
@@ -123,12 +127,44 @@ describe('full delivery journey (customer app → admin → driver app)', () => 
         expect(e.etaSec).toBeGreaterThan(0);
         expect(e.etaSec).toBeLessThanOrEqual(eta1.body.etaSec - 600); // the loading time is gone
       }
-      if (step === 'arrived') expect(await eta()).toMatchObject({ arrived: true, etaSec: 0 });
+      if (step === 'arrived') {
+        expect(await eta()).toMatchObject({ arrived: true, etaSec: 0 });
+        // Too early to email a receipt, but the customer can sign at the door.
+        await h.http().post(`/api/v1/driver/orders/${order.id}/receipt`).set(bearer(driver.token)).send({ email: 'x@example.com' }).expect(409);
+        await h.http().post(`/api/v1/driver/orders/${order.id}/signature`).set(bearer(driver.token)).send({ imagePng: 'bm90IGEgcG5n', signedByName: 'X' }).expect(422);
+        const sig = await h.http().post(`/api/v1/driver/orders/${order.id}/signature`).set(bearer(driver.token))
+          .send({ imagePng: `data:image/png;base64,${SIGNATURE_PNG}`, signedByName: 'Mary Kila' }).expect(200);
+        expect(sig.body).toMatchObject({ signed: true, signedByName: 'Mary Kila' });
+      }
     }
     const etaArrived = await h.http().get(`/api/v1/customer/orders/${order.id}/eta`).set(bearer(cust.token)).expect(200);
     expect(etaArrived.body).toMatchObject({ etaSec: null, arrived: false }); // delivered: no ETA any more
     const customerStatuses = (eventsTo(cust.userId, 'order.updated') as { order: { status: string } }[]).map((p) => p.order.status);
     expect(customerStatuses).toEqual(expect.arrayContaining(['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'DELIVERED']));
+
+    // 6b. Receipt: the driver emails it to an address typed at the door (customer has none on file yet).
+    MockEmailProvider.outbox.splice(0);
+    const jobView = await h.http().get(`/api/v1/driver/orders/${order.id}`).set(bearer(driver.token)).expect(200);
+    expect(jobView.body.customer.email).toBeNull();
+    expect(jobView.body.receipt).toMatchObject({ signed: true, signedByName: 'Mary Kila' });
+    await h.http().post(`/api/v1/driver/orders/${order.id}/receipt`).set(bearer(driver.token)).send({ email: 'not-an-email' }).expect(422);
+    const sent = await h.http().post(`/api/v1/driver/orders/${order.id}/receipt`).set(bearer(driver.token)).send({ email: ' Mary.Kila@Example.com ' }).expect(200);
+    expect(sent.body).toMatchObject({ sent: true, email: 'mary.kila@example.com' });
+    const mail = MockEmailProvider.outbox.at(-1)!;
+    expect(mail.to).toBe('mary.kila@example.com');
+    expect(mail.subject).toContain(order.shortCode);
+    expect(mail.html).toContain('cid:signature');
+    expect(mail.html).toContain('Mary Kila');
+    expect(mail.text).toContain('Total paid: K300.00');
+    expect(mail.inline?.[0]).toMatchObject({ cid: 'signature', contentType: 'image/png' });
+    // The customer can send it again from their app and keep the address for next time; nobody else can.
+    await h.http().post(`/api/v1/customer/orders/${order.id}/receipt`).set(bearer(cust.token)).send({ email: 'home@example.com', saveEmail: true }).expect(200);
+    const me = await h.http().get('/api/v1/customer/me').set(bearer(cust.token)).expect(200);
+    expect(me.body.email).toBe('home@example.com');
+    const stranger = await customer(h);
+    await h.http().post(`/api/v1/customer/orders/${order.id}/receipt`).set(bearer(stranger.token)).send({ email: 'a@b.co' }).expect(404);
+    const seen2 = await h.http().get(`/api/v1/customer/orders/${order.id}`).set(bearer(cust.token)).expect(200);
+    expect(seen2.body.receipt).toMatchObject({ signed: true, email: 'home@example.com' });
 
     // 7. Customer confirms and rates; money settles (commission off the driver's wallet).
     const conf = await h.http().post(`/api/v1/customer/orders/${order.id}/confirm`).set(bearer(cust.token)).send();

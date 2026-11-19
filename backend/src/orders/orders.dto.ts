@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsLatitude,
@@ -163,4 +164,28 @@ export class AdminOrdersQuery extends CursorQuery {
   @IsOptional()
   @IsString()
   to?: string;
+}
+
+/** Customer's signature drawn on the driver's phone at delivery (PNG, base64, ≤ 300 KB). */
+export class SignatureDto {
+  @IsString()
+  @MaxLength(420_000)
+  imagePng: string;
+
+  /** Name of the person who received the water and signed. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  signedByName?: string;
+}
+
+export class SendReceiptDto {
+  @IsString()
+  @MaxLength(200)
+  email: string;
+
+  /** Customer app: also save this address on the customer's profile for next time. */
+  @IsOptional()
+  @IsBoolean()
+  saveEmail?: boolean;
 }

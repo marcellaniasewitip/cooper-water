@@ -55,6 +55,7 @@ import { BroadcastsService } from './notifications/broadcasts.service';
 import { MapsService } from './geo/maps.service';
 import { MapsController } from './geo/maps.controller';
 import { EtaService } from './orders/eta.service';
+import { ReceiptService } from './orders/receipt.service';
 
 /**
  * Domain services live in one module: they form a small, acyclic graph
@@ -123,6 +124,7 @@ import { EtaService } from './orders/eta.service';
     BroadcastsService,
     MapsService,
     EtaService,
+    ReceiptService,
   ],
 })
 export class AppModule {}

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
@@ -22,6 +23,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cooperwaters.core.R as CoreR
@@ -118,6 +122,7 @@ fun TrackingScreen(orderId: String, onBack: () -> Unit, onPay: () -> Unit, onRat
                     LoadingButton(stringResource(R.string.tracking_confirm), state.busy, vm::confirmReceipt, Modifier.fillMaxWidth())
                 }
                 if (state.canRate) Button(onClick = onRate, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tracking_rate)) }
+                if (state.canEmailReceipt) ReceiptCard(order, state, vm::sendReceipt)
                 if (state.canCancel) {
                     OutlinedButton(onClick = { showCancel = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.tracking_cancel))
@@ -249,6 +254,42 @@ private fun EtaCard(eta: Eta) {
                 Text(stringResource(R.string.tracking_eta_via_depot, eta.depotName.orEmpty()), style = MaterialTheme.typography.bodySmall)
             } else if (eta.status == OrderStatus.LOADING) {
                 Text(stringResource(R.string.tracking_eta_loading), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+/** "Email my receipt": prefilled with the profile email (or the last one used); any address can be typed. */
+@Composable
+private fun ReceiptCard(order: Order, state: TrackingState, onSend: (String, Boolean) -> Unit) {
+    var email by rememberSaveable { mutableStateOf("") }
+    var save by rememberSaveable { mutableStateOf(true) }
+    val value = email.ifBlank { state.profileEmail ?: order.receipt?.email.orEmpty() }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.receipt_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            order.receipt?.takeIf { it.signed }?.let { r ->
+                Text(stringResource(R.string.receipt_signed_by, r.signedByName?.ifBlank { null } ?: stringResource(R.string.receipt_you)), style = MaterialTheme.typography.bodyMedium)
+            }
+            OutlinedTextField(
+                value,
+                { email = it.trim() },
+                label = { Text(stringResource(R.string.receipt_email)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().testTag("receipt-email"),
+            )
+            if (state.profileEmail.isNullOrBlank() || !value.equals(state.profileEmail, ignoreCase = true)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = save, onCheckedChange = { save = it })
+                    Text(stringResource(R.string.receipt_save_email), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            LoadingButton(stringResource(R.string.receipt_send), state.receiptBusy, { onSend(value, save && !value.equals(state.profileEmail, ignoreCase = true)) }, Modifier.fillMaxWidth())
+            state.receiptInfo?.let { Text(it.asString(), color = MaterialTheme.colorScheme.primary) }
+            state.receiptError?.let { Text(it.asString(), color = MaterialTheme.colorScheme.error) }
+            order.receipt?.sentAt?.let { at ->
+                Text(stringResource(R.string.receipt_last_sent, order.receipt?.email.orEmpty(), PomTime.formatTime(at)), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
