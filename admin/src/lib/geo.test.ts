@@ -40,3 +40,12 @@ describe('depot geofence geometry', () => {
     expect(Math.abs(north[0] - -9.4438 - 150 / 111_320)).toBeLessThan(1e-5);
   });
 });
+
+describe('distanceM', () => {
+  it('measures about 1.1 km per 0.01° of latitude near Port Moresby', async () => {
+    const { distanceM } = await import('./geo');
+    expect(Math.round(distanceM(-9.44, 147.18, -9.43, 147.18))).toBeGreaterThan(1100);
+    expect(Math.round(distanceM(-9.44, 147.18, -9.43, 147.18))).toBeLessThan(1120);
+    expect(distanceM(-9.44, 147.18, -9.44, 147.18)).toBe(0);
+  });
+});
