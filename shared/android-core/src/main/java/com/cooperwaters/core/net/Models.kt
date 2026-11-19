@@ -75,7 +75,7 @@ data class TokenPair(
 )
 
 @Serializable
-data class UpdateProfileRequest(val name: String)
+data class UpdateProfileRequest(val name: String, val email: String? = null)
 
 // ───────────── Orders (shared by both apps) ─────────────
 
@@ -147,6 +147,18 @@ data class OrderCustomer(
     val name: String = "",
     /** Only present while the job is active. */
     val phone: String? = null,
+    /** On file for emailed receipts (driver view). */
+    val email: String? = null,
+)
+
+/** Proof of delivery: the customer's signature and the last emailed receipt. */
+@Serializable
+data class OrderReceipt(
+    val signed: Boolean = false,
+    val signedByName: String? = null,
+    val signedAt: String? = null,
+    val email: String? = null,
+    val sentAt: String? = null,
 )
 
 /**
@@ -175,6 +187,7 @@ data class Order(
     val commissionToea: Long? = null,
     val earningsToea: Long? = null,
     val customer: OrderCustomer? = null,
+    val receipt: OrderReceipt? = null,
 )
 
 @Serializable
@@ -211,6 +224,7 @@ data class CustomerProfile(
     val id: String,
     val phone: String,
     val name: String? = null,
+    val email: String? = null,
     val role: String? = null,
     val createdAt: String? = null,
 )
@@ -408,6 +422,23 @@ data class DriverDocument(
 
 @Serializable
 data class TruckRequest(val plate: String, val capacityLitres: Int, val photoKey: String? = null)
+
+/** A vehicle size a driver can sign up with (one per order size); orders only go to matching vehicles. */
+@Serializable
+data class VehicleType(val capacityLitres: Int, val name: String = "", val packages: List<String> = emptyList())
+
+/** Customer's signature drawn on the driver's phone (PNG, base64). */
+@Serializable
+data class SignatureRequest(val imagePng: String, val signedByName: String? = null)
+
+@Serializable
+data class SignatureSaved(val signed: Boolean = false, val signedByName: String? = null)
+
+@Serializable
+data class SendReceiptRequest(val email: String, val saveEmail: Boolean? = null)
+
+@Serializable
+data class ReceiptSent(val sent: Boolean = false, val email: String = "", val configured: Boolean = true)
 
 @Serializable
 data class Depot(

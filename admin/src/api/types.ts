@@ -92,6 +92,8 @@ export interface AdminOrder {
   paymentMethod: PaymentMethod;
   paymentStatus: OrderPaymentStatus;
   delivery: { lat: number; lng: number; address: string; notes: string | null };
+  /** Proof of delivery: signature and the last emailed receipt. */
+  receipt?: { signed: boolean; signedByName: string | null; signedAt: ISO | null; email: string | null; sentAt: ISO | null };
   cancelReason: string | null;
   expiresAt: ISO | null;
   timeline: OrderTimeline;
@@ -136,6 +138,8 @@ export interface Rating {
 
 export interface AdminOrderDetail extends AdminOrder {
   proofPhotoUrl: string | null;
+  /** Customer's signature at delivery (PNG data URL). */
+  signatureDataUrl?: string | null;
   offers: OrderOffer[];
   payments: Payment[];
   disputes: Dispute[];

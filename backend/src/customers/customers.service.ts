@@ -24,12 +24,19 @@ export class CustomersService {
 
   async me(userId: string) {
     const u = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    return { id: u.id, phone: u.phone, name: u.name, role: u.role, createdAt: u.createdAt };
+    return { id: u.id, phone: u.phone, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt };
   }
 
-  async updateProfile(userId: string, name: string) {
-    const u = await this.prisma.user.update({ where: { id: userId }, data: { name: name.trim() } });
-    return { id: u.id, phone: u.phone, name: u.name, role: u.role };
+  /** `email`: undefined = unchanged, '' = remove, otherwise saved (used to prefill emailed receipts). */
+  async updateProfile(userId: string, name: string, email?: string) {
+    const data: { name: string; email?: string | null } = { name: name.trim() };
+    if (email !== undefined && email !== null) data.email = email.trim() ? email.trim().toLowerCase() : null;
+    const u = await this.prisma.user.update({ where: { id: userId }, data });
+    return { id: u.id, phone: u.phone, name: u.name, email: u.email, role: u.role };
+  }
+
+  async saveEmail(userId: string, email: string) {
+    await this.prisma.user.update({ where: { id: userId }, data: { email: email.trim().toLowerCase() } });
   }
 
   async setPushToken(userId: string, token: string | null) {

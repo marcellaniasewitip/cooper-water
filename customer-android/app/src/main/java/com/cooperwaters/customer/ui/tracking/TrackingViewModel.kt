@@ -8,6 +8,7 @@ import com.cooperwaters.core.net.ApiResult
 import com.cooperwaters.core.net.CancelRequest
 import com.cooperwaters.core.net.DriverLocation
 import com.cooperwaters.core.net.Eta
+import com.cooperwaters.core.net.SendReceiptRequest
 import com.cooperwaters.core.net.ErrorCodes
 import com.cooperwaters.core.net.Order
 import com.cooperwaters.core.net.apiCall
@@ -30,6 +31,11 @@ data class TrackingState(
     val driverLocation: DriverLocation? = null,
     /** "Driver is 7 min away" (null until known / when there is no driver on the way). */
     val eta: Eta? = null,
+    /** Email on the customer's profile (prefills the receipt box). */
+    val profileEmail: String? = null,
+    val receiptBusy: Boolean = false,
+    val receiptInfo: UiText? = null,
+    val receiptError: UiText? = null,
     val cancelFreeUntil: String = OrderStatus.ACCEPTED,
     val busy: Boolean = false,
     val error: UiText? = null,
@@ -40,6 +46,7 @@ data class TrackingState(
     val canRate: Boolean get() = order?.status == OrderStatus.COMPLETED && order.driver != null
     val canDispute: Boolean get() = order != null && OrderStatus.isDisputable(order.status)
     val needsPayment: Boolean get() = order?.status == OrderStatus.PENDING_PAYMENT
+    val canEmailReceipt: Boolean get() = order?.status?.let { it == OrderStatus.DELIVERED || it == OrderStatus.COMPLETED || it == OrderStatus.DISPUTED } == true
 }
 
 /** Live tracking: REST snapshot + socket `order.updated` / `order.driver_location`, with polling as a fallback. */
@@ -56,6 +63,9 @@ class TrackingViewModel(
     init {
         viewModelScope.launch {
             repo.config().value?.let { cfg -> _state.update { it.copy(cancelFreeUntil = cfg.cancelFreeUntil) } }
+        }
+        viewModelScope.launch {
+            (apiCall { repo.api.me() } as? ApiResult.Success)?.value?.email?.let { e -> _state.update { it.copy(profileEmail = e) } }
         }
         viewModelScope.launch {
             while (true) {
@@ -145,6 +155,26 @@ class TrackingViewModel(
     }
 
     fun clearMessages() = _state.update { it.copy(error = null, info = null) }
+
+    /** Email the delivery receipt (with the signature); optionally keep the address on the profile. */
+    fun sendReceipt(email: String, save: Boolean) {
+        val to = email.trim()
+        if (_state.value.receiptBusy) return
+        if (!Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$").matches(to)) {
+            _state.update { it.copy(receiptError = UiText.res(R.string.receipt_email_invalid), receiptInfo = null) }
+            return
+        }
+        _state.update { it.copy(receiptBusy = true, receiptError = null, receiptInfo = null) }
+        viewModelScope.launch {
+            when (val r = apiCall { repo.api.sendReceipt(orderId, SendReceiptRequest(to, saveEmail = save)) }) {
+                is ApiResult.Success -> {
+                    _state.update { it.copy(receiptBusy = false, receiptInfo = UiText.res(R.string.receipt_sent, r.value.email), profileEmail = if (save) r.value.email else it.profileEmail) }
+                    refreshNow()
+                }
+                is ApiResult.Failure -> _state.update { it.copy(receiptBusy = false, receiptError = r.error.toUiText()) }
+            }
+        }
+    }
 
     private companion object {
         val ETA_STATUSES = setOf(OrderStatus.ACCEPTED, OrderStatus.LOADING, OrderStatus.EN_ROUTE, OrderStatus.ARRIVED)

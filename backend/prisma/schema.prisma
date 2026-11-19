@@ -182,6 +182,10 @@ model User {
   id              String     @id @default(uuid()) @db.Uuid
   phone           String     @unique // E.164
   name            String?
+  /**
+   * Optional, for emailed delivery receipts.
+   */
+  email           String?
   role            UserRole
   status          UserStatus @default(active)
   phoneVerifiedAt DateTime?  @map("phone_verified_at")
@@ -443,6 +447,9 @@ model Order {
   dispatchRound       Int                @default(0) @map("dispatch_round")
   expiresAt           DateTime?          @map("expires_at")
   proofPhotoKey       String?            @map("proof_photo_key")
+  receiptEmail        String?            @map("receipt_email")
+  receiptSentAt       DateTime?          @map("receipt_sent_at")
+  receiptSendCount    Int                @default(0) @map("receipt_send_count")
   settledAt           DateTime?          @map("settled_at")
   paymentPendingAt    DateTime?          @map("payment_pending_at")
   searchingAt         DateTime?          @map("searching_at")
@@ -469,6 +476,7 @@ model Order {
   promoCode       PromoCode?       @relation(fields: [promoCodeId], references: [id])
   promoRedemption PromoRedemption?
   messages        ChatMessage[]
+  signature       OrderSignature?
 
   @@index([status, expiresAt])
   @@index([customerId, createdAt])
@@ -839,4 +847,16 @@ model ChatMessage {
 
   @@index([orderId, createdAt])
   @@map("chat_messages")
+}
+
+/// Customer's signature at delivery (drawn on the driver's phone), kept with the order and put on the emailed receipt.
+model OrderSignature {
+  orderId      String   @id @map("order_id") @db.Uuid
+  png          Bytes
+  signedByName String   @default("") @map("signed_by_name")
+  signedAt     DateTime @default(now()) @map("signed_at")
+  driverId     String   @map("driver_id") @db.Uuid
+  order        Order    @relation(fields: [orderId], references: [id])
+
+  @@map("order_signatures")
 }

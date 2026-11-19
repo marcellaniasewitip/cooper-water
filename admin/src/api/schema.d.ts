@@ -171,6 +171,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/orders/{id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Email the delivery receipt (with the customer's signature) to any address; optionally save it on the profile. */
+        post: operations["CustomerController_sendReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customer/orders/{id}/eta": {
         parameters: {
             query?: never;
@@ -548,6 +565,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver/vehicle-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Vehicle sizes a driver can sign up with; orders go only to drivers with the matching size. */
+        get: operations["DriverController_vehicleTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver/depots": {
         parameters: {
             query?: never;
@@ -704,6 +738,40 @@ export interface paths {
         get: operations["DriverController_getOrder"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/orders/{id}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The customer signs on the driver's phone when the water is handed over. */
+        post: operations["DriverController_signature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/orders/{id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Email the receipt from the driver's phone (customer's email on file, or typed in at the door). */
+        post: operations["DriverController_sendReceipt"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2164,6 +2232,8 @@ export interface components {
     schemas: {
         UpdateProfileDto: {
             name: string;
+            /** @description Optional email for delivery receipts ('' removes it). */
+            email?: string;
         };
         PushTokenDto: {
             /** @description FCM registration token; null/empty to unregister. */
@@ -2208,6 +2278,11 @@ export interface components {
             paymentMethod: "cod" | "cellmoney" | "wallet";
             /** @description Cell money number to charge (defaults to the account phone). */
             msisdn?: string;
+        };
+        SendReceiptDto: {
+            email: string;
+            /** @description Customer app: also save this address on the customer's profile for next time. */
+            saveEmail?: boolean;
         };
         StartPaymentDto: {
             msisdn: string;
@@ -2272,6 +2347,11 @@ export interface components {
         };
         LocationBatchDto: {
             points: components["schemas"]["LocationPointDto"][];
+        };
+        SignatureDto: {
+            imagePng: string;
+            /** @description Name of the person who received the water and signed. */
+            signedByName?: string;
         };
         OptionalPositionDto: {
             lat?: number;
@@ -2768,6 +2848,29 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerController_sendReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendReceiptDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -3321,6 +3424,23 @@ export interface operations {
             };
         };
     };
+    DriverController_vehicleTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     DriverController_depots: {
         parameters: {
             query?: never;
@@ -3501,6 +3621,52 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DriverController_signature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignatureDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DriverController_sendReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendReceiptDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

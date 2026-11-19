@@ -18,9 +18,10 @@ import { PromosService } from '../promos/promos.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { ChatService } from '../chat/chat.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { CancelDto, CreateOrderDto, DisputeDto, QuoteDto, RateDto, StartPaymentDto } from '../orders/orders.dto';
+import { CancelDto, CreateOrderDto, DisputeDto, QuoteDto, RateDto, SendReceiptDto, StartPaymentDto } from '../orders/orders.dto';
 import { AppError } from '../common/errors';
 import { EtaService } from '../orders/eta.service';
+import { ReceiptService } from '../orders/receipt.service';
 import { Errors } from '../common/errors';
 
 @ApiTags('customer')
@@ -43,6 +44,7 @@ export class CustomerController {
     private readonly settings: SettingsService,
     private readonly prisma: PrismaService,
     private readonly eta: EtaService,
+    private readonly receipts: ReceiptService,
   ) {}
 
   @Get('me')
@@ -52,7 +54,7 @@ export class CustomerController {
 
   @Patch('me')
   updateMe(@CurrentUser() u: UserPrincipal, @Body() dto: UpdateProfileDto) {
-    return this.customers.updateProfile(u.id, dto.name);
+    return this.customers.updateProfile(u.id, dto.name, dto.email);
   }
 
   @Put('me/push-token')
@@ -139,6 +141,15 @@ export class CustomerController {
   @Get('orders/:id')
   getOrder(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.orders.getForCustomer(u.id, id);
+  }
+
+  /** Email the delivery receipt (with the customer's signature) to any address; optionally save it on the profile. */
+  @Post('orders/:id/receipt')
+  @HttpCode(200)
+  async sendReceipt(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SendReceiptDto) {
+    const r = await this.receipts.send(id, dto.email, { customerId: u.id });
+    if (dto.saveEmail) await this.customers.saveEmail(u.id, r.email);
+    return r;
   }
 
   /** "Driver is 7 min away": time to the customer along the driver's road route (via the depot until loaded). */

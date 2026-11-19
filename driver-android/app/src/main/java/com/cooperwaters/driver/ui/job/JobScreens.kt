@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
@@ -34,14 +35,19 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cooperwaters.core.R as CoreR
@@ -57,6 +63,7 @@ import com.cooperwaters.core.android.ui.MapCenter
 import com.cooperwaters.core.android.ui.MapMarker
 import com.cooperwaters.core.money.Money
 import com.cooperwaters.core.order.EtaFormat
+import com.cooperwaters.core.time.PomTime
 import com.cooperwaters.driver.R
 import com.cooperwaters.driver.ui.common.PhotoPickerButtons
 import com.cooperwaters.driver.ui.common.ScreenScaffold
@@ -69,6 +76,10 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit, on
     val vm = containerViewModel(key = "job-$orderId") { c -> JobViewModel(c.repository, c.uploader, c.state, orderId) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val eta by vm.eta.collectAsStateWithLifecycle()
+    val receipt by vm.receipt.collectAsStateWithLifecycle()
+    val signature = rememberSignatureState()
+    var signedBy by rememberSaveable { mutableStateOf("") }
+    var receiptEmail by rememberSaveable { mutableStateOf("") }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -200,10 +211,53 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit, on
                         } else {
                             PhotoPickerButtons(onPicked = { uri -> scope.launch { compressPhoto(context, uri).onSuccess(vm::onProofPhoto) } })
                         }
-                        LoadingButton(stringResource(R.string.job_mark_delivered), ui.busy, { vm.performStep(null, null) }, Modifier.fillMaxWidth())
+                        // The customer signs on this phone when the water is handed over.
+                        SignatureSection(signature, signedBy.ifBlank { order.customer?.name.orEmpty() }, { signedBy = it })
+                        LoadingButton(
+                            stringResource(R.string.job_mark_delivered),
+                            ui.busy,
+                            { vm.deliver(signature.toPngBase64(), signedBy.ifBlank { order.customer?.name.orEmpty() }) },
+                            Modifier.fillMaxWidth(),
+                        )
                     }
                     JobStep.AWAIT_CUSTOMER -> Text(stringResource(R.string.job_await_customer))
                     JobStep.DONE -> OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.job_back_home)) }
+                }
+
+                // After delivery: signature (if not taken yet) and the emailed receipt.
+                if (order.status in RECEIPT_STATUSES) {
+                    val signed = order.receipt?.signed == true
+                    val emailValue = receiptEmail.ifBlank { order.customer?.email ?: order.receipt?.email.orEmpty() }
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(stringResource(R.string.receipt_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            if (signed) {
+                                Text(stringResource(R.string.receipt_signed_by, order.receipt?.signedByName?.ifBlank { null } ?: stringResource(R.string.receipt_the_customer)), style = MaterialTheme.typography.bodyMedium)
+                            } else {
+                                SignatureSection(signature, signedBy.ifBlank { order.customer?.name.orEmpty() }, { signedBy = it })
+                                OutlinedButton(
+                                    onClick = { signature.toPngBase64()?.let { vm.saveSignature(it, signedBy.ifBlank { order.customer?.name.orEmpty() }) } },
+                                    enabled = !signature.isEmpty && !receipt.busy,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text(stringResource(R.string.receipt_save_signature)) }
+                            }
+                            OutlinedTextField(
+                                emailValue,
+                                { receiptEmail = it.trim() },
+                                label = { Text(stringResource(R.string.receipt_email)) },
+                                supportingText = { Text(stringResource(if (order.customer?.email.isNullOrBlank()) R.string.receipt_email_type else R.string.receipt_email_on_file)) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth().testTag("receipt-email"),
+                            )
+                            LoadingButton(stringResource(R.string.receipt_send), receipt.busy, { vm.sendReceipt(emailValue) }, Modifier.fillMaxWidth())
+                            receipt.info?.let { Text(it.asString(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) }
+                            receipt.error?.let { Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+                            order.receipt?.sentAt?.let { at ->
+                                Text(stringResource(R.string.receipt_last_sent, order.receipt?.email.orEmpty(), PomTime.formatTime(at)), style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
                 }
 
                 Card(Modifier.fillMaxWidth()) {
@@ -253,5 +307,24 @@ fun IssueScreen(orderId: String, onDone: () -> Unit) {
             ErrorCard(ui.error)
             LoadingButton(stringResource(R.string.issue_submit), ui.busy, vm::reportIssue, Modifier.fillMaxWidth())
         }
+    }
+}
+
+private val RECEIPT_STATUSES = setOf("DELIVERED", "COMPLETED", "DISPUTED")
+
+/** Name of the person receiving the water + the signature pad + Clear. */
+@Composable
+private fun SignatureSection(signature: SignatureState, name: String, onName: (String) -> Unit) {
+    Text(stringResource(R.string.signature_title), style = MaterialTheme.typography.titleSmall)
+    OutlinedTextField(
+        name,
+        onName,
+        label = { Text(stringResource(R.string.signature_name)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    SignaturePad(signature, stringResource(R.string.signature_hint), Modifier.fillMaxWidth().height(170.dp))
+    if (!signature.isEmpty) {
+        TextButton(onClick = signature::clear) { Text(stringResource(R.string.signature_clear)) }
     }
 }

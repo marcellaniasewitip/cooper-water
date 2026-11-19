@@ -10,6 +10,7 @@ import com.cooperwaters.core.net.DriverProfile
 import com.cooperwaters.core.net.SubmitDocumentRequest
 import com.cooperwaters.core.net.TruckRequest
 import com.cooperwaters.core.net.Uploader
+import com.cooperwaters.core.net.VehicleType
 import com.cooperwaters.core.net.apiCall
 import com.cooperwaters.driver.R
 import com.cooperwaters.driver.data.DriverRepository
@@ -39,6 +40,8 @@ data class OnboardingState(
     val failedType: String? = null,
     val plate: String = "",
     val capacity: String = "",
+    /** Vehicle sizes to choose from (one per order size). Empty = type the litres instead. */
+    val vehicleTypes: List<VehicleType> = emptyList(),
     val truckPhotoBytes: ByteArray? = null,
     val savingTruck: Boolean = false,
     val truckSaved: Boolean = false,
@@ -54,10 +57,10 @@ data class OnboardingState(
 
     override fun equals(other: Any?): Boolean = other is OnboardingState &&
         loading == other.loading && profile == other.profile && documents == other.documents && uploading == other.uploading && failedType == other.failedType &&
-        plate == other.plate && capacity == other.capacity && truckPhotoBytes.contentEqualsOrBothNull(other.truckPhotoBytes) &&
+        plate == other.plate && capacity == other.capacity && vehicleTypes == other.vehicleTypes && truckPhotoBytes.contentEqualsOrBothNull(other.truckPhotoBytes) &&
         savingTruck == other.savingTruck && truckSaved == other.truckSaved && error == other.error
 
-    override fun hashCode(): Int = listOf(loading, profile, documents, uploading, failedType, plate, capacity, savingTruck, truckSaved, error).hashCode()
+    override fun hashCode(): Int = listOf(loading, profile, documents, uploading, failedType, plate, capacity, vehicleTypes, savingTruck, truckSaved, error).hashCode()
 }
 
 private fun ByteArray?.contentEqualsOrBothNull(o: ByteArray?) = if (this == null) o == null else o != null && contentEquals(o)
@@ -76,6 +79,12 @@ class OnboardingViewModel(
     }
 
     fun refresh() {
+        viewModelScope.launch {
+            if (_state.value.vehicleTypes.isEmpty()) {
+                val types = apiCall { repo.api.vehicleTypes() }
+                if (types is ApiResult.Success) _state.update { it.copy(vehicleTypes = types.value) }
+            }
+        }
         viewModelScope.launch {
             driverState.refreshConfig()
             val p = driverState.refreshProfile()
@@ -123,6 +132,8 @@ class OnboardingViewModel(
 
     fun onPlate(v: String) = _state.update { it.copy(plate = v.uppercase().take(20), error = null, failedType = null, truckSaved = false) }
     fun onCapacity(v: String) = _state.update { it.copy(capacity = v.filter(Char::isDigit).take(6), error = null, failedType = null, truckSaved = false) }
+    /** Picked a vehicle size from the list (sets the tank capacity). */
+    fun onVehicleType(t: VehicleType) = _state.update { it.copy(capacity = t.capacityLitres.toString(), error = null, failedType = null, truckSaved = false) }
     fun onTruckPhoto(jpeg: ByteArray) = _state.update { it.copy(truckPhotoBytes = jpeg, truckSaved = false) }
 
     fun saveTruck() {
@@ -130,7 +141,7 @@ class OnboardingViewModel(
         val capacity = s.capacity.toIntOrNull()
         when {
             s.plate.replace(" ", "").length < 2 -> { _state.update { it.copy(failedType = OnboardingState.TRUCK, error = UiText.res(R.string.truck_plate_required)) }; return }
-            capacity == null || capacity !in 100..100_000 -> { _state.update { it.copy(failedType = OnboardingState.TRUCK, error = UiText.res(R.string.truck_capacity_invalid)) }; return }
+            capacity == null || capacity !in 100..100_000 -> { _state.update { it.copy(failedType = OnboardingState.TRUCK, error = UiText.res(if (s.vehicleTypes.isNotEmpty()) R.string.vehicle_type_required else R.string.truck_capacity_invalid)) }; return }
             s.savingTruck -> return
         }
         _state.update { it.copy(savingTruck = true, error = null, failedType = null) }

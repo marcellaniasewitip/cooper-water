@@ -3,13 +3,17 @@ package com.cooperwaters.customer.ui.profile
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -17,13 +21,10 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,6 +59,8 @@ import kotlinx.coroutines.launch
 data class ProfileState(
     val name: String = "",
     val phone: String = "",
+    /** Optional, for emailed delivery receipts. */
+    val email: String = "",
     val saving: Boolean = false,
     val saved: Boolean = false,
     val error: UiText? = null,
@@ -71,12 +75,13 @@ class ProfileViewModel(private val api: CustomerApi, private val tokenStore: Tok
     init {
         viewModelScope.launch {
             (apiCall { api.me() } as? ApiResult.Success)?.value?.let { me ->
-                _state.update { s -> s.copy(name = if (s.name.isBlank()) me.name.orEmpty() else s.name, phone = me.phone) }
+                _state.update { s -> s.copy(name = if (s.name.isBlank()) me.name.orEmpty() else s.name, phone = me.phone, email = s.email.ifBlank { me.email.orEmpty() }) }
             }
         }
     }
 
     fun onName(v: String) = _state.update { it.copy(name = v.take(80), error = null, saved = false) }
+    fun onEmail(v: String) = _state.update { it.copy(email = v.trim().take(200), error = null, saved = false) }
 
     fun save() {
         val name = _state.value.name.trim()
@@ -84,10 +89,15 @@ class ProfileViewModel(private val api: CustomerApi, private val tokenStore: Tok
             _state.update { it.copy(error = UiText.res(R.string.profile_name_required)) }
             return
         }
+        val email = _state.value.email.trim()
+        if (email.isNotEmpty() && !Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$").matches(email)) {
+            _state.update { it.copy(error = UiText.res(R.string.profile_email_invalid)) }
+            return
+        }
         if (_state.value.saving) return
         _state.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
-            when (val r = apiCall { api.updateMe(UpdateProfileRequest(name)) }) {
+            when (val r = apiCall { api.updateMe(UpdateProfileRequest(name, email)) }) {
                 is ApiResult.Success -> {
                     tokenStore.user()?.let { tokenStore.saveUser(it.copy(name = r.value.name)) }
                     _state.update { it.copy(saving = false, saved = true) }
@@ -146,6 +156,15 @@ fun ProfileScreen(
                 value = state.name,
                 onValueChange = vm::onName,
                 label = { Text(stringResource(R.string.profile_name_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = state.email,
+                onValueChange = vm::onEmail,
+                label = { Text(stringResource(R.string.profile_email_label)) },
+                supportingText = { Text(stringResource(R.string.profile_email_help)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

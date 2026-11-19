@@ -368,6 +368,26 @@ export default function OrderDetailPage() {
                       {m.orders.noProof}
                     </Text>
                   )}
+                  <Text fw={600} size="sm" mt="md" mb={4}>
+                    {m.orders.signature}
+                  </Text>
+                  {o.signatureDataUrl ? (
+                    <>
+                      <Image src={o.signatureDataUrl} alt={m.orders.signature} mah={160} fit="contain" bg="white" radius="sm" style={{ border: '1px solid var(--mantine-color-gray-3)' }} data-testid="order-signature" />
+                      <Text size="xs" c="dimmed" mt={4}>
+                        {fmt(m.orders.signedBy, { name: o.receipt?.signedByName || m.orders.theCustomer, time: formatDateTime(o.receipt?.signedAt ?? null) })}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text c="dimmed" size="sm">
+                      {m.orders.noSignature}
+                    </Text>
+                  )}
+                  {o.receipt?.sentAt && (
+                    <Text size="xs" c="dimmed" mt={4}>
+                      {fmt(m.orders.receiptSent, { email: o.receipt.email ?? '', time: formatDateTime(o.receipt.sentAt) })}
+                    </Text>
+                  )}
                 </Card>
                 {o.rating && (
                   <Card withBorder>

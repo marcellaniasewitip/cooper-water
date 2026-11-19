@@ -10,7 +10,8 @@ type WithRelations = Order & {
     ratingAvg: number;
     lastSeenAt: Date | null;
   }) | null;
-  customer?: { id: string; name: string | null; phone: string } | null;
+  customer?: { id: string; name: string | null; phone: string; email?: string | null } | null;
+  signature?: { signedByName: string; signedAt: Date } | null;
   events?: OrderEvent[];
 };
 
@@ -48,6 +49,14 @@ const base = (o: WithRelations) => ({
   cancelReason: o.cancelReason,
   expiresAt: o.expiresAt,
   timeline: timeline(o),
+  /** Delivery receipt: customer's signature (taken on the driver's phone) and the last emailed copy. */
+  receipt: {
+    signed: !!o.signature,
+    signedByName: o.signature?.signedByName ?? null,
+    signedAt: o.signature?.signedAt ?? null,
+    email: o.receiptEmail,
+    sentAt: o.receiptSentAt,
+  },
 });
 
 /** What a customer sees: no commission; driver contact + live location only while trackable. */
@@ -78,7 +87,7 @@ export function driverOrderView(o: WithRelations) {
     ...base(o),
     commissionToea: o.commissionToea,
     earningsToea: o.priceToea - o.commissionToea,
-    customer: o.customer ? { name: o.customer.name ?? 'Customer', phone: active ? o.customer.phone : undefined } : null,
+    customer: o.customer ? { name: o.customer.name ?? 'Customer', phone: active ? o.customer.phone : undefined, email: o.customer.email ?? null } : null,
   };
 }
 
@@ -118,6 +127,7 @@ export function adminOrderView(o: WithRelations) {
 
 export const ORDER_INCLUDE = {
   package: true,
-  customer: { select: { id: true, name: true, phone: true } },
+  customer: { select: { id: true, name: true, phone: true, email: true } },
+  signature: { select: { signedByName: true, signedAt: true } },
   driver: { include: { user: { select: { name: true, phone: true } }, trucks: { where: { active: true, deletedAt: null }, take: 1 } } },
 } as const;

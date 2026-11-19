@@ -313,4 +313,25 @@
     <string name="job_eta_now">Less than a minute to the customer</string>
     <string name="job_eta_arrived">You have arrived at the customer</string>
     <string name="job_eta_via_depot">via %1$s</string>
+    <string name="vehicle_type_title">Your vehicle (tank size)</string>
+    <string name="vehicle_type_help">You will only get orders for this size of water delivery.</string>
+    <string name="vehicle_type_name">%1$d L water tanker</string>
+    <string name="vehicle_type_serves">Delivers: %1$s</string>
+    <string name="vehicle_type_required">Choose your vehicle size.</string>
+    <string name="signature_title">Customer signature</string>
+    <string name="signature_name">Received by (name)</string>
+    <string name="signature_hint">Customer signs here with a finger</string>
+    <string name="signature_clear">Clear signature</string>
+    <string name="receipt_title">Receipt</string>
+    <string name="receipt_signed_by">Signed by %1$s</string>
+    <string name="receipt_the_customer">the customer</string>
+    <string name="receipt_save_signature">Save signature</string>
+    <string name="receipt_signed">Signature saved</string>
+    <string name="receipt_email">Customer email</string>
+    <string name="receipt_email_on_file">Email on file — change it if needed</string>
+    <string name="receipt_email_type">Type the customer\'s email address</string>
+    <string name="receipt_email_invalid">Enter a valid email address.</string>
+    <string name="receipt_send">Send receipt</string>
+    <string name="receipt_sent">Receipt sent to %1$s</string>
+    <string name="receipt_last_sent">Last sent to %1$s at %2$s</string>
 </resources>

@@ -358,9 +358,12 @@ export class OrdersService implements OnModuleInit {
       this.prisma.rating.findUnique({ where: { orderId } }),
     ]);
     const proofPhotoUrl = o.proofPhotoKey ? await this.storage.presignDownload(o.proofPhotoKey).catch(() => null) : null;
+    const sig = await this.prisma.orderSignature.findUnique({ where: { orderId }, select: { png: true } });
     return {
       ...adminOrderView(o),
       proofPhotoUrl,
+      /** Customer's signature at delivery, as a data URL (small PNG). */
+      signatureDataUrl: sig ? `data:image/png;base64,${Buffer.from(sig.png).toString('base64')}` : null,
       offers: offers.map((f) => ({ id: f.id, driverId: f.driverId, driverName: f.driver.user.name, round: f.round, distanceM: f.distanceM, sentAt: f.sentAt, response: f.response, respondedAt: f.respondedAt })),
       payments,
       disputes,

@@ -15,13 +15,14 @@ import { DisputesService } from '../disputes/disputes.service';
 import { CustomersService } from '../customers/customers.service';
 import { SettingsService } from '../settings/settings.service';
 import { PushTokenDto, UpdateProfileDto } from '../customers/customer.dto';
-import { DeliveredDto, DisputeDto, PositionDto } from '../orders/orders.dto';
+import { DeliveredDto, DisputeDto, PositionDto, SendReceiptDto, SignatureDto } from '../orders/orders.dto';
 import { EarningsQuery, LocationBatchDto, OptionalPositionDto, SubmitDocumentDto, TopupDto, TruckDto, UploadRequestDto, WithdrawalDto } from './driver.dto';
 import { Errors } from '../common/errors';
 import { ChatService } from '../chat/chat.service';
 import { BROADCAST_TEMPLATE, NotificationsService } from '../notifications/notifications.service';
 import { ChatSendDto } from '../customers/customer.dto';
 import { EtaService } from '../orders/eta.service';
+import { ReceiptService } from '../orders/receipt.service';
 
 @ApiTags('driver')
 @ApiBearerAuth()
@@ -40,6 +41,7 @@ export class DriverController {
     private readonly chat: ChatService,
     private readonly notifications: NotificationsService,
     private readonly eta: EtaService,
+    private readonly receipts: ReceiptService,
   ) {}
 
   private async driverId(u: UserPrincipal): Promise<string> {
@@ -112,6 +114,12 @@ export class DriverController {
     return this.drivers.upsertTruck(await this.driverId(u), dto);
   }
 
+  /** Vehicle sizes a driver can sign up with; orders go only to drivers with the matching size. */
+  @Get('vehicle-types')
+  vehicleTypes() {
+    return this.catalogue.vehicleTypes();
+  }
+
   @Get('depots')
   async depots() {
     const rows = await this.catalogue.activeDepots();
@@ -175,6 +183,20 @@ export class DriverController {
   @Get('orders/:id')
   async getOrder(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.orders.getForDriver(await this.driverId(u), id);
+  }
+
+  /** The customer signs on the driver's phone when the water is handed over. */
+  @Post('orders/:id/signature')
+  @HttpCode(200)
+  async signature(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SignatureDto) {
+    return this.receipts.saveSignature(await this.driverId(u), id, dto.imagePng, dto.signedByName);
+  }
+
+  /** Email the receipt from the driver's phone (customer's email on file, or typed in at the door). */
+  @Post('orders/:id/receipt')
+  @HttpCode(200)
+  async sendReceipt(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SendReceiptDto) {
+    return this.receipts.send(id, dto.email, { driverId: await this.driverId(u) });
   }
 
   /** Time and distance to the customer along the road (via the depot until the water is loaded). */

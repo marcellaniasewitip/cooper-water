@@ -191,6 +191,11 @@ export const en = {
   },
   orders: {
     title: 'Orders',
+    signature: 'Customer signature',
+    signedBy: 'Signed by {name} · {time}',
+    theCustomer: 'the customer',
+    noSignature: 'Not signed',
+    receiptSent: 'Receipt emailed to {email} · {time}',
     discount: 'Promo discount',
     customerPays: 'Customer pays',
     chat: 'Chat (customer ↔ driver)',

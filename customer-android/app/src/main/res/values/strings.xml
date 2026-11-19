@@ -324,4 +324,16 @@
     <string name="tracking_eta_via_depot">Includes loading the water at %1$s first</string>
     <string name="tracking_eta_loading">Loading your water now, then on the way</string>
     <string name="tracking_eta_arrived">Your driver has arrived</string>
+    <string name="receipt_title">Your receipt</string>
+    <string name="receipt_signed_by">Signed for by %1$s</string>
+    <string name="receipt_you">you</string>
+    <string name="receipt_email">Email address</string>
+    <string name="receipt_save_email">Save this email on my profile</string>
+    <string name="receipt_send">Email my receipt</string>
+    <string name="receipt_sent">Receipt sent to %1$s</string>
+    <string name="receipt_last_sent">Last sent to %1$s at %2$s</string>
+    <string name="receipt_email_invalid">Enter a valid email address.</string>
+    <string name="profile_email_label">Email (optional)</string>
+    <string name="profile_email_help">For emailed delivery receipts</string>
+    <string name="profile_email_invalid">Enter a valid email address, or leave it empty.</string>
 </resources>

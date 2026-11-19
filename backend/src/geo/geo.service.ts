@@ -52,10 +52,11 @@ export class GeoService {
    * no active order (when one-active-order is on), within radius, not already offered this order.
    */
   async eligibleDrivers(orderId: string, lat: number, lng: number, radiusM: number, db: Tx | PrismaService = this.prisma): Promise<EligibleDriver[]> {
-    const [minBalance, staleSec, oneActive] = await Promise.all([
+    const [minBalance, staleSec, oneActive, matchVehicle] = await Promise.all([
       this.settings.get('wallet.min_balance_toea'),
       this.settings.get('driver.location_stale_sec'),
       this.settings.get('order.one_active_per_driver'),
+      this.settings.get('dispatch.match_vehicle_size'),
     ]);
     const activeStatuses = Prisma.sql`('ACCEPTED','LOADING','EN_ROUTE','ARRIVED')`;
     return db.$queryRaw<EligibleDriver[]>(Prisma.sql`
@@ -75,6 +76,18 @@ export class GeoService {
         AND (${!oneActive} OR NOT EXISTS (
               SELECT 1 FROM orders o WHERE o.driver_id = dr.id AND o.status IN ${activeStatuses}))
         AND NOT EXISTS (SELECT 1 FROM order_offers oo WHERE oo.order_id = ${orderId}::uuid AND oo.driver_id = dr.id)
+        -- Vehicle size: the truck's class is the largest package size its tank holds, so a 3,000 L tanker
+        -- only gets 3,000 L orders (not 1,000 L or 5,000 L ones).
+        AND (${!matchVehicle} OR EXISTS (
+              SELECT 1 FROM orders ord
+              JOIN packages p ON p.id = ord.package_id
+              JOIN trucks t ON t.driver_id = dr.id AND t.deleted_at IS NULL AND t.active
+              WHERE ord.id = ${orderId}::uuid
+                AND t.capacity_litres >= p.volume_litres
+                AND t.capacity_litres < COALESCE(
+                      (SELECT MIN(p2.volume_litres) FROM packages p2
+                        WHERE p2.active AND p2.deleted_at IS NULL AND p2.volume_litres > p.volume_litres),
+                      2147483647)))
       ORDER BY "distanceM" ASC
       LIMIT 50`);
   }

@@ -44,6 +44,21 @@ export class CatalogueService {
     return this.prisma.depot.findMany({ where: { deletedAt: null }, orderBy: { name: 'asc' } });
   }
 
+  /**
+   * Vehicle types drivers choose from at sign-up: one per order size customers can pick
+   * (e.g. "3,000 L water tanker" serves the 3,000 L package). Built from the active packages.
+   */
+  async vehicleTypes() {
+    const pkgs = await this.prisma.package.findMany({ where: { active: true, deletedAt: null }, orderBy: [{ volumeLitres: 'asc' }, { sortOrder: 'asc' }] });
+    const byVolume = new Map<number, string[]>();
+    for (const p of pkgs) byVolume.set(p.volumeLitres, [...(byVolume.get(p.volumeLitres) ?? []), p.name]);
+    return [...byVolume.entries()].map(([capacityLitres, packages]) => ({
+      capacityLitres,
+      name: `${capacityLitres.toLocaleString('en-US')} L water tanker`,
+      packages,
+    }));
+  }
+
   async createPackage(adminId: string, input: PackageInput, ip: string | null) {
     const pkg = await this.prisma.package.create({ data: input });
     await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'package.create', entity: 'package', entityId: pkg.id, after: pkg, ip });

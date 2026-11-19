@@ -118,6 +118,42 @@ describe('orders & dispatch (integration)', () => {
     expect(await h.prisma.orderEvent.count({ where: { orderId: order.id, toStatus: 'ACCEPTED' } })).toBe(1);
   });
 
+  it('vehicle size: an order only goes to drivers whose tanker matches the ordered size', async () => {
+    const small = await h.prisma.package.create({ data: { name: 'Small (1,000 L)', volumeLitres: 1000, priceToea: 8000 } });
+    const medium = await h.prisma.package.create({ data: { name: 'Medium (3,000 L)', volumeLitres: 3000, priceToea: 20000 } });
+    const d3000 = await approvedDriver(h);
+    const d4000 = await approvedDriver(h); // a 4,000 L tank is in the 3,000 L class
+    const d5000 = await approvedDriver(h);
+    await h.prisma.truck.updateMany({ where: { driverId: d3000.driverId }, data: { capacityLitres: 3000 } });
+    await h.prisma.truck.updateMany({ where: { driverId: d4000.driverId }, data: { capacityLitres: 4000 } });
+
+    const types = await h.http().get('/api/v1/driver/vehicle-types').set(bearer(d3000.token)).expect(200);
+    expect(types.body.map((t: { capacityLitres: number }) => t.capacityLitres)).toEqual([1000, 3000, 5000]);
+    expect(types.body[1]).toMatchObject({ name: '3,000 L water tanker', packages: ['Medium (3,000 L)'] });
+
+    const c = await customer(h);
+    const place = (packageId: string) =>
+      h.http().post('/api/v1/customer/orders').set(bearer(c.token)).set('Idempotency-Key', idem())
+        .send({ packageId, quantity: 1, paymentMethod: 'cod', location: { ...CUSTOMER_POINT, address: 'Lot 5, Boroko' } }).expect(201);
+    const offeredTo = async (orderId: string) => (await h.prisma.orderOffer.findMany({ where: { orderId } })).map((o) => o.driverId).sort();
+
+    const o3 = (await place(medium.id)).body.order;
+    expect(await offeredTo(o3.id)).toEqual([d3000.driverId, d4000.driverId].sort());
+    const o5 = (await place(pkgId)).body.order;
+    expect(await offeredTo(o5.id)).toEqual([d5000.driverId]);
+    const o1 = (await place(small.id)).body.order;
+    expect(await offeredTo(o1.id)).toEqual([]); // nobody has a 1,000 L tanker
+
+    // The 5,000 L driver can't grab the 3,000 L order either.
+    const acc = await h.http().post(`/api/v1/driver/orders/${o3.id}/accept`).set(bearer(d5000.token)).set('Idempotency-Key', idem()).send();
+    expect(acc.status).not.toBe(200);
+
+    // Switching matching off offers to everyone nearby again.
+    await h.settings.set('dispatch.match_vehicle_size', false, null);
+    const o1b = (await place(small.id)).body.order;
+    expect((await offeredTo(o1b.id)).length).toBe(3);
+  });
+
   it('one active order per driver', async () => {
     const d = await approvedDriver(h);
     const c = await customer(h);
