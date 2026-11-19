@@ -59,4 +59,29 @@ describe('MapsService (Google Maps Platform)', () => {
     s.fetcher = fakeFetch([{ body: { status: 'REQUEST_DENIED', error_message: 'denied' } }]).fn as never;
     await expect(s.reverse(-9.4, 147.1)).rejects.toMatchObject({ code: 'geo_unavailable' });
   });
+
+  it('routes through the depot with live traffic (Routes API) and caches for a minute', async () => {
+    const s = new MapsService();
+    s.key = () => 'KEY';
+    const f = fakeFetch([{ body: { routes: [{ duration: '754s', distanceMeters: 6120 }] } }]);
+    s.fetcher = f.fn as never;
+    const pts = [{ lat: -9.43, lng: 147.19 }, { lat: -9.42, lng: 147.18 }, { lat: -9.44, lng: 147.2 }];
+    expect(await s.route(pts)).toEqual({ durationSec: 754, distanceM: 6120 });
+    expect(f.calls[0].url).toContain('routes.googleapis.com/directions/v2:computeRoutes');
+    expect(f.calls[0].init.headers['X-Goog-FieldMask']).toBe('routes.duration,routes.distanceMeters');
+    const body = JSON.parse(f.calls[0].init.body);
+    expect(body).toMatchObject({ travelMode: 'DRIVE', routingPreference: 'TRAFFIC_AWARE' });
+    expect(body.intermediates).toHaveLength(1);
+    await s.route(pts);
+    expect(f.calls).toHaveLength(1);
+  });
+
+  it('route returns null (caller estimates) without a key or when Google fails', async () => {
+    const s = new MapsService();
+    s.key = () => undefined;
+    expect(await s.route([{ lat: 0, lng: 0 }, { lat: 1, lng: 1 }])).toBeNull();
+    s.key = () => 'KEY';
+    s.fetcher = fakeFetch([{ status: 403, body: { error: { message: 'Routes API not enabled' } } }]).fn as never;
+    expect(await s.route([{ lat: 0, lng: 0 }, { lat: 1, lng: 1 }])).toBeNull();
+  });
 });

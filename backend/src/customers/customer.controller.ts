@@ -20,6 +20,8 @@ import { ChatService } from '../chat/chat.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CancelDto, CreateOrderDto, DisputeDto, QuoteDto, RateDto, StartPaymentDto } from '../orders/orders.dto';
 import { AppError } from '../common/errors';
+import { EtaService } from '../orders/eta.service';
+import { Errors } from '../common/errors';
 
 @ApiTags('customer')
 @ApiBearerAuth()
@@ -40,6 +42,7 @@ export class CustomerController {
     private readonly notifications: NotificationsService,
     private readonly settings: SettingsService,
     private readonly prisma: PrismaService,
+    private readonly eta: EtaService,
   ) {}
 
   @Get('me')
@@ -136,6 +139,14 @@ export class CustomerController {
   @Get('orders/:id')
   getOrder(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.orders.getForCustomer(u.id, id);
+  }
+
+  /** "Driver is 7 min away": time to the customer along the driver's road route (via the depot until loaded). */
+  @Get('orders/:id/eta')
+  async getEta(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    const eta = await this.eta.forCustomer(u.id, id);
+    if (!eta) throw Errors.notFound('Order');
+    return eta;
   }
 
   /** Retry starting the cell money collection while the order is still PENDING_PAYMENT. */

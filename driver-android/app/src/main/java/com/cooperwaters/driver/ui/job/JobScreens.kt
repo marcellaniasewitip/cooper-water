@@ -7,16 +7,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cooperwaters.core.R as CoreR
 import com.cooperwaters.core.android.Intents
 import com.cooperwaters.core.android.LocationHelper
 import com.cooperwaters.core.android.ui.CwMap
@@ -55,18 +56,19 @@ import com.cooperwaters.core.android.ui.LoadingButton
 import com.cooperwaters.core.android.ui.MapCenter
 import com.cooperwaters.core.android.ui.MapMarker
 import com.cooperwaters.core.money.Money
+import com.cooperwaters.core.order.EtaFormat
 import com.cooperwaters.driver.R
 import com.cooperwaters.driver.ui.common.PhotoPickerButtons
 import com.cooperwaters.driver.ui.common.ScreenScaffold
 import com.cooperwaters.driver.ui.common.compressPhoto
 import com.cooperwaters.driver.ui.common.containerViewModel
 import kotlinx.coroutines.launch
-import com.cooperwaters.core.R as CoreR
 
 @Composable
 fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit, onChat: () -> Unit) {
     val vm = containerViewModel(key = "job-$orderId") { c -> JobViewModel(c.repository, c.uploader, c.state, orderId) }
     val ui by vm.ui.collectAsStateWithLifecycle()
+    val eta by vm.eta.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -109,6 +111,27 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit, on
                 if (ui.fromCache) Text(stringResource(R.string.job_cached), style = MaterialTheme.typography.bodySmall)
                 ErrorCard(ui.error)
                 ui.info?.let { Text(it.asString(), color = MaterialTheme.colorScheme.primary) }
+                eta?.let { e ->
+                    val sec = e.etaSec
+                    if (sec != null) {
+                        val mins = EtaFormat.minutes(sec)
+                        val line = when {
+                            e.arrived -> stringResource(R.string.job_eta_arrived)
+                            mins == 0L -> stringResource(R.string.job_eta_now)
+                            else -> stringResource(R.string.job_eta_minutes, mins)
+                        }
+                        val detail = listOfNotNull(
+                            e.distanceM?.takeIf { !e.arrived }?.let { EtaFormat.distance(it) },
+                            e.depotName?.takeIf { e.viaDepot }?.let { stringResource(R.string.job_eta_via_depot, it) },
+                        ).joinToString(" · ")
+                        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(line, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
 
                 Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

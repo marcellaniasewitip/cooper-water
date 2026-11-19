@@ -117,6 +117,21 @@ data class TruckRef(val plate: String = "", val capacityLitres: Int = 0)
 @Serializable
 data class DriverLocation(val lat: Double, val lng: Double, val at: String? = null)
 
+/** Time until the driver reaches the customer, along the road route (via the depot until loaded). */
+@Serializable
+data class Eta(
+    val orderId: String = "",
+    val status: String = "",
+    val etaSec: Long? = null,
+    val distanceM: Long? = null,
+    val arriveAt: String? = null,
+    val viaDepot: Boolean = false,
+    val depotName: String? = null,
+    /** google = road route with live traffic; estimate = straight-line at town speeds. */
+    val source: String? = null,
+    val arrived: Boolean = false,
+)
+
 @Serializable
 data class OrderDriver(
     val name: String = "",

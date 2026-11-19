@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,10 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cooperwaters.core.R as CoreR
 import com.cooperwaters.core.android.Intents
 import com.cooperwaters.core.android.ui.CwMap
 import com.cooperwaters.core.android.ui.ErrorCard
@@ -52,14 +55,15 @@ import com.cooperwaters.core.android.ui.MapCenter
 import com.cooperwaters.core.android.ui.MapMarker
 import com.cooperwaters.core.android.ui.SectionTitle
 import com.cooperwaters.core.money.Money
+import com.cooperwaters.core.net.Eta
 import com.cooperwaters.core.net.Order
+import com.cooperwaters.core.order.EtaFormat
 import com.cooperwaters.core.order.OrderStatus
 import com.cooperwaters.core.order.OrderTimelines
 import com.cooperwaters.core.time.PomTime
 import com.cooperwaters.customer.R
 import com.cooperwaters.customer.ui.common.ScreenScaffold
 import com.cooperwaters.customer.ui.common.containerViewModel
-import com.cooperwaters.core.R as CoreR
 
 @Composable
 fun TrackingScreen(orderId: String, onBack: () -> Unit, onPay: () -> Unit, onRate: () -> Unit, onDispute: () -> Unit, onChat: () -> Unit) {
@@ -85,6 +89,7 @@ fun TrackingScreen(orderId: String, onBack: () -> Unit, onPay: () -> Unit, onRat
                 if (state.fromCache) Text(stringResource(R.string.tracking_cached), style = MaterialTheme.typography.bodySmall)
                 ErrorCard(state.error, onDismiss = vm::clearMessages)
                 state.info?.let { Text(it.asString(), color = MaterialTheme.colorScheme.primary) }
+                state.eta?.let { EtaCard(it) }
 
                 order.driver?.let { d ->
                     Card(Modifier.fillMaxWidth()) {
@@ -217,4 +222,34 @@ private fun CancelDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
         confirmButton = { TextButton(onClick = { onConfirm(reason.trim().ifBlank { defaultReason }) }) { Text(stringResource(R.string.tracking_cancel_confirm)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.tracking_cancel_keep)) } },
     )
+}
+
+/** "Your driver is about 7 min away · 2.3 km · Arriving around 14:35". */
+@Composable
+private fun EtaCard(eta: Eta) {
+    val sec = eta.etaSec ?: return
+    Card(Modifier.fillMaxWidth().testTag("tracking-eta"), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            if (eta.arrived) {
+                Text(stringResource(R.string.tracking_eta_arrived), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                return@Column
+            }
+            val mins = EtaFormat.minutes(sec)
+            Text(
+                if (mins == 0L) stringResource(R.string.tracking_eta_now) else stringResource(R.string.tracking_eta_minutes, mins),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            val bits = listOfNotNull(
+                eta.distanceM?.let { EtaFormat.distance(it) },
+                eta.arriveAt?.let { stringResource(R.string.tracking_eta_arrive_at, PomTime.formatTime(it)) },
+            )
+            if (bits.isNotEmpty()) Text(bits.joinToString(" · "), style = MaterialTheme.typography.bodyMedium)
+            if (eta.viaDepot) {
+                Text(stringResource(R.string.tracking_eta_via_depot, eta.depotName.orEmpty()), style = MaterialTheme.typography.bodySmall)
+            } else if (eta.status == OrderStatus.LOADING) {
+                Text(stringResource(R.string.tracking_eta_loading), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
 }

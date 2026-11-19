@@ -7,6 +7,7 @@ import com.cooperwaters.core.android.ui.toUiText
 import com.cooperwaters.core.net.ApiResult
 import com.cooperwaters.core.net.CancelRequest
 import com.cooperwaters.core.net.DriverLocation
+import com.cooperwaters.core.net.Eta
 import com.cooperwaters.core.net.ErrorCodes
 import com.cooperwaters.core.net.Order
 import com.cooperwaters.core.net.apiCall
@@ -27,6 +28,8 @@ data class TrackingState(
     val order: Order? = null,
     val fromCache: Boolean = false,
     val driverLocation: DriverLocation? = null,
+    /** "Driver is 7 min away" (null until known / when there is no driver on the way). */
+    val eta: Eta? = null,
     val cancelFreeUntil: String = OrderStatus.ACCEPTED,
     val busy: Boolean = false,
     val error: UiText? = null,
@@ -48,6 +51,7 @@ class TrackingViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(TrackingState())
     val state: StateFlow<TrackingState> = _state.asStateFlow()
+    private var etaFetchedAt = 0L
 
     init {
         viewModelScope.launch {
@@ -67,6 +71,8 @@ class TrackingViewModel(
                     is RealtimeEvent.OrderUpdated -> if (e.order.id == orderId) applyOrder(e.order, fromSocket = true)
                     is RealtimeEvent.DriverLocationChanged -> if (e.orderId == orderId) {
                         _state.update { it.copy(driverLocation = DriverLocation(e.lat, e.lng, e.at)) }
+                        // The driver moved: refresh the arrival time (at most every 30 s).
+                        if (System.currentTimeMillis() - etaFetchedAt > 30_000) refreshEta()
                     }
                     else -> Unit
                 }
@@ -83,6 +89,23 @@ class TrackingViewModel(
         val loaded = repo.order(orderId)
         _state.update { it.copy(loading = false, fromCache = loaded.fromCache, error = if (loaded.value == null) loaded.error?.toUiText() else it.error) }
         loaded.value?.let { applyOrder(it, fromSocket = false) }
+        refreshEtaNow()
+    }
+
+    private fun refreshEta() {
+        viewModelScope.launch { refreshEtaNow() }
+    }
+
+    /** Arrival estimate while a driver is on the way (accepted → arrived); cleared otherwise. */
+    private suspend fun refreshEtaNow() {
+        val status = _state.value.order?.status
+        if (status == null || status !in ETA_STATUSES) {
+            _state.update { it.copy(eta = null) }
+            return
+        }
+        etaFetchedAt = System.currentTimeMillis()
+        val r = apiCall { repo.api.eta(orderId) }
+        if (r is ApiResult.Success) _state.update { it.copy(eta = r.value) }
     }
 
     private fun applyOrder(o: Order, fromSocket: Boolean) {
@@ -94,6 +117,8 @@ class TrackingViewModel(
                 driverLocation = merged.driver?.location ?: s.driverLocation.takeIf { OrderStatus.isTrackable(merged.status) },
             )
         }
+        // A new stage (e.g. water loaded) changes the route: update the arrival time straight away.
+        if (fromSocket) refreshEta()
         if (fromSocket) viewModelScope.launch { repo.cacheOrder(_state.value.order ?: o) }
     }
 
@@ -120,4 +145,8 @@ class TrackingViewModel(
     }
 
     fun clearMessages() = _state.update { it.copy(error = null, info = null) }
+
+    private companion object {
+        val ETA_STATUSES = setOf(OrderStatus.ACCEPTED, OrderStatus.LOADING, OrderStatus.EN_ROUTE, OrderStatus.ARRIVED)
+    }
 }

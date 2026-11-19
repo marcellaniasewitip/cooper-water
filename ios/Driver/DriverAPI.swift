@@ -23,6 +23,7 @@ struct DriverAPI {
     func activeOrder() async throws -> Order? { try await api.getOptional("driver/orders/active") }
     func orders(cursor: String?) async throws -> Page<Order> { try await api.get("driver/orders", query: ["cursor": cursor]) }
     func order(_ id: String) async throws -> Order { try await api.get("driver/orders/\(id)") }
+    func eta(_ id: String) async throws -> Eta { try await api.get("driver/orders/\(id)/eta") }
     func arriveDepot(_ id: String, lat: Double, lng: Double) async throws -> Order { try await api.post("driver/orders/\(id)/arrive-depot", PositionRequest(lat: lat, lng: lng)) }
     func loaded(_ id: String, lat: Double, lng: Double) async throws -> Order { try await api.post("driver/orders/\(id)/loaded", PositionRequest(lat: lat, lng: lng)) }
     func arrived(_ id: String, lat: Double?, lng: Double?) async throws -> Order { try await api.post("driver/orders/\(id)/arrived", OptionalPositionRequest(lat: lat, lng: lng)) }

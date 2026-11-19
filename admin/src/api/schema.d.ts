@@ -171,6 +171,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/orders/{id}/eta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description "Driver is 7 min away": time to the customer along the driver's road route (via the depot until loaded). */
+        get: operations["CustomerController_getEta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customer/orders/{id}/payment": {
         parameters: {
             query?: never;
@@ -685,6 +702,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["DriverController_getOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/orders/{id}/eta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Time and distance to the customer along the road (via the depot until the water is loaded). */
+        get: operations["DriverController_getEta"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2743,6 +2777,27 @@ export interface operations {
             };
         };
     };
+    CustomerController_getEta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     CustomerController_getPayment: {
         parameters: {
             query?: never;
@@ -3452,6 +3507,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    DriverController_getEta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };

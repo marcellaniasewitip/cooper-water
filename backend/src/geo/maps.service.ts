@@ -16,6 +16,17 @@ export interface MapPlace {
 const POM = { lat: -9.4438, lng: 147.1803 };
 const PLACES_URL = 'https://places.googleapis.com/v1/places:searchText';
 const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
+const ROUTES_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+export interface RouteResult {
+  durationSec: number;
+  distanceM: number;
+}
 
 type FetchLike = (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }) => Promise<{
   ok: boolean;
@@ -93,6 +104,44 @@ export class MapsService {
         .join(', ');
       return { placeId: r.place_id ?? null, name: short || r.formatted_address, address: r.formatted_address ?? short, lat, lng };
     });
+  }
+
+  /**
+   * Driving time and distance along the roads, through the points in order (Routes API, live traffic).
+   * Null when Google isn't configured or doesn't answer; callers then fall back to an estimate.
+   * Cached for a minute per ~100 m of origin, so a tracking screen polling every few seconds costs little.
+   */
+  async route(points: LatLng[]): Promise<RouteResult | null> {
+    const key = this.key();
+    if (!key || points.length < 2) return null;
+    const ck = `rt:${points.map((p) => `${p.lat.toFixed(3)},${p.lng.toFixed(3)}`).join('|')}`;
+    const hit = this.cache.get(ck);
+    if (hit && Date.now() - hit.at < 60_000) return hit.value as RouteResult;
+    const wp = (p: LatLng) => ({ location: { latLng: { latitude: p.lat, longitude: p.lng } } });
+    try {
+      const res = await this.call(ROUTES_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters' },
+        body: JSON.stringify({
+          origin: wp(points[0]),
+          destination: wp(points[points.length - 1]),
+          intermediates: points.slice(1, -1).map(wp),
+          travelMode: 'DRIVE',
+          routingPreference: 'TRAFFIC_AWARE',
+          regionCode: 'PG',
+          languageCode: 'en',
+        }),
+      });
+      const r = res?.routes?.[0];
+      const durationSec = typeof r?.duration === 'string' ? Number.parseInt(r.duration, 10) : NaN;
+      if (!r || !Number.isFinite(durationSec)) return null;
+      const value: RouteResult = { durationSec, distanceM: Number(r.distanceMeters ?? 0) };
+      if (this.cache.size > 500) this.cache.delete(this.cache.keys().next().value as string);
+      this.cache.set(ck, { at: Date.now(), value });
+      return value;
+    } catch {
+      return null;
+    }
   }
 
   private requireKey(): string {

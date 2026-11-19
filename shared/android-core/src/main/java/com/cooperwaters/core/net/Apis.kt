@@ -70,6 +70,9 @@ interface CustomerApi {
     @GET("customer/orders/{id}")
     suspend fun order(@Path("id") id: String): Order
 
+    @GET("customer/orders/{id}/eta")
+    suspend fun eta(@Path("id") id: String): Eta
+
     /** Idempotent: retry starting a cell money collection. */
     @POST("customer/orders/{id}/payment")
     suspend fun startPayment(@Header(IDEMPOTENCY_HEADER) key: String, @Path("id") id: String, @Body body: StartPaymentRequest): Payment
@@ -203,6 +206,9 @@ interface DriverApi {
 
     @GET("driver/orders/{id}")
     suspend fun order(@Path("id") id: String): Order
+
+    @GET("driver/orders/{id}/eta")
+    suspend fun eta(@Path("id") id: String): Eta
 
     @POST("driver/orders/{id}/arrive-depot")
     suspend fun arriveDepot(@Path("id") id: String, @Body body: PositionRequest): Order
