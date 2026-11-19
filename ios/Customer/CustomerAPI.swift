@@ -6,7 +6,7 @@ struct CustomerAPI {
     let api: APIClient
 
     func me() async throws -> CustomerProfile { try await api.get("customer/me") }
-    func updateMe(name: String) async throws -> CustomerProfile { try await api.patch("customer/me", UpdateProfileRequest(name: name)) }
+    func updateMe(name: String, email: String? = nil) async throws -> CustomerProfile { try await api.patch("customer/me", UpdateProfileRequest(name: name, email: email)) }
     func config() async throws -> CustomerConfig { try await api.get("customer/config") }
 
     func locations() async throws -> [SavedLocation] { try await api.get("customer/locations") }
@@ -20,6 +20,9 @@ struct CustomerAPI {
     func orders(cursor: String?, limit: Int = 20) async throws -> Page<Order> { try await api.get("customer/orders", query: ["cursor": cursor, "limit": String(limit)]) }
     func order(_ id: String) async throws -> Order { try await api.get("customer/orders/\(id)") }
     func eta(_ id: String) async throws -> Eta { try await api.get("customer/orders/\(id)/eta") }
+    func sendReceipt(_ id: String, email: String, save: Bool) async throws -> ReceiptSent {
+        try await api.post("customer/orders/\(id)/receipt", SendReceiptRequest(email: email, saveEmail: save))
+    }
     func startPayment(_ id: String, msisdn: String, key: String) async throws -> Payment { try await api.post("customer/orders/\(id)/payment", StartPaymentRequest(msisdn: msisdn), idempotencyKey: key) }
     func payment(_ id: String) async throws -> Payment? { try await api.getOptional("customer/orders/\(id)/payment") }
     func cancel(_ id: String, reason: String) async throws -> Order { try await api.post("customer/orders/\(id)/cancel", CancelRequest(reason: reason)) }

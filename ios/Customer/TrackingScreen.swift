@@ -16,6 +16,12 @@ struct TrackingScreen: View {
     @State private var info: String?
     @State private var askCancel = false
     @State private var eta: Eta?
+    @State private var profileEmail: String?
+    @State private var receiptEmail = ""
+    @State private var saveEmail = true
+    @State private var receiptBusy = false
+    @State private var receiptInfo: String?
+    @State private var receiptError: String?
     @State private var etaAt = Date.distantPast
     private let timer = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
 
@@ -34,6 +40,7 @@ struct TrackingScreen: View {
                     if let eta, Eta.statuses.contains(o.status) { etaCard(eta) }
                     if let d = o.driver, let name = d.name, !name.isEmpty { driverCard(d, name: name) }
                     actions(o)
+                    if ReceiptRules.statuses.contains(o.status) { receiptCard(o) }
                     timeline(o)
                     details(o)
                 } else {
@@ -51,6 +58,7 @@ struct TrackingScreen: View {
         }
         .task {
             if let c = try? await session.customer.config() { cancelFreeUntil = c.cancelFreeUntil ?? OrderStatus.accepted }
+            if let me = try? await session.customer.me() { profileEmail = me.email }
             await load()
         }
         .onReceive(timer) { _ in
@@ -173,6 +181,55 @@ struct TrackingScreen: View {
             self.error = error.localizedDescription
         }
         await loadEta()
+    }
+
+    /// "Email my receipt": prefilled with the profile email (or the last one used); any address can be typed.
+    @ViewBuilder
+    private func receiptCard(_ o: Order) -> some View {
+        let value = receiptEmail.isEmpty ? (profileEmail ?? o.receipt?.email ?? "") : receiptEmail
+        let isProfile = !(profileEmail ?? "").isEmpty && value.lowercased() == (profileEmail ?? "").lowercased()
+        CardBox {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Your receipt").font(.headline)
+                if o.receipt?.signed == true {
+                    Text("Signed for by \((o.receipt?.signedByName).flatMap { $0.isEmpty ? nil : $0 } ?? "you")").font(.subheadline)
+                }
+                TextField("Email address", text: Binding(get: { value }, set: { receiptEmail = $0.trimmingCharacters(in: .whitespaces) }))
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                if !isProfile { Toggle("Save this email on my profile", isOn: $saveEmail).font(.subheadline) }
+                PrimaryButton("Email my receipt", busy: receiptBusy) { sendReceipt(value, save: saveEmail && !isProfile) }
+                if let receiptInfo { Text(receiptInfo).font(.subheadline).foregroundColor(.cwGreen) }
+                ErrorBanner(receiptError)
+                if let at = o.receipt?.sentAt {
+                    Text("Last sent to \(o.receipt?.email ?? "") at \(PomTime.formatTime(at))").font(.caption).foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+
+    private func sendReceipt(_ email: String, save: Bool) {
+        guard ReceiptRules.isValidEmail(email) else {
+            receiptError = "Enter a valid email address."
+            receiptInfo = nil
+            return
+        }
+        receiptBusy = true
+        receiptError = nil
+        receiptInfo = nil
+        Task {
+            defer { receiptBusy = false }
+            do {
+                let r = try await session.customer.sendReceipt(orderId, email: email.trimmingCharacters(in: .whitespaces), save: save)
+                receiptInfo = "Receipt sent to \(r.email ?? email)"
+                if save { profileEmail = r.email ?? email }
+                await load()
+            } catch {
+                receiptError = error.localizedDescription
+            }
+        }
     }
 
     /// "Your driver is about 7 min away" while a driver is on the way.

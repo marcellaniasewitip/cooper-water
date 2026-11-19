@@ -86,6 +86,7 @@ struct ProfileScreen: View {
     @EnvironmentObject var router: Router
     let onboarding: Bool
     @State private var name = ""
+    @State private var email = ""
     @State private var busy = false
     @State private var error: String?
 
@@ -94,6 +95,15 @@ struct ProfileScreen: View {
             Section(footer: Text(onboarding ? "Drivers see this name when they deliver to you." : "")) {
                 TextField("Your name", text: $name).textContentType(.name)
                 LabelValue("Phone", session.user?.phone ?? "")
+            }
+            if !onboarding {
+                Section(footer: Text("For emailed delivery receipts.")) {
+                    TextField("Email (optional)", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
             }
             if let error { Section { ErrorBanner(error) } }
             Section {
@@ -108,15 +118,23 @@ struct ProfileScreen: View {
         }
         .cwTitle(onboarding ? "Welcome" : "Profile")
         .onAppear { if name.isEmpty { name = session.user?.name ?? "" } }
+        .task {
+            if !onboarding, email.isEmpty, let me = try? await session.customer.me() { email = me.email ?? "" }
+        }
     }
 
     private func save() {
+        let e = email.trimmingCharacters(in: .whitespaces)
+        if !onboarding, !e.isEmpty, !ReceiptRules.isValidEmail(e) {
+            error = "Enter a valid email address, or leave it empty."
+            return
+        }
         busy = true
         error = nil
         let n = name.trimmingCharacters(in: .whitespaces)
         Task {
             do {
-                _ = try await session.customer.updateMe(name: n)
+                _ = try await session.customer.updateMe(name: n, email: onboarding ? nil : e)
                 session.updateUserName(n)
                 if !onboarding { router.back() }
             } catch {

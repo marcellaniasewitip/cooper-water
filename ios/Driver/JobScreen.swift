@@ -32,7 +32,7 @@ enum JobStep {
         case .arriveDepot: return "Drive to a Cooper Waters depot to load the water."
         case .confirmLoaded: return "Confirm once the tank is loaded, while you're still at the depot. Google Maps then opens with directions to the customer."
         case .markArrived: return "Drive to the customer. Tap when you arrive."
-        case .markDelivered: return "Deliver the water. Add a photo as proof if you can."
+        case .markDelivered: return "Deliver the water. Ask the customer to sign below, and add a photo as proof if you can."
         case .awaitCustomer: return "Waiting for the customer to confirm they received the water."
         case .done: return "This job is finished."
         }
@@ -51,6 +51,12 @@ struct JobScreen: View {
     @State private var proof: UIImage?
     @State private var showCamera = false
     @State private var eta: Eta?
+    @StateObject private var signature = SignatureModel()
+    @State private var signedBy = ""
+    @State private var receiptEmail = ""
+    @State private var receiptBusy = false
+    @State private var receiptInfo: String?
+    @State private var receiptError: String?
     private let etaTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -103,9 +109,11 @@ struct JobScreen: View {
                         } else {
                             SecondaryButton("Add proof photo") { showCamera = true }
                         }
+                        signatureSection(o)
                     }
                     ErrorBanner(error)
                     if let b = step.button { PrimaryButton(b, busy: busy) { perform(step) } }
+                    if ReceiptRules.statuses.contains(o.status) { receiptCard(o) }
                     if OrderStatus.isDisputable(o.status) {
                         Button("Report a problem") { router.go(.issue(orderId: orderId)) }.font(.subheadline)
                     }
@@ -167,6 +175,90 @@ struct JobScreen: View {
         if let e = try? await state.api.eta(orderId) { eta = e }
     }
 
+    private func signerName(_ o: Order?) -> String? {
+        let n = signedBy.trimmingCharacters(in: .whitespaces)
+        return n.isEmpty ? o?.customer?.name : n
+    }
+
+    /// Name of the person receiving the water + signature pad + Clear.
+    @ViewBuilder
+    private func signatureSection(_ o: Order) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Customer signature").font(.headline)
+            TextField("Received by (name)", text: Binding(get: { signedBy.isEmpty ? (o.customer?.name ?? "") : signedBy }, set: { signedBy = $0 }))
+                .textFieldStyle(.roundedBorder)
+            SignaturePad(model: signature)
+            if !signature.isEmpty { Button("Clear signature") { signature.clear() }.font(.subheadline) }
+        }
+    }
+
+    /// After delivery: signature (if not taken yet) and the emailed receipt.
+    @ViewBuilder
+    private func receiptCard(_ o: Order) -> some View {
+        let emailValue = receiptEmail.isEmpty ? (o.customer?.email ?? o.receipt?.email ?? "") : receiptEmail
+        CardBox {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Receipt").font(.headline)
+                if o.receipt?.signed == true {
+                    Text("Signed by \((o.receipt?.signedByName).flatMap { $0.isEmpty ? nil : $0 } ?? "the customer")").font(.subheadline)
+                } else {
+                    signatureSection(o)
+                    SecondaryButton("Save signature", enabled: !signature.isEmpty && !receiptBusy) { saveSignature() }
+                }
+                TextField("Customer email", text: Binding(get: { emailValue }, set: { receiptEmail = $0.trimmingCharacters(in: .whitespaces) }))
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Text((o.customer?.email ?? "").isEmpty ? "Type the customer's email address" : "Email on file — change it if needed")
+                    .font(.caption).foregroundColor(.secondary)
+                PrimaryButton("Send receipt", busy: receiptBusy) { sendReceipt(emailValue) }
+                if let receiptInfo { Text(receiptInfo).font(.subheadline).foregroundColor(.cwGreen) }
+                ErrorBanner(receiptError)
+                if let at = o.receipt?.sentAt {
+                    Text("Last sent to \(o.receipt?.email ?? "") at \(PomTime.formatTime(at))").font(.caption).foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+
+    private func saveSignature() {
+        guard let png = signature.pngBase64() else { return }
+        receiptBusy = true
+        receiptError = nil
+        Task {
+            defer { receiptBusy = false }
+            do {
+                _ = try await state.api.signature(orderId, SignatureRequest(imagePng: png, signedByName: signerName(order)))
+                receiptInfo = "Signature saved"
+                await load()
+            } catch {
+                receiptError = error.localizedDescription
+            }
+        }
+    }
+
+    private func sendReceipt(_ email: String) {
+        guard ReceiptRules.isValidEmail(email) else {
+            receiptError = "Enter a valid email address."
+            receiptInfo = nil
+            return
+        }
+        receiptBusy = true
+        receiptError = nil
+        receiptInfo = nil
+        Task {
+            defer { receiptBusy = false }
+            do {
+                let r = try await state.api.sendReceipt(orderId, email: email.trimmingCharacters(in: .whitespaces))
+                receiptInfo = "Receipt sent to \(r.email ?? email)"
+                await load()
+            } catch {
+                receiptError = error.localizedDescription
+            }
+        }
+    }
+
     private func perform(_ step: JobStep) {
         busy = true
         error = nil
@@ -187,6 +279,10 @@ struct JobScreen: View {
                     let loc = await LocationProvider.shared.current()
                     o = try await state.api.arrived(orderId, lat: loc?.coordinate.latitude, lng: loc?.coordinate.longitude)
                 case .markDelivered:
+                    // The customer's signature is saved first (the server accepts it once you've arrived).
+                    if let png = signature.pngBase64() {
+                        _ = try await state.api.signature(orderId, SignatureRequest(imagePng: png, signedByName: signerName(order)))
+                    }
                     var key: String?
                     if let proof, let jpeg = PhotoPicker.jpeg(proof) { key = try await state.api.upload(purpose: "proof_of_delivery", jpeg: jpeg) }
                     o = try await state.api.delivered(orderId, proofKey: key)

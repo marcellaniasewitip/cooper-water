@@ -29,6 +29,7 @@ struct OnboardingScreen: View {
     @State private var uploading: String?
     @State private var plate = ""
     @State private var capacity = ""
+    @State private var vehicleTypes: [VehicleType] = []
     @State private var truckPhoto: UIImage?
     @State private var pickingTruck = false
     @State private var savingTruck = false
@@ -60,7 +61,32 @@ struct OnboardingScreen: View {
             }
             Section("Your truck") {
                 TextField("Number plate", text: $plate).textInputAutocapitalization(.characters)
-                TextField("Tank capacity (litres)", text: $capacity).keyboardType(.numberPad)
+                if vehicleTypes.isEmpty {
+                    TextField("Tank capacity (litres)", text: $capacity).keyboardType(.numberPad)
+                } else {
+                    // Choose the vehicle by tank size: orders only go to drivers with the matching size.
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Your vehicle (tank size)").font(.subheadline.bold())
+                        Text("You will only get orders for this size of water delivery.").font(.caption).foregroundColor(.secondary)
+                    }
+                    ForEach(vehicleTypes) { t in
+                        Button {
+                            capacity = String(t.capacityLitres)
+                        } label: {
+                            HStack {
+                                Image(systemName: capacity == String(t.capacityLitres) ? "largecircle.fill.circle" : "circle")
+                                    .foregroundColor(.cwBlue)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(t.label).foregroundColor(.primary)
+                                    if let p = t.packages, !p.isEmpty {
+                                        Text("Delivers: \(p.joined(separator: ", "))").font(.caption).foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                        .accessibilityAddTraits(capacity == String(t.capacityLitres) ? .isSelected : [])
+                    }
+                }
                 if let truckPhoto {
                     Image(uiImage: truckPhoto).resizable().scaledToFit().frame(maxHeight: 140)
                 }
@@ -79,6 +105,9 @@ struct OnboardingScreen: View {
         .onAppear {
             if plate.isEmpty { plate = state.profile?.truck?.plate ?? "" }
             if capacity.isEmpty, let c = state.profile?.truck?.capacityLitres { capacity = String(c) }
+        }
+        .task {
+            if vehicleTypes.isEmpty, let types = try? await state.api.vehicleTypes() { vehicleTypes = types }
         }
         .sheet(item: Binding(get: { picking.map { Picked(id: $0) } }, set: { picking = $0?.id })) { p in
             PhotoPicker(image: Binding(get: { nil }, set: { img in if let img { upload(type: p.id, image: img) } })).ignoresSafeArea()
