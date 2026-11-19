@@ -123,6 +123,27 @@ body {
   }
 }
 
+/* Fleet map: car icons and the legend over the map. */
+.cw-car {
+  background: none;
+  border: none;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
+  transition: transform 0.15s;
+}
+.cw-car--dimmed {
+  opacity: 0.6;
+}
+.cw-fleet-legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 500;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
 /* ───────────── Maps ───────────── */
 
 .leaflet-container {
