@@ -1,4 +1,4 @@
-import { ActionIcon, Anchor, Badge, Card, Grid, Group, ScrollArea, Stack, Tabs, Text, Tooltip as MTooltip, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Card, Grid, Group, ScrollArea, SegmentedControl, Stack, Tabs, Text, Tooltip as MTooltip, UnstyledButton } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -192,6 +192,22 @@ export default function FleetPage() {
   const [orderTab, setOrderTab] = useState<OrderTab>('unassigned');
   const [driverTabValue, setDriverTab] = useState<DriverTab>('free');
   const [selected, setSelected] = useState<string | null>(null);
+  // Dark (dispatcher) map by default; remembered per browser.
+  const [dark, setDark] = useState(() => {
+    try {
+      return localStorage.getItem('cw.fleet.dark') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const toggleDark = (v: boolean) => {
+    setDark(v);
+    try {
+      localStorage.setItem('cw.fleet.dark', v ? '1' : '0');
+    } catch {
+      /* storage unavailable */
+    }
+  };
   const [target, setTarget] = useState<{ lat: number; lng: number; at: number } | null>(null);
   const focus = (id: string, lat: number | null | undefined, lng: number | null | undefined) => {
     setSelected(id);
@@ -258,7 +274,7 @@ export default function FleetPage() {
           {/* Middle: the live map with car icons. */}
           <Grid.Col span={{ base: 12, md: 6 }} order={{ base: 1, md: 2 }}>
             <Card withBorder p={0} style={{ position: 'relative' }}>
-              <MapBase height="var(--cw-map-h)">
+              <MapBase height="var(--cw-map-h)" dark={dark}>
                 <FlyTo target={target} />
                 <FitOnce points={[...drivers.map((d) => [d.lat!, d.lng!] as [number, number]), ...unassigned.map((o) => [o.delivery.lat, o.delivery.lng] as [number, number])]} />
                 {depotList.map((dp) =>
@@ -338,7 +354,18 @@ export default function FleetPage() {
                 })}
               </MapBase>
               {/* Legend over the map. */}
-              <Group gap={10} className="cw-fleet-legend">
+              <SegmentedControl
+                size="xs"
+                value={dark ? 'dark' : 'light'}
+                onChange={(v) => toggleDark(v === 'dark')}
+                data={[
+                  { value: 'dark', label: m.fleet.mapDark },
+                  { value: 'light', label: m.fleet.mapLight },
+                ]}
+                style={{ position: 'absolute', top: 10, right: 10, zIndex: 500 }}
+                data-testid="fleet-map-theme"
+              />
+              <Group gap={10} className={`cw-fleet-legend${dark ? ' cw-fleet-legend--dark' : ''}`}>
                 {(['online', 'active', 'offline'] as MarkerKind[]).map((k) => (
                   <Group key={k} gap={4} wrap="nowrap">
                     <CarDot color={COLORS[k]} />

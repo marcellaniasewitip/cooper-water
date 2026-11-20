@@ -188,6 +188,8 @@ export const en = {
     loadAt: 'Load at {depot}',
     dropOff: 'Drop-off',
     refresh: 'Refresh',
+    mapDark: 'Dark',
+    mapLight: 'Light',
   },
   orders: {
     title: 'Orders',
