@@ -70,6 +70,24 @@ export const api = {
     update: (id: string, body: Partial<DepotInput>) => http.patch<T.Depot>(`/admin/depots/${id}`, body),
     remove: (id: string) => http.delete<void>(`/admin/depots/${id}`),
   },
+  zones: {
+    list: () => http.get<T.Zone[]>('/admin/zones'),
+    create: (body: { name: string; polygon: T.GeoPolygon; active?: boolean }) => http.post<T.Zone>('/admin/zones', body),
+    update: (id: string, body: { name?: string; polygon?: T.GeoPolygon; active?: boolean }) => http.patch<T.Zone>(`/admin/zones/${id}`, body),
+    remove: (id: string) => http.delete<void>(`/admin/zones/${id}`),
+  },
+  companies: {
+    list: () => http.get<T.Company[]>('/admin/companies'),
+    get: (id: string) => http.get<T.CompanyDetail>(`/admin/companies/${id}`),
+    create: (body: T.CompanyInput) => http.post<T.Company>('/admin/companies', body),
+    update: (id: string, body: T.CompanyInput) => http.patch<T.CompanyDetail>(`/admin/companies/${id}`, body),
+    addEmployee: (id: string, phone: string) => http.post<T.CompanyDetail['employees'][number]>(`/admin/companies/${id}/employees`, { phone }),
+    removeEmployee: (id: string, userId: string) => http.delete<void>(`/admin/companies/${id}/employees/${userId}`),
+    recordPayment: (id: string, body: { amountToea: number; reference?: string }, idempotencyKey: string) =>
+      http.post<{ company: T.CompanyDetail }>(`/admin/companies/${id}/payments`, body, { 'Idempotency-Key': idempotencyKey }),
+    month: (id: string, month: string) => http.get<T.CompanyMonth>(`/admin/companies/${id}/months/${month}`),
+    monthCsv: (id: string, month: string) => http.raw('GET', `/admin/companies/${id}/months/${month}/orders.csv`),
+  },
   packages: {
     list: () => http.get<T.Package[]>('/admin/packages'),
     create: (body: Dto<'PackageDto'>) => http.post<T.Package>('/admin/packages', body),
@@ -144,6 +162,8 @@ export const api = {
     payments: (q: RangeQuery) => http.get<T.PaymentsReport>('/admin/reports/payments', q),
     drivers: (q: RangeQuery) => http.get<T.DriverPerfRow[]>('/admin/reports/drivers', q),
     csv: (kind: 'daily' | 'orders' | 'payments', q: RangeQuery) => http.raw('GET', `/admin/reports/${kind}.csv`, { query: q }),
+    day: (date: string, by: 'ordered' | 'delivered') => http.get<T.DayReport>('/admin/reports/day', { date, by }),
+    dayCsv: (date: string, by: 'ordered' | 'delivered') => http.raw('GET', '/admin/reports/day.csv', { query: { date, by } }),
   },
 };
 

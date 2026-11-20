@@ -2986,6 +2986,116 @@
         ]
       }
     },
+    "/api/v1/admin/zones": {
+      "get": {
+        "operationId": "AdminCatalogueController_zones",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "AdminCatalogueController_createZone",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/zones/{id}": {
+      "patch": {
+        "operationId": "AdminCatalogueController_updateZone",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateZoneDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "AdminCatalogueController_deleteZone",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/packages": {
       "get": {
         "operationId": "AdminCatalogueController_packages",
@@ -4435,6 +4545,92 @@
         ]
       }
     },
+    "/api/v1/admin/reports/day": {
+      "get": {
+        "operationId": "AdminReportsController_day",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "description": "YYYY-MM-DD (Port Moresby).",
+            "schema": {
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "name": "by",
+            "required": false,
+            "in": "query",
+            "description": "ordered (default): orders placed that day; delivered: orders delivered that day.",
+            "schema": {
+              "enum": [
+                "ordered",
+                "delivered"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/reports/day.csv": {
+      "get": {
+        "operationId": "AdminReportsController_dayCsv",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "description": "YYYY-MM-DD (Port Moresby).",
+            "schema": {
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "name": "by",
+            "required": false,
+            "in": "query",
+            "description": "ordered (default): orders placed that day; delivered: orders delivered that day.",
+            "schema": {
+              "enum": [
+                "ordered",
+                "delivered"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/reports/payments": {
       "get": {
         "operationId": "AdminReportsController_payments",
@@ -4605,6 +4801,309 @@
             "required": false,
             "in": "query",
             "description": "ISO date, exclusive — defaults to now.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/companies": {
+      "get": {
+        "operationId": "AdminCompaniesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "AdminCompaniesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/companies/{id}": {
+      "get": {
+        "operationId": "AdminCompaniesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "AdminCompaniesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCompanyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/companies/{id}/employees": {
+      "post": {
+        "operationId": "AdminCompaniesController_addEmployee",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyEmployeeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/companies/{id}/employees/{userId}": {
+      "delete": {
+        "operationId": "AdminCompaniesController_removeEmployee",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/companies/{id}/payments": {
+      "post": {
+        "operationId": "AdminCompaniesController_recordPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key per logical request (UUID recommended)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/companies/{id}/months/{month}": {
+      "get": {
+        "operationId": "AdminCompaniesController_month",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "month",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/companies/{id}/months/{month}/orders.csv": {
+      "get": {
+        "operationId": "AdminCompaniesController_monthCsv",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "month",
+            "required": true,
+            "in": "path",
             "schema": {
               "type": "string"
             }
@@ -5055,10 +5554,12 @@
           },
           "paymentMethod": {
             "type": "string",
+            "description": "account = charge the employee's company (corporate account).",
             "enum": [
               "cod",
               "cellmoney",
-              "wallet"
+              "wallet",
+              "account"
             ]
           },
           "msisdn": {
@@ -5717,6 +6218,46 @@
           }
         }
       },
+      "ZoneDto": {
+        "type": "object",
+        "properties": {
+          "polygon": {
+            "type": "object",
+            "description": "GeoJSON Polygon",
+            "additionalProperties": true
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "polygon",
+          "name"
+        ]
+      },
+      "UpdateZoneDto": {
+        "type": "object",
+        "properties": {
+          "polygon": {
+            "type": "object",
+            "description": "GeoJSON Polygon",
+            "additionalProperties": true
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
       "PackageDto": {
         "type": "object",
         "properties": {
@@ -6084,6 +6625,110 @@
             "type": "boolean"
           }
         }
+      },
+      "CompanyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "contactName": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 120
+          },
+          "contactEmail": {
+            "type": "string",
+            "description": "Monthly statements are emailed here.",
+            "minLength": 0,
+            "maxLength": 200
+          },
+          "contactPhone": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 40
+          },
+          "creditLimitToea": {
+            "type": "number",
+            "description": "How much the company may owe, in toea (0 = prepaid only).",
+            "minimum": 0,
+            "maximum": 10000000000
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateCompanyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "contactName": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 120
+          },
+          "contactEmail": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 200
+          },
+          "contactPhone": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 40
+          },
+          "creditLimitToea": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000000000
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CompanyEmployeeDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "The phone number the customer signed up with.",
+            "minLength": 6,
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "phone"
+        ]
+      },
+      "CompanyPaymentDto": {
+        "type": "object",
+        "properties": {
+          "amountToea": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000000000
+          },
+          "reference": {
+            "type": "string",
+            "description": "Bank transfer reference, cheque number…",
+            "minLength": 0,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "amountToea"
+        ]
       },
       "RequestOtpDto": {
         "type": "object",

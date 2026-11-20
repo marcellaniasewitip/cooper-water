@@ -240,6 +240,16 @@ data class CustomerConfig(
     val paymentMethods: List<String> = listOf("cod", "cellmoney"),
     val cellmoneyTimeoutSec: Int = 300,
     val autoCompleteAfterSec: Int = 7200,
+    /** Set when the customer orders for a company (corporate account): "Company account" can pay. */
+    val company: CompanyAccount? = null,
+)
+
+@Serializable
+data class CompanyAccount(
+    val id: String,
+    val name: String,
+    /** Credit the company still has for orders on account. */
+    val availableToea: Long = 0,
 )
 
 @Serializable

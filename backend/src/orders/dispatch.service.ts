@@ -30,6 +30,72 @@ export class DispatchService implements OnModuleInit {
   onModuleInit(): void {
     this.jobs.register('dispatch.broadcast', (d) => this.broadcast(d.orderId, d.round).then(() => undefined));
     this.jobs.register('dispatch.round_timeout', (d) => this.roundTimeout(d.orderId, d.round));
+    this.jobs.register('dispatch.auto_next', (d) => this.autoNext(d.orderId, d.offerId ?? null));
+  }
+
+  autoAssign(): Promise<boolean> {
+    return this.settings.get('dispatch.auto_assign');
+  }
+
+  /**
+   * Auto-assign: place the order with the nearest eligible driver not yet tried, unless one already holds it.
+   * The driver gets the usual offer; the customer and admins are told who it was placed with. A timer moves it on
+   * if the driver does not answer. Returns the offer id, or null when nobody (else) is available in this round.
+   */
+  async offerNextAuto(orderId: string): Promise<string | null> {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId }, include: { package: true } });
+    if (!order || order.status !== 'SEARCHING') return null;
+    const pending = await this.prisma.orderOffer.findFirst({ where: { orderId, response: null } });
+    if (pending) return null;
+    const radius = await this.radiusForRound(order.dispatchRound);
+    const drivers = await this.geo.eligibleDrivers(order.id, order.deliveryLat, order.deliveryLng, radius);
+    for (const d of drivers) {
+      let offerId: string;
+      try {
+        const offer = await this.prisma.orderOffer.create({ data: { orderId, driverId: d.driverId, round: order.dispatchRound, distanceM: d.distanceM } });
+        offerId = offer.id;
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') continue;
+        throw err;
+      }
+      // Another worker may have placed it with someone else at the same moment: keep only the first.
+      const open = await this.prisma.orderOffer.findMany({ where: { orderId, response: null }, orderBy: [{ sentAt: 'asc' }, { id: 'asc' }] });
+      if (open.length > 1 && open[0].id !== offerId) {
+        await this.prisma.orderOffer.delete({ where: { id: offerId } });
+        return null;
+      }
+      const driver = await this.prisma.driver.findUnique({ where: { id: d.driverId }, include: { user: { select: { name: true } }, trucks: { select: { plate: true }, take: 1 } } });
+      const driverName = driver?.user.name || 'a driver';
+      await this.sendOffer(offerId, d.userId, order, d.distanceM);
+      const timeoutSec = await this.settings.get('dispatch.auto_assign_timeout_sec');
+      await this.jobs.enqueue('orders', 'dispatch.auto_next', { orderId, offerId }, { delayMs: timeoutSec * 1000, jobId: `auto-${offerId}` });
+      const message = `Order ${order.shortCode} is placed to ${driverName}`;
+      this.realtime.toAdmins('order.auto_assigned', { orderId, shortCode: order.shortCode, driverId: d.driverId, driverName, plate: driver?.trucks[0]?.plate ?? null, message });
+      this.realtime.toUser(order.customerId, 'order.auto_assigned', { orderId, driverName, message });
+      await this.notifications.notify(order.customerId, 'order.auto_assigned', { orderId, shortCode: order.shortCode, driverName });
+      logger.info({ orderId, driverId: d.driverId, distanceM: d.distanceM }, 'order auto-assigned');
+      return offerId;
+    }
+    return null;
+  }
+
+  /**
+   * Auto-assign timer fired or the driver declined: when the offer (if given) is still unanswered, take it back
+   * and place the order with the next nearest driver.
+   */
+  async autoNext(orderId: string, offerId: string | null): Promise<void> {
+    if (offerId) {
+      const offer = await this.prisma.orderOffer.findUnique({ where: { id: offerId }, include: { driver: { select: { userId: true } } } });
+      if (!offer) return;
+      if (offer.response === null) {
+        const r = await this.prisma.orderOffer.updateMany({ where: { id: offerId, response: null }, data: { response: 'missed', respondedAt: new Date() } });
+        if (r.count === 0) return;
+        this.realtime.toUser(offer.driver.userId, 'order.offer_revoked', { orderId, reason: 'timeout' });
+      } else if (offer.response !== 'declined' && offer.response !== 'missed') {
+        return;
+      }
+    }
+    await this.offerNextAuto(orderId);
   }
 
   async radiusForRound(round: number): Promise<number> {
@@ -41,6 +107,7 @@ export class DispatchService implements OnModuleInit {
   async broadcast(orderId: string, round: number): Promise<number> {
     const order = await this.prisma.order.findUnique({ where: { id: orderId }, include: { package: true } });
     if (!order || order.status !== 'SEARCHING' || order.dispatchRound !== round) return 0;
+    if (await this.autoAssign()) return (await this.offerNextAuto(orderId)) ? 1 : 0;
     const radius = await this.radiusForRound(round);
     const drivers = await this.geo.eligibleDrivers(order.id, order.deliveryLat, order.deliveryLng, radius);
     let sent = 0;
@@ -101,6 +168,7 @@ export class DispatchService implements OnModuleInit {
     if (!driver || !driver.online || driver.currentLat === null || driver.currentLng === null) return;
     const radii = await this.settings.get('order.dispatch_radius_m');
     const maxRadius = Math.max(...radii);
+    const auto = await this.autoAssign();
     const candidates = await this.prisma.$queryRaw<{ id: string; dispatch_round: number; distance_m: number }[]>(Prisma.sql`
       SELECT o.id, o.dispatch_round,
              ST_Distance(ST_SetSRID(ST_MakePoint(o.delivery_lng, o.delivery_lat), 4326)::geography,
@@ -115,6 +183,11 @@ export class DispatchService implements OnModuleInit {
     for (const c of candidates) {
       const radius = await this.radiusForRound(c.dispatch_round);
       if (c.distance_m > radius) continue;
+      if (auto) {
+        // Only picks up orders nobody currently holds; the nearest eligible driver (maybe this one) gets it.
+        await this.offerNextAuto(c.id);
+        continue;
+      }
       const eligible = await this.geo.eligibleDrivers(c.id, ...(await this.orderPoint(c.id)), radius);
       const me = eligible.find((e) => e.driverId === driverId);
       if (!me) continue;

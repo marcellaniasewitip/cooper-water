@@ -39,8 +39,24 @@ export const SETTING_DEFAULTS = {
 
   'driver.required_documents': ['drivers_licence', 'vehicle_registration', 'national_id', 'truck_photo'],
   'driver.location_stale_sec': 120,
-  /** Only offer an order to drivers whose vehicle size class matches the ordered package (e.g. 3,000 L tanker → 3,000 L orders). */
+  /** Only offer an order to drivers whose truck capacity equals the ordered package size (10,000 L order → 10,000 L trucks only). */
   'dispatch.match_vehicle_size': true,
+  /** Orders inside a zone (Admin → Zones) only go to drivers whose live location is inside the same zone. */
+  'dispatch.zone_restricted': true,
+  /**
+   * Auto-assign: instead of offering an order to every nearby driver at once, place it with the nearest matching
+   * driver only ("Order is placed to <driver>"). If they decline or do not answer in time it moves to the next nearest.
+   */
+  'dispatch.auto_assign': false,
+  /** Auto-assign: seconds a driver has to accept before the order moves to the next nearest driver. */
+  'dispatch.auto_assign_timeout_sec': 60,
+  /**
+   * Automatic receipts: after delivery, email the receipt to the customer's email on file (and the company's
+   * accounts email for company orders) unless one was already sent by hand.
+   */
+  'receipt.auto_send': true,
+  /** Seconds after delivery to wait for the customer's signature before sending the automatic receipt. */
+  'receipt.auto_send_delay_sec': 300,
   /** Arrival estimates: minutes a driver spends loading water at the depot, in seconds. */
   'eta.loading_sec': 600,
 
@@ -100,6 +116,8 @@ export function validateSetting(key: string, value: unknown): string | null {
     'depot.geofence_radius_m',
     'driver.location_stale_sec',
     'eta.loading_sec',
+    'dispatch.auto_assign_timeout_sec',
+    'receipt.auto_send_delay_sec',
     'otp.ttl_sec',
     'otp.max_attempts',
     'otp.max_sends_per_phone_per_hour',

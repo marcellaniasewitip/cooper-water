@@ -25,6 +25,7 @@ import {
   AdminMoneyController,
   AdminOrdersController,
   AdminReportsController,
+  AdminCompaniesController,
   AdminSettingsController,
   AdminTemplatesController,
   AdminBroadcastsController,
@@ -36,6 +37,7 @@ import { SettlementService } from './orders/settlement.service';
 import { OrderTransitionsService } from './orders/transitions.service';
 import { DispatchService } from './orders/dispatch.service';
 import { OrdersService } from './orders/orders.service';
+import { CompaniesService } from './companies/companies.service';
 import { PaymentProvidersRegistry } from './payments/providers.registry';
 import { RefundsService } from './payments/refunds.service';
 import { PaymentsService } from './payments/payments.service';
@@ -97,6 +99,7 @@ import { ReceiptService } from './orders/receipt.service';
     MapsController,
     AdminAccessController,
     AdminReportsController,
+    AdminCompaniesController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: UserAwareThrottlerGuard },
@@ -109,6 +112,7 @@ import { ReceiptService } from './orders/receipt.service';
     OrderTransitionsService,
     DispatchService,
     OrdersService,
+    CompaniesService,
     PaymentsService,
     DriversService,
     CatalogueService,

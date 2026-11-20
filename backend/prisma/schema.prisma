@@ -62,6 +62,7 @@ enum PaymentMethod {
   cod
   cellmoney
   wallet
+  account
 }
 
 enum OrderPaymentStatus {
@@ -91,6 +92,7 @@ enum WalletOwnerType {
   platform
   customer_refund
   customer
+  company
 }
 
 enum LedgerType {
@@ -103,6 +105,7 @@ enum LedgerType {
   order_payment
   promo
   referral
+  company_payment
 }
 
 enum TopupMethod {
@@ -209,6 +212,11 @@ model User {
   referralRewardedAt DateTime?          @map("referral_rewarded_at")
   promoRedemptions   PromoRedemption[]
   chatMessages       ChatMessage[]
+  /**
+   * Corporate account this customer orders for ("on account"), if any.
+   */
+  companyId          String?            @map("company_id") @db.Uuid
+  company            Company?           @relation(fields: [companyId], references: [id])
 
   @@index([role, status])
   @@map("users")
@@ -477,8 +485,14 @@ model Order {
   promoRedemption PromoRedemption?
   messages        ChatMessage[]
   signature       OrderSignature?
+  /**
+   * Set for orders charged to a corporate account (paymentMethod = account).
+   */
+  companyId       String?          @map("company_id") @db.Uuid
+  company         Company?         @relation(fields: [companyId], references: [id])
 
   @@index([status, expiresAt])
+  @@index([companyId, createdAt])
   @@index([customerId, createdAt])
   @@index([driverId, status])
   @@index([createdAt])
@@ -859,4 +873,73 @@ model OrderSignature {
   order        Order    @relation(fields: [orderId], references: [id])
 
   @@map("order_signatures")
+}
+
+/// Service zone drawn by an admin (e.g. Gerehu, Waigani). An order inside a zone is only offered to drivers
+/// whose live GPS is inside that same zone.
+model Zone {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  /// GeoJSON Polygon `{ type: 'Polygon', coordinates: [[[lng, lat], ...]] }`.
+  polygon   Json
+  active    Boolean   @default(true)
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("zones")
+}
+
+// ───────────────────────────── Corporate accounts ─────────────────────────────
+
+/**
+ * A business that orders water on account. Employees (customers linked by companyId) pick "Company account"
+ * at checkout; each order is debited to the company's ledger wallet (ownerType = company), which may go
+ * negative down to -creditLimitToea. Admin records the company's payments; statements total each month.
+ */
+model Company {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String
+  contactName     String   @default("") @map("contact_name")
+  contactEmail    String   @default("") @map("contact_email")
+  contactPhone    String   @default("") @map("contact_phone")
+  /**
+   * How much the company may owe (toea). 0 = no credit: orders need a prepaid balance.
+   */
+  creditLimitToea Int      @default(0) @map("credit_limit_toea")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  employees  User[]
+  orders     Order[]
+  statements CompanyStatement[]
+
+  @@map("companies")
+}
+
+/**
+ * Month-end statement, written automatically once the month is over (Port Moresby time).
+ */
+model CompanyStatement {
+  id                 String    @id @default(uuid()) @db.Uuid
+  companyId          String    @map("company_id") @db.Uuid
+  /**
+   * YYYY-MM
+   */
+  month              String
+  orderCount         Int       @map("order_count")
+  litres             Int       @default(0)
+  chargedToea        Int       @map("charged_toea")
+  paymentsToea       Int       @map("payments_toea")
+  openingBalanceToea Int       @map("opening_balance_toea")
+  closingBalanceToea Int       @map("closing_balance_toea")
+  emailedTo          String?   @map("emailed_to")
+  emailedAt          DateTime? @map("emailed_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, month])
+  @@map("company_statements")
 }

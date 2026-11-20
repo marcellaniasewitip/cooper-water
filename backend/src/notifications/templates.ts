@@ -28,6 +28,12 @@ export const DEFAULT_TEMPLATES: TemplateDef[] = [
     critical: false,
   },
   {
+    key: 'order.auto_assigned',
+    pushTitle: 'Order placed',
+    pushBody: 'Order {{shortCode}} is placed to {{driverName}}. Waiting for them to confirm.',
+    critical: false,
+  },
+  {
     key: 'order.accepted',
     pushTitle: 'Driver on the way',
     pushBody: '{{driverName}} ({{plate}}) accepted order {{shortCode}}.',

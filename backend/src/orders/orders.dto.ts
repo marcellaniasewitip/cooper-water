@@ -62,8 +62,9 @@ export class CreateOrderDto extends QuoteDto {
   @Type(() => DeliveryLocationDto)
   location?: DeliveryLocationDto;
 
-  @IsIn(['cod', 'cellmoney', 'wallet'])
-  paymentMethod: 'cod' | 'cellmoney' | 'wallet';
+  /** account = charge the employee's company (corporate account). */
+  @IsIn(['cod', 'cellmoney', 'wallet', 'account'])
+  paymentMethod: 'cod' | 'cellmoney' | 'wallet' | 'account';
 
   /** Cell money number to charge (defaults to the account phone). */
   @IsOptional()

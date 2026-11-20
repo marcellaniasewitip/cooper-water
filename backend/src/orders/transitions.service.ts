@@ -140,6 +140,11 @@ export class OrderTransitionsService {
       effects.add(() =>
         this.jobs.enqueue('orders', 'orders.auto_complete', { orderId: final.id }, { delayMs: after * 1000, jobId: `autocomplete-${final.id}-${now.getTime()}` }),
       );
+      // Automatic receipt email, after a short wait for the customer's signature.
+      const receiptDelay = await this.settings.get('receipt.auto_send_delay_sec');
+      effects.add(() =>
+        this.jobs.enqueue('orders', 'receipts.auto_send', { orderId: final.id }, { delayMs: receiptDelay * 1000, jobId: `receipt-auto-${final.id}`, attempts: 5 }),
+      );
     }
     effects.add(() => this.publish(final.id, from, to, order.driverId, opts));
     return updated;

@@ -366,6 +366,16 @@ export interface GeoPolygon {
   coordinates: number[][][];
 }
 
+/** Service zone: orders inside it only go to drivers inside it. */
+export interface Zone {
+  id: string;
+  name: string;
+  polygon: GeoPolygon;
+  active: boolean;
+  createdAt: ISO;
+  updatedAt: ISO;
+}
+
 export interface Depot {
   id: string;
   name: string;
@@ -629,4 +639,102 @@ export interface BroadcastCount {
   pushEnabled: boolean;
   name?: string | null;
   role?: 'driver' | 'customer';
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  creditLimitToea: number;
+  active: boolean;
+  balanceToea: number;
+  owedToea: number;
+  availableToea: number;
+  employeeCount?: number;
+  createdAt: ISO;
+  updatedAt: ISO;
+}
+
+export interface CompanyMonth {
+  month: string;
+  orderCount: number;
+  litres: number;
+  chargedToea: number;
+  paymentsToea: number;
+  openingBalanceToea: number;
+  closingBalanceToea: number;
+}
+
+export interface CompanyStatement extends CompanyMonth {
+  id: string;
+  emailedTo: string | null;
+  emailedAt: ISO | null;
+  createdAt: ISO;
+}
+
+export interface CompanyDetail extends Company {
+  employees: { id: string; name: string | null; phone: string; email: string | null }[];
+  statements: CompanyStatement[];
+  currentMonth: CompanyMonth;
+  payments: { id: string; amountToea: number; description: string | null; createdAt: ISO; createdBy: string }[];
+}
+
+export interface CompanyInput {
+  name?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  creditLimitToea?: number;
+  active?: boolean;
+}
+
+export interface DayReportRow {
+  id: string;
+  shortCode: string;
+  status: string;
+  orderedAt: ISO;
+  acceptedAt: ISO | null;
+  deliveredAt: ISO | null;
+  completedAt: ISO | null;
+  cancelledAt: ISO | null;
+  cancelReason: string | null;
+  minutesToDeliver: number | null;
+  customer: { name: string | null; phone: string };
+  company: string | null;
+  driver: { name: string | null; phone: string } | null;
+  truck: { plate: string; capacityLitres: number } | null;
+  package: string;
+  quantity: number;
+  litres: number;
+  address: string;
+  priceToea: number;
+  discountToea: number;
+  paidToea: number;
+  commissionToea: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  rating: { stars: number; comment: string | null } | null;
+  dispute: { category: string; status: string; description: string } | null;
+  signedBy: string | null;
+  receiptEmail: string | null;
+}
+
+export interface DayReport {
+  date: string;
+  by: 'ordered' | 'delivered';
+  summary: {
+    orders: number;
+    delivered: number;
+    cancelled: number;
+    litres: number;
+    salesToea: number;
+    commissionToea: number;
+    averageStars: number | null;
+    ratings: number;
+    disputes: number;
+    averageMinutesToDeliver: number | null;
+  };
+  orders: DayReportRow[];
 }
