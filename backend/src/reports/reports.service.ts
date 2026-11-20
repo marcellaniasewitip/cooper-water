@@ -3,7 +3,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { LedgerService } from '../wallet/ledger.service';
-import { startOfBusinessDay } from '../common/time';
+import { BUSINESS_UTC_OFFSET_HOURS, formatLocal, startOfBusinessDay } from '../common/time';
+import { Errors } from '../common/errors';
 
 export interface ReportRange {
   from: Date;
@@ -113,6 +114,121 @@ export class ReportsService {
       LEFT JOIN orders o ON o.driver_id = d.id AND o.created_at >= ${range.from} AND o.created_at < ${range.to}
       GROUP BY d.id, u.name, u.phone
       ORDER BY completed DESC`);
+  }
+
+  /**
+   * Day report: every order of one Port Moresby calendar day (by the day it was ordered, or the day it was
+   * delivered), with times, people, truck, water, money, the customer's feedback, any dispute and the receipt.
+   */
+  async day(date: string, by: 'ordered' | 'delivered' = 'ordered') {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date ?? '');
+    if (!m) throw Errors.invalid('invalid_date', 'Date must look like 2026-11-20');
+    const start = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) - BUSINESS_UTC_OFFSET_HOURS * 3600_000);
+    if (Number.isNaN(start.getTime())) throw Errors.invalid('invalid_date', 'Date must look like 2026-11-20');
+    const end = new Date(start.getTime() + 24 * 3600_000);
+    const window = { gte: start, lt: end };
+    const orders = await this.prisma.order.findMany({
+      where: by === 'delivered' ? { deliveredAt: window } : { createdAt: window },
+      orderBy: by === 'delivered' ? { deliveredAt: 'asc' } : { createdAt: 'asc' },
+      take: 5000,
+      include: {
+        package: true,
+        customer: { select: { name: true, phone: true } },
+        driver: { include: { user: { select: { name: true, phone: true } }, trucks: { where: { deletedAt: null }, take: 1, select: { plate: true, capacityLitres: true } } } },
+        rating: true,
+        disputes: { orderBy: { createdAt: 'desc' }, take: 1 },
+        company: { select: { name: true } },
+        signature: { select: { signedByName: true, signedAt: true } },
+      },
+    });
+    const rows = orders.map((o) => ({
+      id: o.id,
+      shortCode: o.shortCode,
+      status: o.status,
+      orderedAt: o.createdAt,
+      acceptedAt: o.acceptedAt,
+      deliveredAt: o.deliveredAt,
+      completedAt: o.completedAt,
+      cancelledAt: o.cancelledAt ?? o.expiredAt ?? o.failedAt,
+      cancelReason: o.cancelReason,
+      minutesToDeliver: o.deliveredAt ? Math.round((o.deliveredAt.getTime() - o.createdAt.getTime()) / 60000) : null,
+      customer: { name: o.customer.name, phone: o.customer.phone },
+      company: o.company?.name ?? null,
+      driver: o.driver ? { name: o.driver.user.name, phone: o.driver.user.phone } : null,
+      truck: o.driver?.trucks[0] ?? null,
+      package: o.package.name,
+      quantity: o.quantity,
+      litres: o.quantity * o.package.volumeLitres,
+      address: o.deliveryAddress,
+      priceToea: o.priceToea,
+      discountToea: o.discountToea,
+      paidToea: o.priceToea - o.discountToea,
+      commissionToea: o.commissionToea,
+      paymentMethod: o.paymentMethod,
+      paymentStatus: o.paymentStatus,
+      rating: o.rating ? { stars: o.rating.stars, comment: o.rating.comment } : null,
+      dispute: o.disputes[0] ? { category: o.disputes[0].category, status: o.disputes[0].status, description: o.disputes[0].description } : null,
+      signedBy: o.signature ? o.signature.signedByName || 'Customer' : null,
+      receiptEmail: o.receiptSentAt ? o.receiptEmail : null,
+    }));
+    const done = rows.filter((r) => r.status === 'COMPLETED' || r.status === 'DELIVERED');
+    const rated = rows.filter((r) => r.rating);
+    const times = rows.map((r) => r.minutesToDeliver).filter((v): v is number => v !== null);
+    return {
+      date,
+      by,
+      summary: {
+        orders: rows.length,
+        delivered: done.length,
+        cancelled: rows.filter((r) => ['CANCELLED', 'EXPIRED', 'FAILED'].includes(r.status)).length,
+        litres: done.reduce((a, r) => a + r.litres, 0),
+        salesToea: done.reduce((a, r) => a + r.paidToea, 0),
+        commissionToea: done.reduce((a, r) => a + r.commissionToea, 0),
+        averageStars: rated.length ? Math.round((rated.reduce((a, r) => a + r.rating!.stars, 0) / rated.length) * 10) / 10 : null,
+        ratings: rated.length,
+        disputes: rows.filter((r) => r.dispute).length,
+        averageMinutesToDeliver: times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : null,
+      },
+      orders: rows,
+    };
+  }
+
+  async dayCsv(date: string, by: 'ordered' | 'delivered' = 'ordered'): Promise<string> {
+    const r = await this.day(date, by);
+    const t = (d: Date | null) => (d ? formatLocal(d) : '');
+    return toCsv(
+      ['order', 'status', 'ordered_at', 'accepted_at', 'delivered_at', 'completed_at', 'minutes_to_deliver', 'customer', 'customer_phone', 'company', 'driver', 'driver_phone', 'truck', 'water', 'litres', 'address', 'price_kina', 'discount_kina', 'paid_kina', 'commission_kina', 'payment_method', 'payment_status', 'stars', 'feedback', 'dispute', 'signed_by', 'receipt_emailed_to', 'cancel_reason'],
+      r.orders.map((o) => [
+        o.shortCode,
+        o.status,
+        t(o.orderedAt),
+        t(o.acceptedAt),
+        t(o.deliveredAt),
+        t(o.completedAt),
+        o.minutesToDeliver ?? '',
+        o.customer.name ?? '',
+        o.customer.phone,
+        o.company ?? '',
+        o.driver?.name ?? '',
+        o.driver?.phone ?? '',
+        o.truck ? `${o.truck.plate} (${o.truck.capacityLitres} L)` : '',
+        `${o.quantity} x ${o.package}`,
+        o.litres,
+        o.address,
+        kina(o.priceToea),
+        kina(o.discountToea),
+        kina(o.paidToea),
+        kina(o.commissionToea),
+        o.paymentMethod,
+        o.paymentStatus,
+        o.rating?.stars ?? '',
+        o.rating?.comment ?? '',
+        o.dispute ? `${o.dispute.category} (${o.dispute.status}): ${o.dispute.description}` : '',
+        o.signedBy ?? '',
+        o.receiptEmail ?? '',
+        o.cancelReason ?? '',
+      ]),
+    );
   }
 
   async ordersCsv(range: ReportRange): Promise<string> {

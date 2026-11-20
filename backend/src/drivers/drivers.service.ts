@@ -101,7 +101,25 @@ export class DriversService implements OnModuleInit {
     return doc;
   }
 
+  /**
+   * Truck sizes customers can order (active package volumes). Orders only go to trucks of exactly the
+   * ordered size, so a truck must be registered with one of these. Empty = no packages yet (no check).
+   */
+  private async orderableSizes(): Promise<number[]> {
+    const pkgs = await this.prisma.package.findMany({ where: { active: true, deletedAt: null }, select: { volumeLitres: true } });
+    return [...new Set(pkgs.map((p) => p.volumeLitres))].sort((a, b) => a - b);
+  }
+
+  private async assertOrderableSize(capacityLitres: number): Promise<void> {
+    const sizes = await this.orderableSizes();
+    if (sizes.length && !sizes.includes(capacityLitres)) {
+      const list = sizes.map((s) => `${s.toLocaleString('en-US')} L`).join(', ');
+      throw Errors.invalid('truck_size_not_offered', `Register the truck as one of the sizes customers can order: ${list}`, { sizes });
+    }
+  }
+
   async upsertTruck(driverId: string, dto: { plate: string; capacityLitres: number; photoKey?: string }) {
+    await this.assertOrderableSize(dto.capacityLitres);
     if (dto.photoKey) this.storage.assertOwnedKey(dto.photoKey, UPLOAD_FOLDERS.truck_photo, driverId);
     const plate = dto.plate.toUpperCase().replace(/\s+/g, '');
     const existing = await this.prisma.truck.findFirst({ where: { driverId, deletedAt: null } });
@@ -267,6 +285,10 @@ export class DriversService implements OnModuleInit {
       const missing = required.filter((t) => !approved.has(t));
       if (missing.length) throw Errors.invalid('documents_not_approved', `Approve these documents first: ${missing.join(', ')}`, { missing });
       if (!d.trucks.length) throw Errors.invalid('truck_required', 'The driver has not registered a truck');
+      // Orders go only to trucks of exactly the ordered size: a truck size no customer can order would never get a job.
+      if ((await this.settings.get('dispatch.match_vehicle_size')) && d.trucks.every((t) => t.active)) {
+        await this.assertOrderableSize(d.trucks[0].capacityLitres);
+      }
       status = 'approved';
     } else if (action === 'reject') {
       if (!reason) throw Errors.invalid('reason_required', 'Give a reason');

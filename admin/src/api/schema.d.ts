@@ -1390,6 +1390,38 @@ export interface paths {
         patch: operations["AdminCatalogueController_updateDepot"];
         trace?: never;
     };
+    "/api/v1/admin/zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCatalogueController_zones"];
+        put?: never;
+        post: operations["AdminCatalogueController_createZone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/zones/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminCatalogueController_deleteZone"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminCatalogueController_updateZone"];
+        trace?: never;
+    };
     "/api/v1/admin/packages": {
         parameters: {
             query?: never;
@@ -1999,6 +2031,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/reports/day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminReportsController_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/day.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminReportsController_dayCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/reports/payments": {
         parameters: {
             query?: never;
@@ -2071,6 +2135,118 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AdminReportsController_paymentsCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCompaniesController_list"];
+        put?: never;
+        post: operations["AdminCompaniesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/companies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCompaniesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminCompaniesController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/companies/{id}/employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCompaniesController_addEmployee"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/companies/{id}/employees/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminCompaniesController_removeEmployee"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/companies/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCompaniesController_recordPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/companies/{id}/months/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCompaniesController_month"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/companies/{id}/months/{month}/orders.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCompaniesController_monthCsv"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2274,8 +2450,11 @@ export interface components {
             /** @description A saved location; or send `location` instead. */
             locationId?: string;
             location?: components["schemas"]["DeliveryLocationDto"];
-            /** @enum {string} */
-            paymentMethod: "cod" | "cellmoney" | "wallet";
+            /**
+             * @description account = charge the employee's company (corporate account).
+             * @enum {string}
+             */
+            paymentMethod: "cod" | "cellmoney" | "wallet" | "account";
             /** @description Cell money number to charge (defaults to the account phone). */
             msisdn?: string;
         };
@@ -2453,6 +2632,22 @@ export interface components {
             geofenceRadiusM?: number | null;
             active?: boolean;
         };
+        ZoneDto: {
+            /** @description GeoJSON Polygon */
+            polygon: {
+                [key: string]: unknown;
+            };
+            name: string;
+            active?: boolean;
+        };
+        UpdateZoneDto: {
+            /** @description GeoJSON Polygon */
+            polygon?: {
+                [key: string]: unknown;
+            };
+            name?: string;
+            active?: boolean;
+        };
         PackageDto: {
             name: string;
             volumeLitres: number;
@@ -2548,6 +2743,33 @@ export interface components {
             status?: "active" | "disabled";
             password?: string;
             resetTotp?: boolean;
+        };
+        CompanyDto: {
+            name: string;
+            contactName?: string;
+            /** @description Monthly statements are emailed here. */
+            contactEmail?: string;
+            contactPhone?: string;
+            /** @description How much the company may owe, in toea (0 = prepaid only). */
+            creditLimitToea?: number;
+            active?: boolean;
+        };
+        UpdateCompanyDto: {
+            name?: string;
+            contactName?: string;
+            contactEmail?: string;
+            contactPhone?: string;
+            creditLimitToea?: number;
+            active?: boolean;
+        };
+        CompanyEmployeeDto: {
+            /** @description The phone number the customer signed up with. */
+            phone: string;
+        };
+        CompanyPaymentDto: {
+            amountToea: number;
+            /** @description Bank transfer reference, cheque number… */
+            reference?: string;
         };
         RequestOtpDto: {
             /** @description Phone number; PNG numbers may omit +675. */
@@ -4581,6 +4803,86 @@ export interface operations {
             };
         };
     };
+    AdminCatalogueController_zones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCatalogueController_createZone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ZoneDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCatalogueController_deleteZone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCatalogueController_updateZone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateZoneDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminCatalogueController_packages: {
         parameters: {
             query?: never;
@@ -5498,6 +5800,50 @@ export interface operations {
             };
         };
     };
+    AdminReportsController_day: {
+        parameters: {
+            query: {
+                /** @description YYYY-MM-DD (Port Moresby). */
+                date: string;
+                /** @description ordered (default): orders placed that day; delivered: orders delivered that day. */
+                by?: "ordered" | "delivered";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminReportsController_dayCsv: {
+        parameters: {
+            query: {
+                /** @description YYYY-MM-DD (Port Moresby). */
+                date: string;
+                /** @description ordered (default): orders placed that day; delivered: orders delivered that day. */
+                by?: "ordered" | "delivered";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminReportsController_payments: {
         parameters: {
             query?: {
@@ -5596,6 +5942,195 @@ export interface operations {
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCompaniesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCompaniesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCompaniesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCompaniesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCompaniesController_addEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyEmployeeDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCompaniesController_removeEmployee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCompaniesController_recordPayment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Unique key per logical request (UUID recommended) */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyPaymentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCompaniesController_month: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCompaniesController_monthCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                month: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

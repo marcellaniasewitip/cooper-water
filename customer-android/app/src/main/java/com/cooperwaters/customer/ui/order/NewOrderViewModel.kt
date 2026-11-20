@@ -7,6 +7,7 @@ import com.cooperwaters.core.android.ui.toUiText
 import com.cooperwaters.core.money.Money
 import com.cooperwaters.core.net.ApiResult
 import com.cooperwaters.core.net.AppliedPromo
+import com.cooperwaters.core.net.CompanyAccount
 import com.cooperwaters.core.net.CreateOrderRequest
 import com.cooperwaters.core.net.QuoteRequest
 import com.cooperwaters.core.net.ReferralApplyRequest
@@ -51,6 +52,8 @@ data class NewOrderState(
     val msisdn: String = "",
     /** Wallet balance (null while unknown/offline); the Wallet option needs enough to cover [payableToea]. */
     val walletBalanceToea: Long? = null,
+    /** The customer's company when they can order on account (corporate account). */
+    val company: CompanyAccount? = null,
     /** Offers: code typed or picked on the Offers screen, and the one the server accepted. */
     val promoInput: String = "",
     val appliedPromo: AppliedPromo? = null,
@@ -135,6 +138,8 @@ class NewOrderViewModel(
                 locations = locs.value.orEmpty(),
                 maxQuantity = config.value?.maxQuantity ?: s.maxQuantity,
                 walletBalanceToea = wallet?.balanceToea ?: s.walletBalanceToea,
+                company = config.value?.company,
+                paymentMethod = if (s.paymentMethod == "account" && config.value?.company == null) "cod" else s.paymentMethod,
                 packageId = s.packageId ?: pkgs.value?.firstOrNull()?.id,
                 locationId = s.locationId ?: locs.value?.firstOrNull()?.id,
                 error = if (pkgs.value == null) pkgs.error?.toUiText() else null,
@@ -206,6 +211,8 @@ class NewOrderViewModel(
                 s.paymentMethod == "cellmoney" && s.msisdn.length < 7 -> UiText.res(R.string.order_msisdn_invalid)
                 s.paymentMethod == "wallet" && s.walletBalanceToea != null && payable != null && s.walletBalanceToea < payable ->
                     UiText.res(R.string.order_wallet_short, Money.format(s.walletBalanceToea))
+                s.paymentMethod == "account" && s.company != null && payable != null && s.company.availableToea < payable ->
+                    UiText.res(R.string.order_account_short, s.company.name, Money.format(s.company.availableToea))
                 else -> null
             }
             OrderStep.REVIEW -> null

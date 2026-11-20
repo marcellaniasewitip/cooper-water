@@ -224,6 +224,15 @@ public struct CustomerConfig: Decodable {
     public var disputeCategories: [String]?
     public var paymentMethods: [String]?
     public var cellmoneyTimeoutSec: Int?
+    /// Set when the customer orders for a company (corporate account): "Company account" can pay.
+    public var company: CompanyAccount?
+}
+
+public struct CompanyAccount: Decodable, Hashable {
+    public let id: String
+    public var name: String
+    /// Credit the company still has for orders on account.
+    public var availableToea: Int64
 }
 
 public struct SavedLocation: Codable, Identifiable, Hashable {

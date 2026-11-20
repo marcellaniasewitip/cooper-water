@@ -1,6 +1,9 @@
 import {
   IconAlertTriangle,
+  IconBuilding,
+  IconCalendarEvent,
   IconBuildingWarehouse,
+  IconPolygon,
   IconCash,
   IconChartBar,
   IconCoins,
@@ -42,6 +45,7 @@ export const NAV: NavItem[] = [
     children: [
       { label: m.nav.orders, to: '/orders', icon: IconListDetails, permission: 'orders.view' },
       { label: m.nav.customers, to: '/customers', icon: IconUsers, permission: 'customers.view' },
+      { label: m.nav.companies, to: '/companies', icon: IconBuilding, permission: 'customers.view' },
       { label: m.nav.drivers, to: '/drivers', icon: IconSteeringWheel, permission: 'drivers.view', badge: 'driverApprovals' },
       { label: m.nav.trucks, to: '/trucks', icon: IconTruck, permission: 'trucks.manage' },
       { label: m.nav.disputes, to: '/disputes', icon: IconAlertTriangle, permission: 'disputes.resolve', badge: 'disputes' },
@@ -54,6 +58,7 @@ export const NAV: NavItem[] = [
       { label: m.nav.payments, to: '/payments', icon: IconReceipt, permission: 'payments.view', badge: 'payments' },
       { label: m.nav.payouts, to: '/payouts', icon: IconCash, permission: 'payouts.process', badge: 'payouts' },
       { label: m.nav.platformWallet, to: '/wallet', icon: IconWallet, permission: 'wallet.view' },
+      { label: m.nav.dayReport, to: '/reports/day', icon: IconCalendarEvent, permission: 'reports.view' },
       { label: m.nav.reports, to: '/reports', icon: IconChartBar, permission: 'reports.view' },
     ],
   },
@@ -61,6 +66,7 @@ export const NAV: NavItem[] = [
     label: m.nav.catalogue,
     children: [
       { label: m.nav.depots, to: '/depots', icon: IconBuildingWarehouse, permission: 'dashboard.view' },
+      { label: m.nav.zones, to: '/zones', icon: IconPolygon, permission: 'dashboard.view' },
       { label: m.nav.packages, to: '/packages', icon: IconPackage, permission: 'orders.view' },
       { label: m.nav.promos, to: '/promos', icon: IconDiscount2, permission: 'orders.view' },
       { label: m.nav.settings, to: '/settings', icon: IconSettings, permission: 'settings.edit' },

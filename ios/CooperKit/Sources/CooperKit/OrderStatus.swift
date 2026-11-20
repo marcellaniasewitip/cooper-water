@@ -81,6 +81,7 @@ public enum Labels {
         case "cod": return "Cash on delivery"
         case "cellmoney": return "Cell money"
         case "wallet": return "Wallet"
+        case "account": return "Company account"
         case "bank_transfer": return "Bank transfer"
         case "cash": return "Cash"
         default: return m ?? ""

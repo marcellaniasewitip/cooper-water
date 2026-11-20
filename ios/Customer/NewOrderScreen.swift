@@ -29,6 +29,7 @@ final class NewOrderModel: ObservableObject {
     @Published var methods = ["cod", "cellmoney", "wallet"]
     @Published var msisdn = ""
     @Published var walletBalance: Int64?
+    @Published var company: CompanyAccount?
     @Published var quote: Quote?
     @Published var quoting = false
     @Published var promoInput = ""
@@ -78,7 +79,9 @@ final class NewOrderModel: ObservableObject {
         if case .success(let v) = cfg {
             maxQuantity = v.maxQuantity ?? 10
             let allowed = (v.paymentMethods ?? ["cod", "cellmoney"]) + ["wallet"]
-            methods = ["cod", "cellmoney", "wallet"].filter { allowed.contains($0) }
+            methods = ["cod", "cellmoney", "wallet", "account"].filter { allowed.contains($0) }
+            company = v.company
+            if paymentMethod == "account" && v.company == nil { paymentMethod = "cod" }
         }
         if case .success(let v) = w { walletBalance = v.balanceToea }
         loading = false
@@ -153,6 +156,10 @@ final class NewOrderModel: ObservableObject {
             if paymentMethod == "cellmoney" && msisdn.filter(\.isNumber).count < 7 { error = "Enter the cell money number to charge."; return }
             if paymentMethod == "wallet", let bal = walletBalance, let pay = payableToea, bal < pay {
                 error = "Your wallet has \(Money.format(bal)). Top up or choose another payment method."
+                return
+            }
+            if paymentMethod == "account", let c = company, let pay = payableToea, c.availableToea < pay {
+                error = "\(c.name) has \(Money.format(c.availableToea)) of credit left. Ask your company to pay its bill, or choose another payment method."
                 return
             }
         default: break
@@ -323,6 +330,9 @@ struct NewOrderScreen: View {
         switch m {
         case "cod": return "Pay the driver in cash when the water arrives."
         case "cellmoney": return "You'll get a prompt on your phone to approve the payment."
+        case "account":
+            guard let c = model.company else { return "Charged to your company. Billed monthly." }
+            return "Charged to \(c.name) (\(Money.format(c.availableToea)) of credit left). Billed monthly."
         default:
             return model.walletBalance.map { "Paid now from your wallet (balance \(Money.format($0)))." } ?? "Paid now from your Cooper Waters wallet."
         }

@@ -252,6 +252,9 @@ describe('auth, RBAC, onboarding, notifications, reports (integration)', () => {
       await h.http().post('/api/v1/driver/documents').set(bearer(d.token)).send({ type, fileKey: u.body.key }).expect(201);
     }
     expect((await h.prisma.driver.findUniqueOrThrow({ where: { id: driver.id } })).status).toBe('pending_docs'); // no truck yet
+    // The truck must be one of the sizes customers can order (exact-size dispatch).
+    const bad = await h.http().put('/api/v1/driver/truck').set(bearer(d.token)).send({ plate: 'cw 900', capacityLitres: 4000 }).expect(422);
+    expect(bad.body.error).toMatchObject({ code: 'truck_size_not_offered' });
     await h.http().put('/api/v1/driver/truck').set(bearer(d.token)).send({ plate: 'cw 900', capacityLitres: 5000 }).expect(200);
     expect((await h.prisma.driver.findUniqueOrThrow({ where: { id: driver.id } })).status).toBe('pending_approval');
 

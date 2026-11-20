@@ -59,6 +59,39 @@ export class CatalogueService {
     }));
   }
 
+  // ───────────── Zones ─────────────
+
+  allZones() {
+    return this.prisma.zone.findMany({ where: { deletedAt: null }, orderBy: { name: 'asc' } });
+  }
+
+  async createZone(adminId: string, input: { name: string; polygon: Polygon; active?: boolean }, ip: string | null) {
+    validatePolygon(input.polygon);
+    if (!input.polygon) throw Errors.invalid('invalid_zone', 'Draw the zone on the map (at least 3 points)');
+    const zone = await this.prisma.zone.create({ data: { name: input.name.trim(), polygon: input.polygon, active: input.active ?? true } });
+    await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'zone.create', entity: 'zone', entityId: zone.id, after: zone, ip });
+    return zone;
+  }
+
+  async updateZone(adminId: string, id: string, input: { name?: string; polygon?: Polygon; active?: boolean }, ip: string | null) {
+    const before = await this.prisma.zone.findFirst({ where: { id, deletedAt: null } });
+    if (!before) throw Errors.notFound('Zone');
+    if (input.polygon !== undefined) validatePolygon(input.polygon);
+    const zone = await this.prisma.zone.update({
+      where: { id },
+      data: { ...(input.name !== undefined ? { name: input.name.trim() } : {}), ...(input.polygon ? { polygon: input.polygon } : {}), ...(input.active !== undefined ? { active: input.active } : {}) },
+    });
+    await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'zone.update', entity: 'zone', entityId: id, before, after: zone, ip });
+    return zone;
+  }
+
+  async deleteZone(adminId: string, id: string, ip: string | null) {
+    const before = await this.prisma.zone.findFirst({ where: { id, deletedAt: null } });
+    if (!before) throw Errors.notFound('Zone');
+    await this.prisma.zone.update({ where: { id }, data: { deletedAt: new Date(), active: false } });
+    await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'zone.delete', entity: 'zone', entityId: id, before, ip });
+  }
+
   async createPackage(adminId: string, input: PackageInput, ip: string | null) {
     const pkg = await this.prisma.package.create({ data: input });
     await this.audit.log({ actorId: adminId, actorType: 'admin', action: 'package.create', entity: 'package', entityId: pkg.id, after: pkg, ip });
@@ -109,6 +142,8 @@ export class CatalogueService {
 }
 
 /** GeoJSON Polygon: one closed ring of ≥4 [lng, lat] positions. */
+type Polygon = { type: 'Polygon'; coordinates: number[][][] };
+
 function validatePolygon(p: DepotInput['geofencePolygon']): void {
   if (p === undefined || p === null) return;
   const ring = p?.coordinates?.[0];

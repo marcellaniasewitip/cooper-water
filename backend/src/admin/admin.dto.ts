@@ -10,6 +10,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Matches,
   IsUUID,
   Length,
   Max,
@@ -113,6 +114,28 @@ export class UpdateDepotDto {
   @IsOptional() @IsInt() @Min(10) @Max(5000) geofenceRadiusM?: number | null;
   @ApiPropertyOptional({ type: 'object', nullable: true, description: 'GeoJSON Polygon; null clears it', additionalProperties: true })
   @IsOptional() @IsObject() geofencePolygon?: { type: 'Polygon'; coordinates: number[][][] } | null;
+  @IsOptional() @IsBoolean() active?: boolean;
+}
+
+export class ZoneDto {
+  @IsString()
+  @Length(1, 80)
+  name: string;
+
+  /** GeoJSON Polygon `{ type: 'Polygon', coordinates: [[[lng, lat], ...]] }`. */
+  @ApiProperty({ type: 'object', description: 'GeoJSON Polygon', additionalProperties: true })
+  @IsObject()
+  polygon: { type: 'Polygon'; coordinates: number[][][] };
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+}
+
+export class UpdateZoneDto {
+  @IsOptional() @IsString() @Length(1, 80) name?: string;
+  @ApiPropertyOptional({ type: 'object', description: 'GeoJSON Polygon', additionalProperties: true })
+  @IsOptional() @IsObject() polygon?: { type: 'Polygon'; coordinates: number[][][] };
   @IsOptional() @IsBoolean() active?: boolean;
 }
 
@@ -431,4 +454,45 @@ export class BroadcastCountQuery {
   @IsString()
   @MaxLength(20)
   phone?: string;
+}
+
+export class CompanyDto {
+  @IsString() @Length(1, 120) name: string;
+  @IsOptional() @IsString() @Length(0, 120) contactName?: string;
+  /** Monthly statements are emailed here. */
+  @IsOptional() @IsString() @Length(0, 200) contactEmail?: string;
+  @IsOptional() @IsString() @Length(0, 40) contactPhone?: string;
+  /** How much the company may owe, in toea (0 = prepaid only). */
+  @IsOptional() @IsInt() @Min(0) @Max(100_000_000_00) creditLimitToea?: number;
+  @IsOptional() @IsBoolean() active?: boolean;
+}
+
+export class UpdateCompanyDto {
+  @IsOptional() @IsString() @Length(1, 120) name?: string;
+  @IsOptional() @IsString() @Length(0, 120) contactName?: string;
+  @IsOptional() @IsString() @Length(0, 200) contactEmail?: string;
+  @IsOptional() @IsString() @Length(0, 40) contactPhone?: string;
+  @IsOptional() @IsInt() @Min(0) @Max(100_000_000_00) creditLimitToea?: number;
+  @IsOptional() @IsBoolean() active?: boolean;
+}
+
+export class CompanyEmployeeDto {
+  /** The phone number the customer signed up with. */
+  @IsString() @Length(6, 20) phone: string;
+}
+
+export class CompanyPaymentDto {
+  @IsInt() @Min(1) @Max(100_000_000_00) amountToea: number;
+  /** Bank transfer reference, cheque number… */
+  @IsOptional() @IsString() @Length(0, 120) reference?: string;
+}
+
+export class DayReportQuery {
+  /** YYYY-MM-DD (Port Moresby). */
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must look like 2026-11-20' })
+  date: string;
+
+  /** ordered (default): orders placed that day; delivered: orders delivered that day. */
+  @IsOptional() @IsIn(['ordered', 'delivered'])
+  by?: 'ordered' | 'delivered';
 }

@@ -28,6 +28,7 @@ import { ReportsService } from '../reports/reports.service';
 import { OrderTransitionsService } from '../orders/transitions.service';
 import { AfterCommit } from '../common/after-commit';
 import { AdminUsersService } from './admin-users.service';
+import { CompaniesService } from '../companies/companies.service';
 import { AdminOrdersQuery, CancelDto, ReassignDto } from '../orders/orders.dto';
 import {
   BroadcastCountQuery,
@@ -36,6 +37,12 @@ import {
   UpdatePromoDto,
   AdjustmentDto,
   AdminTopupDto,
+  ZoneDto,
+  UpdateZoneDto,
+  CompanyDto,
+  UpdateCompanyDto,
+  CompanyEmployeeDto,
+  CompanyPaymentDto,
   ApproveTopupDto,
   AuditQuery,
   CompleteRefundDto,
@@ -49,6 +56,7 @@ import {
   PaymentsQuery,
   PayoutActionDto,
   RangeQuery,
+  DayReportQuery,
   ReasonDto,
   ResolveDisputeDto,
   ReviewDocumentDto,
@@ -333,6 +341,32 @@ export class AdminCatalogueController {
   @RequirePermissions('depots.manage')
   async deleteDepot(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Ip() ip: string) {
     await this.catalogue.deleteDepot(a.id, id, ip);
+  }
+
+  /** Service zones: an order inside a zone only goes to drivers inside the same zone. */
+  @Get('zones')
+  @RequirePermissions('dashboard.view')
+  zones() {
+    return this.catalogue.allZones();
+  }
+
+  @Post('zones')
+  @RequirePermissions('depots.manage')
+  createZone(@CurrentAdmin() a: AdminPrincipal, @Body() dto: ZoneDto, @Ip() ip: string) {
+    return this.catalogue.createZone(a.id, dto, ip);
+  }
+
+  @Patch('zones/:id')
+  @RequirePermissions('depots.manage')
+  updateZone(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateZoneDto, @Ip() ip: string) {
+    return this.catalogue.updateZone(a.id, id, dto, ip);
+  }
+
+  @Delete('zones/:id')
+  @HttpCode(204)
+  @RequirePermissions('depots.manage')
+  async deleteZone(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Ip() ip: string) {
+    await this.catalogue.deleteZone(a.id, id, ip);
   }
 
   @Get('packages')
@@ -715,6 +749,21 @@ export class AdminReportsController {
     return this.reports.daily(range(q));
   }
 
+  /** Every order of one day (YYYY-MM-DD, Port Moresby), by the day ordered (default) or delivered. */
+  @Get('day')
+  @RequirePermissions('reports.view')
+  day(@Query() q: DayReportQuery) {
+    return this.reports.day(q.date, q.by ?? 'ordered');
+  }
+
+  @Get('day.csv')
+  @RequirePermissions('reports.view')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="cooper-waters-day.csv"')
+  dayCsv(@Query() q: DayReportQuery) {
+    return this.reports.dayCsv(q.date, q.by ?? 'ordered');
+  }
+
   @Get('payments')
   @RequirePermissions('reports.view')
   payments(@Query() q: RangeQuery) {
@@ -749,5 +798,73 @@ export class AdminReportsController {
   @Header('Content-Disposition', 'attachment; filename="cooper-waters-payments.csv"')
   paymentsCsv(@Query() q: RangeQuery) {
     return this.reports.paymentsCsv(range(q));
+  }
+}
+
+/** Corporate accounts: companies whose employees order on account, billed monthly. */
+@ApiTags('admin')
+@ApiBearerAuth()
+@Controller('admin/companies')
+export class AdminCompaniesController {
+  constructor(private readonly companies: CompaniesService) {}
+
+  @Get()
+  @RequirePermissions('customers.view')
+  list() {
+    return this.companies.list();
+  }
+
+  @Post()
+  @RequirePermissions('wallet.adjust')
+  create(@CurrentAdmin() a: AdminPrincipal, @Body() dto: CompanyDto, @Ip() ip: string) {
+    return this.companies.create(a.id, dto, ip);
+  }
+
+  @Get(':id')
+  @RequirePermissions('customers.view')
+  get(@Param('id', ParseUUIDPipe) id: string) {
+    return this.companies.get(id);
+  }
+
+  @Patch(':id')
+  @RequirePermissions('wallet.adjust')
+  update(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCompanyDto, @Ip() ip: string) {
+    return this.companies.update(a.id, id, dto, ip);
+  }
+
+  @Post(':id/employees')
+  @RequirePermissions('wallet.adjust')
+  addEmployee(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CompanyEmployeeDto, @Ip() ip: string) {
+    return this.companies.addEmployee(a.id, id, dto.phone, ip);
+  }
+
+  @Delete(':id/employees/:userId')
+  @HttpCode(204)
+  @RequirePermissions('wallet.adjust')
+  async removeEmployee(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Param('userId', ParseUUIDPipe) userId: string, @Ip() ip: string) {
+    await this.companies.removeEmployee(a.id, id, userId, ip);
+  }
+
+  /** The company paid (bank transfer, cheque…): credit its account. */
+  @Post(':id/payments')
+  @Idempotent()
+  @RequirePermissions('wallet.adjust')
+  recordPayment(@CurrentAdmin() a: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CompanyPaymentDto, @IdempotencyKey() key: string, @Ip() ip: string) {
+    return this.companies.recordPayment(a.id, id, dto.amountToea, dto.reference ?? '', key, ip);
+  }
+
+  /** Totals for one month (YYYY-MM, Port Moresby time); worked out live, so the current month works too. */
+  @Get(':id/months/:month')
+  @RequirePermissions('customers.view')
+  month(@Param('id', ParseUUIDPipe) id: string, @Param('month') month: string) {
+    return this.companies.monthSummary(id, month);
+  }
+
+  @Get(':id/months/:month/orders.csv')
+  @RequirePermissions('customers.view')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="company-statement.csv"')
+  monthCsv(@Param('id', ParseUUIDPipe) id: string, @Param('month') month: string) {
+    return this.companies.monthCsv(id, month);
   }
 }

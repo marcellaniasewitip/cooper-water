@@ -95,6 +95,13 @@ export class SweeperService implements OnModuleInit {
     const purged = await this.prisma.idempotencyRecord.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - 7 * 24 * 3600_000) } } });
     counts.idempotency_purged = purged.count;
 
+    // Corporate accounts: write (and email) last month's statements once the month is over.
+    try {
+      await this.jobs.run('companies.close_months', { at: now.toISOString() });
+    } catch (err: any) {
+      logger.warn({ step: 'company_statements', err: err?.message }, 'sweeper step failed');
+    }
+
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     if (total > 0) logger.info({ counts }, 'sweeper');
     return counts;

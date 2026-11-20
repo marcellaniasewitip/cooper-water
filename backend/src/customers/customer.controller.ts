@@ -14,6 +14,7 @@ import { SettingsService } from '../settings/settings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatSendDto, CustomerTopupDto, LocationDto, PromoCheckDto, PushTokenDto, ReferralApplyDto, UpdateLocationDto, UpdateProfileDto } from './customer.dto';
 import { WalletService } from '../wallet/wallet.service';
+import { CompaniesService } from '../companies/companies.service';
 import { PromosService } from '../promos/promos.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { ChatService } from '../chat/chat.service';
@@ -38,6 +39,7 @@ export class CustomerController {
     private readonly disputes: DisputesService,
     private readonly wallet: WalletService,
     private readonly promos: PromosService,
+    private readonly companies: CompaniesService,
     private readonly referrals: ReferralsService,
     private readonly chat: ChatService,
     private readonly notifications: NotificationsService,
@@ -65,14 +67,17 @@ export class CustomerController {
 
   /** App configuration the customer app needs (cancel rules, limits, dispute categories). */
   @Get('config')
-  async config() {
+  async config(@CurrentUser() u: UserPrincipal) {
+    const company = await this.companies.forCustomer(u.id);
     return {
       currency: 'PGK',
       timeZone: 'Pacific/Port_Moresby',
       cancelFreeUntil: await this.settings.get('order.customer_cancel_free_until'),
       maxQuantity: await this.settings.get('order.max_quantity'),
       disputeCategories: await this.settings.get('dispute.categories'),
-      paymentMethods: ['cod', 'cellmoney', 'wallet'],
+      paymentMethods: company ? ['cod', 'cellmoney', 'wallet', 'account'] : ['cod', 'cellmoney', 'wallet'],
+      /** Set when the customer orders for a company: "Company account" pays, up to availableToea. */
+      company,
       cellmoneyTimeoutSec: await this.settings.get('payment.cellmoney.timeout_sec'),
       autoCompleteAfterSec: await this.settings.get('order.auto_complete_after_sec'),
     };

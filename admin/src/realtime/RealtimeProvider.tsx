@@ -4,6 +4,7 @@ import { io, type Socket } from 'socket.io-client';
 import { http, tokenStore, type AdminOrder, type FleetDriver, type FleetLocationEvent, type Page } from '@/api';
 import { useAuth } from '@/auth/AuthContext';
 import { config } from '@/config';
+import { notifySuccess } from '@/lib/notify';
 import { applyFleetEvent } from './fleet';
 
 interface RealtimeState {
@@ -69,6 +70,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       void qc.invalidateQueries({ queryKey: ['orders'] });
       void qc.invalidateQueries({ queryKey: ['overview'] });
       void qc.invalidateQueries({ queryKey: ['fleet'] });
+    });
+
+    // Auto-assign: "Order CW-1234 is placed to John".
+    socket.on('order.auto_assigned', (e: { message?: string }) => {
+      if (e?.message) notifySuccess(e.message);
+      void qc.invalidateQueries({ queryKey: ['orders'] });
     });
 
     socket.on('fleet.driver_location', (e: FleetLocationEvent) => {

@@ -216,6 +216,8 @@
     <string name="order_wallet_short">Your wallet has %1$s. Top up or choose another payment method.</string>
     <string name="order_wallet_help">Paid now from your wallet (balance %1$s).</string>
     <string name="order_wallet_help_unknown">Paid now from your Cooper Waters wallet.</string>
+    <string name="order_account_help">Charged to %1$s (%2$s of credit left). Billed monthly.</string>
+    <string name="order_account_short">%1$s has %2$s of credit left. Ask your company to pay its bill, or choose another payment method.</string>
     <string name="order_promo_title">Promo code</string>
     <string name="order_promo_saving">You save %1$s</string>
     <string name="order_promo_remove">Remove</string>

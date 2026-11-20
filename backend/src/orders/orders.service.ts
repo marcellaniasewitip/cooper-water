@@ -7,6 +7,7 @@ import { GeoService } from '../geo/geo.service';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../storage/storage.service';
 import { LedgerService } from '../wallet/ledger.service';
+import { CompaniesService } from '../companies/companies.service';
 import { PromosService } from '../promos/promos.service';
 import { AfterCommit } from '../common/after-commit';
 import { Errors } from '../common/errors';
@@ -30,6 +31,7 @@ export class OrdersService implements OnModuleInit {
     private readonly ledger: LedgerService,
     private readonly transitions: OrderTransitionsService,
     private readonly promos: PromosService,
+    private readonly companies: CompaniesService,
   ) {}
 
   onModuleInit(): void {
@@ -84,6 +86,7 @@ export class OrdersService implements OnModuleInit {
     const commissionToea = computeCommission(q.priceToea, commissionType, commissionValue);
     const initial: OrderStatus = dto.paymentMethod === 'cellmoney' ? 'PENDING_PAYMENT' : 'SEARCHING';
     const paidFromWallet = dto.paymentMethod === 'wallet';
+    const onAccount = dto.paymentMethod === 'account';
 
     const effects = new AfterCommit();
     const order = await this.withShortCodeRetry((shortCode) =>
@@ -112,16 +115,21 @@ export class OrdersService implements OnModuleInit {
             deliveryAddress: loc.address,
             deliveryNotes: loc.notes,
             paymentMethod: dto.paymentMethod,
-            paymentStatus: dto.paymentMethod === 'cellmoney' ? 'pending' : paidFromWallet ? 'paid' : 'unpaid',
+            paymentStatus: dto.paymentMethod === 'cellmoney' ? 'pending' : paidFromWallet || onAccount ? 'paid' : 'unpaid',
             status: 'PENDING_PAYMENT',
             paymentPendingAt: dto.paymentMethod === 'cellmoney' ? new Date() : null,
           },
         });
         if (applied) await this.promos.redeem(tx, applied.promo.id, customerId, created.id, discountToea);
         if (paidFromWallet && payableToea > 0) await this.payFromWallet(tx, customerId, created.id, created.shortCode, payableToea);
+        let placed = created;
+        if (onAccount) {
+          const companyId = await this.companies.chargeOrder(tx, customerId, created.id, created.shortCode, payableToea);
+          placed = await tx.order.update({ where: { id: created.id }, data: { companyId } });
+        }
         if (initial === 'SEARCHING') {
           // COD / wallet go straight to dispatch; this single event records the creation.
-          return this.transitions.transition(tx, created, 'SEARCHING', { type: 'system', id: null }, effects, {
+          return this.transitions.transition(tx, placed, 'SEARCHING', { type: 'system', id: null }, effects, {
             metadata: { created: true, createdBy: customerId, paymentMethod: dto.paymentMethod },
           });
         }
@@ -246,6 +254,10 @@ export class OrdersService implements OnModuleInit {
       if (order.status !== 'SEARCHING') throw Errors.conflict('order_taken', 'Sorry, this job has already been taken');
       const offer = await tx.orderOffer.findFirst({ where: { orderId, driverId }, orderBy: { round: 'desc' } });
       if (!offer || offer.response === 'declined') throw Errors.forbidden('This job was not offered to you');
+      // Auto-assign: once the job has moved on to the next driver, the earlier one can no longer take it.
+      if (offer.response === 'missed' && (await this.settings.get('dispatch.auto_assign'))) {
+        throw Errors.conflict('order_taken', 'Sorry, this job has moved to another driver');
+      }
       const accepted = await this.transitions.transition(tx, order, 'ACCEPTED', { type: 'driver', id: driverId }, effects, {
         data: { driverId },
         metadata: { offerId: offer.id, round: offer.round },
@@ -260,6 +272,8 @@ export class OrdersService implements OnModuleInit {
   async decline(driverId: string, orderId: string) {
     const r = await this.prisma.orderOffer.updateMany({ where: { orderId, driverId, response: null }, data: { response: 'declined', respondedAt: new Date() } });
     if (r.count === 0) throw Errors.notFound('Offer');
+    // Auto-assign: hand the order straight to the next nearest driver.
+    if (await this.settings.get('dispatch.auto_assign')) await this.jobs.run('dispatch.auto_next', { orderId, offerId: null });
   }
 
   async activeForDriver(driverId: string) {

@@ -133,13 +133,13 @@ export class DisputesService {
   }
 
   private async refundDelivered(tx: Prisma.TransactionClient, order: { id: string; driverId: string | null; paymentMethod: string; shortCode: string } & any, refundToea: number, notes: string, adminId: string, effects: AfterCommit) {
-    if (order.paymentMethod === 'cellmoney') {
+    if (order.paymentMethod === 'cellmoney' || order.paymentMethod === 'account') {
       await this.refunds.refundOrderPayment(tx, order, effects, { amountToea: refundToea, reason: `Dispute: ${notes}` });
     } else {
       await this.refunds.createCashRefundTask(tx, order, refundToea, `Dispute: ${notes}`);
     }
     // The driver was paid for this order; recover the refunded amount from their wallet.
-    if (order.driverId && order.paymentMethod === 'cellmoney') {
+    if (order.driverId && (order.paymentMethod === 'cellmoney' || order.paymentMethod === 'account')) {
       const wallet = await this.ledger.driverWallet(order.driverId, tx);
       await this.ledger.post(tx, {
         walletId: wallet.id,

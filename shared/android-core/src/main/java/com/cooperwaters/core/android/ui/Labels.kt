@@ -27,6 +27,7 @@ object Labels {
     fun paymentMethod(method: String?): Int = when (method) {
         "cellmoney" -> R.string.cw_payment_cellmoney
         "wallet" -> R.string.cw_payment_wallet
+        "account" -> R.string.cw_payment_account
         else -> R.string.cw_payment_cod
     }
 

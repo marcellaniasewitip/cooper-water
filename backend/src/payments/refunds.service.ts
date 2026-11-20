@@ -11,6 +11,7 @@ import { Errors } from '../common/errors';
 import { logger } from '../common/logger';
 import { LedgerService } from '../wallet/ledger.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { CompaniesService } from '../companies/companies.service';
 
 /**
  * Refunds (§8.4): cancelled/expired after a successful cell money payment, late payments on a dead order,
@@ -27,6 +28,7 @@ export class RefundsService implements OnModuleInit {
     private readonly audit: AuditService,
     private readonly ledger: LedgerService,
     private readonly realtime: RealtimeGateway,
+    private readonly companies: CompaniesService,
   ) {}
 
   onModuleInit(): void {
@@ -42,6 +44,13 @@ export class RefundsService implements OnModuleInit {
   ): Promise<Payment | null> {
     if (order.paymentMethod === 'wallet') {
       await this.refundToWallet(tx, order, effects, opts);
+      return null;
+    }
+    if (order.paymentMethod === 'account') {
+      // Company account: the charge goes back on the company's balance.
+      if (await this.companies.refundOrder(tx, order, opts.amountToea, opts.reason)) {
+        await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'refunded' } });
+      }
       return null;
     }
     const source = opts.sourcePaymentId

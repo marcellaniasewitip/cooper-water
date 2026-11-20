@@ -217,7 +217,8 @@ private fun LocationStep(state: NewOrderState, vm: NewOrderViewModel, onAddLocat
 @Composable
 private fun PaymentStep(state: NewOrderState, vm: NewOrderViewModel) {
     SectionTitle(stringResource(R.string.order_payment_method))
-    for (m in listOf("cod", "cellmoney", "wallet")) {
+    val methods = listOf("cod", "cellmoney", "wallet") + if (state.company != null) listOf("account") else emptyList()
+    for (m in methods) {
         val selected = state.paymentMethod == m
         Row(
             Modifier.fillMaxWidth().selectable(selected = selected, onClick = { vm.selectPayment(m) }).padding(vertical = 8.dp),
@@ -231,6 +232,7 @@ private fun PaymentStep(state: NewOrderState, vm: NewOrderViewModel) {
                     when (m) {
                         "cod" -> stringResource(R.string.order_cod_help)
                         "cellmoney" -> stringResource(R.string.order_cellmoney_help)
+                        "account" -> stringResource(R.string.order_account_help, state.company?.name.orEmpty(), Money.format(state.company?.availableToea ?: 0))
                         else -> state.walletBalanceToea?.let { stringResource(R.string.order_wallet_help, Money.format(it)) }
                             ?: stringResource(R.string.order_wallet_help_unknown)
                     },

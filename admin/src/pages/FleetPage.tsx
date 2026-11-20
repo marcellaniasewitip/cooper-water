@@ -1,6 +1,6 @@
-import { ActionIcon, Anchor, Badge, Card, Grid, Group, ScrollArea, SegmentedControl, Stack, Tabs, Text, Tooltip as MTooltip, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Card, Grid, Group, ScrollArea, SegmentedControl, Stack, Switch, Tabs, Text, Tooltip as MTooltip, UnstyledButton } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Circle, CircleMarker, Marker, Polygon, Polyline, Popup, Tooltip, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
@@ -15,6 +15,7 @@ import { fmt, m } from '@/i18n';
 import { carIcon, carSvg } from '@/lib/carIcon';
 import { distanceM } from '@/lib/geo';
 import { timeAgo } from '@/lib/time';
+import { notifyError, notifySuccess } from '@/lib/notify';
 import { useRealtime } from '@/realtime/RealtimeProvider';
 
 /** online = free (green), active = busy on a job (orange), stale = free but GPS not updated, offline = inactive (grey). */
@@ -186,8 +187,24 @@ export default function FleetPage() {
   const waiting = useQuery({ queryKey: ['orders', 'fleet', 'waiting'], queryFn: () => api.orders.list({ status: WAITING, limit: 100 }), refetchInterval: poll });
   const onJob = useQuery({ queryKey: ['orders', 'fleet', 'on-job'], queryFn: () => api.orders.list({ status: ON_JOB, limit: 100 }), refetchInterval: poll });
   const depots = useQuery({ queryKey: ['depots'], queryFn: api.depots.list, staleTime: 300_000 });
+  const zones = useQuery({ queryKey: ['zones'], queryFn: api.zones.list, staleTime: 300_000 });
   const settings = useQuery({ queryKey: ['settings'], queryFn: api.settings.all, staleTime: 300_000, retry: false, enabled: can('settings.edit') });
   const defaultRadius = (settings.data?.['depot.geofence_radius_m']?.value as number | undefined) ?? 150;
+  const qc = useQueryClient();
+  const autoAssign = settings.data?.['dispatch.auto_assign']?.value === true;
+  const [savingAuto, setSavingAuto] = useState(false);
+  const toggleAutoAssign = async (on: boolean) => {
+    setSavingAuto(true);
+    try {
+      await api.settings.set('dispatch.auto_assign', on);
+      await qc.invalidateQueries({ queryKey: ['settings'] });
+      notifySuccess(on ? m.fleet.autoAssignOn : m.fleet.autoAssignOff);
+    } catch (err) {
+      notifyError(err);
+    } finally {
+      setSavingAuto(false);
+    }
+  };
 
   const [orderTab, setOrderTab] = useState<OrderTab>('unassigned');
   const [driverTabValue, setDriverTab] = useState<DriverTab>('free');
@@ -233,11 +250,24 @@ export default function FleetPage() {
         title={m.fleet.title}
         subtitle={`${fmt(m.fleet.freeCount, { count: byTab.free.length })} · ${fmt(m.fleet.busyCount, { count: byTab.busy.length })} · ${fmt(m.fleet.inactiveCount, { count: byTab.inactive.length })} · ${fmt(m.fleet.waitingCount, { count: unassigned.length })}`}
         actions={
-          <MTooltip label={m.fleet.refresh}>
-            <ActionIcon variant="default" size="lg" onClick={() => void refresh()} loading={refreshing} aria-label={m.fleet.refresh}>
-              <IconRefresh size={18} />
-            </ActionIcon>
-          </MTooltip>
+          <Group gap="md">
+            {can('settings.edit') && settings.data && (
+              <MTooltip label={m.fleet.autoAssignHelp} multiline w={280}>
+                <Switch
+                  label={m.fleet.autoAssign}
+                  checked={autoAssign}
+                  disabled={savingAuto}
+                  onChange={(e) => void toggleAutoAssign(e.currentTarget.checked)}
+                  data-testid="auto-assign"
+                />
+              </MTooltip>
+            )}
+            <MTooltip label={m.fleet.refresh}>
+              <ActionIcon variant="default" size="lg" onClick={() => void refresh()} loading={refreshing} aria-label={m.fleet.refresh}>
+                <IconRefresh size={18} />
+              </ActionIcon>
+            </MTooltip>
+          </Group>
         }
       />
       <QueryState isPending={fleet.isPending} error={fleet.error} refetch={fleet.refetch}>
@@ -276,6 +306,18 @@ export default function FleetPage() {
             <Card withBorder p={0} style={{ position: 'relative' }}>
               <MapBase height="var(--cw-map-h)" dark={dark}>
                 <FlyTo target={target} />
+                {/* Zones: an order inside one only goes to drivers inside it. */}
+                {(zones.data ?? [])
+                  .filter((z) => z.active)
+                  .map((z) => (
+                    <Polygon
+                      key={`zone-${z.id}`}
+                      positions={z.polygon.coordinates[0].map(([lng, lat]) => [lat, lng] as [number, number])}
+                      pathOptions={{ color: '#ae3ec9', weight: 2, dashArray: '6 4', fillOpacity: 0.06 }}
+                    >
+                      <Tooltip>{`${m.fleet.zone}: ${z.name}`}</Tooltip>
+                    </Polygon>
+                  ))}
                 <FitOnce points={[...drivers.map((d) => [d.lat!, d.lng!] as [number, number]), ...unassigned.map((o) => [o.delivery.lat, o.delivery.lng] as [number, number])]} />
                 {depotList.map((dp) =>
                   dp.geofencePolygon ? (

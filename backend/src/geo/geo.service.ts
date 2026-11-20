@@ -52,12 +52,15 @@ export class GeoService {
    * no active order (when one-active-order is on), within radius, not already offered this order.
    */
   async eligibleDrivers(orderId: string, lat: number, lng: number, radiusM: number, db: Tx | PrismaService = this.prisma): Promise<EligibleDriver[]> {
-    const [minBalance, staleSec, oneActive, matchVehicle] = await Promise.all([
+    const [minBalance, staleSec, oneActive, matchVehicle, zoneRestricted] = await Promise.all([
       this.settings.get('wallet.min_balance_toea'),
       this.settings.get('driver.location_stale_sec'),
       this.settings.get('order.one_active_per_driver'),
       this.settings.get('dispatch.match_vehicle_size'),
+      this.settings.get('dispatch.zone_restricted'),
     ]);
+    const orderPoint = Prisma.sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)`;
+    const zoneGeom = Prisma.sql`ST_SetSRID(ST_GeomFromGeoJSON(z.polygon::text), 4326)`;
     const activeStatuses = Prisma.sql`('ACCEPTED','LOADING','EN_ROUTE','ARRIVED')`;
     return db.$queryRaw<EligibleDriver[]>(Prisma.sql`
       SELECT dr.id AS "driverId", dr.user_id AS "userId",
@@ -76,18 +79,21 @@ export class GeoService {
         AND (${!oneActive} OR NOT EXISTS (
               SELECT 1 FROM orders o WHERE o.driver_id = dr.id AND o.status IN ${activeStatuses}))
         AND NOT EXISTS (SELECT 1 FROM order_offers oo WHERE oo.order_id = ${orderId}::uuid AND oo.driver_id = dr.id)
-        -- Vehicle size: the truck's class is the largest package size its tank holds, so a 3,000 L tanker
-        -- only gets 3,000 L orders (not 1,000 L or 5,000 L ones).
+        -- Zones: when the order is inside one or more active zones, the driver must be inside one of them too.
+        AND (${!zoneRestricted}
+             OR NOT EXISTS (SELECT 1 FROM zones z WHERE z.active AND z.deleted_at IS NULL AND jsonb_typeof(z.polygon) = 'object'
+                             AND ST_Covers(${zoneGeom}, ${orderPoint}))
+             OR EXISTS (SELECT 1 FROM zones z WHERE z.active AND z.deleted_at IS NULL AND jsonb_typeof(z.polygon) = 'object'
+                         AND ST_Covers(${zoneGeom}, ${orderPoint})
+                         AND ST_Covers(${zoneGeom}, ST_SetSRID(ST_MakePoint(dr.current_lng, dr.current_lat), 4326))))
+        -- Vehicle size: exact match. A 10,000 L order only goes to trucks registered as 10,000 L
+        -- (not smaller or bigger ones).
         AND (${!matchVehicle} OR EXISTS (
               SELECT 1 FROM orders ord
               JOIN packages p ON p.id = ord.package_id
               JOIN trucks t ON t.driver_id = dr.id AND t.deleted_at IS NULL AND t.active
               WHERE ord.id = ${orderId}::uuid
-                AND t.capacity_litres >= p.volume_litres
-                AND t.capacity_litres < COALESCE(
-                      (SELECT MIN(p2.volume_litres) FROM packages p2
-                        WHERE p2.active AND p2.deleted_at IS NULL AND p2.volume_litres > p.volume_litres),
-                      2147483647)))
+                AND t.capacity_litres = p.volume_litres))
       ORDER BY "distanceM" ASC
       LIMIT 50`);
   }
