@@ -133,6 +133,24 @@ body {
 .cw-car--dimmed {
   opacity: 0.6;
 }
+/* Dark (dispatcher) map: black background behind tiles, and OpenStreetMap tiles darkened when Google isn't used. */
+.cw-map-dark.leaflet-container {
+  background: #0d0f12;
+}
+.cw-tiles-darken {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.3);
+}
+.cw-map-dark.leaflet-container .leaflet-control-attribution {
+  background: rgba(13, 15, 18, 0.7);
+  color: #8a9099;
+}
+.cw-map-dark.leaflet-container .leaflet-control-attribution a {
+  color: #a5b4c3;
+}
+.cw-fleet-legend.cw-fleet-legend--dark {
+  background: rgba(20, 22, 26, 0.92);
+  color: #e9ecef;
+}
 .cw-fleet-legend {
   position: absolute;
   left: 10px;
