@@ -33,6 +33,9 @@ export class SettlementService {
   /** On COMPLETED: settle the order (unless already settled). Never called while DISPUTED. */
   async settle(tx: Tx, order: Order, effects: AfterCommit): Promise<void> {
     if (order.settledAt || !order.driverId) return;
+    // Driver-booked order paid by cell money / bank transfer: the driver is credited once the money is in
+    // (PaymentsService settles it then).
+    if ((order.paymentMethod === 'cellmoney' || order.paymentMethod === 'bank_transfer') && order.paymentStatus !== 'paid') return;
     const driverId = order.driverId;
     if (order.paymentMethod === 'cod') {
       // Customer paid the driver cash; the platform's cut comes out of the driver's prepaid wallet.

@@ -401,6 +401,71 @@ describe('orders & dispatch (integration)', () => {
     expect(again.body).toMatchObject({ exists: true, name: 'Peter Wari' });
   });
 
+  it('manual booking paid by cell money or bank transfer: job goes ahead, driver is paid once the money is in', async () => {
+    await h.settings.set('payment.cellmoney.adapter', 'mock', null);
+    await h.settings.set('payment.bank.instructions', 'BSP, Cooper Waters Ltd, account 1000123456', null);
+    const admin = await adminLogin(h);
+    const d = await approvedDriver(h);
+    const opts = await h.http().get('/api/v1/driver/booking-options').set(bearer(d.token)).expect(200);
+    expect(opts.body.paymentMethods).toEqual(['cod', 'cellmoney', 'bank_transfer', 'account']);
+    expect(opts.body.bankInstructions).toContain('1000123456');
+    const book = (body: object) =>
+      h.http().post('/api/v1/driver/bookings').set(bearer(d.token)).set('Idempotency-Key', idem())
+        .send({ phone: '7222 2222', customerName: 'Ruth Kaupa', packageId: pkgId, quantity: 1, location: { ...CUSTOMER_POINT, address: 'Waigani' }, ...body });
+
+    // 1. Cell money: the request goes to the customer's phone (…2222 = the mock never answers); the job starts anyway.
+    const r1 = await book({ paymentMethod: 'cellmoney' });
+    expect(r1.status).toBe(201);
+    expect(r1.body).toMatchObject({ status: 'ACCEPTED', paymentMethod: 'cellmoney', paymentStatus: 'pending', paymentError: null });
+    expect(r1.body.payment).toMatchObject({ status: 'pending', amountToea: 30000 });
+    const o1 = r1.body.id;
+    const customerId = (await h.prisma.order.findUniqueOrThrow({ where: { id: o1 } })).customerId;
+    expect(await h.prisma.notification.count({ where: { userId: customerId, template: 'order.payment_pending' } })).toBeGreaterThan(0);
+
+    // Delivered and confirmed before the money arrived: the driver isn't credited yet.
+    const before = await walletBalance(h, 'driver', d.driverId);
+    await driveToDelivered(d.token, o1);
+    const { otpLogin } = await import('./harness');
+    const c = await otpLogin(h, '+67572222222', 'customer');
+    await h.http().post(`/api/v1/customer/orders/${o1}/confirm`).set(bearer(c.token)).send().expect(200);
+    expect(await walletBalance(h, 'driver', d.driverId)).toBe(before);
+    expect((await h.prisma.order.findUniqueOrThrow({ where: { id: o1 } })).settledAt).toBeNull();
+
+    // The office matches the payment: paid, and the driver gets the earnings.
+    const pay = await h.prisma.payment.findFirstOrThrow({ where: { purposeId: o1, provider: 'cellmoney' } });
+    await h.http().post(`/api/v1/admin/payments/${pay.id}/confirm`).set(bearer(admin)).send({ receiptRef: 'CM-778' }).expect(200);
+    const o1After = await h.prisma.order.findUniqueOrThrow({ where: { id: o1 } });
+    expect(o1After.paymentStatus).toBe('paid');
+    expect(o1After.settledAt).not.toBeNull();
+    expect(await walletBalance(h, 'driver', d.driverId)).toBe(before + 30000 - 3000);
+
+    // 2. Bank transfer: a pending payment for the office to confirm, and the bank details go to the customer.
+    const r2 = await book({ paymentMethod: 'bank_transfer', transferReference: 'BSP 99812' });
+    expect(r2.status).toBe(201);
+    expect(r2.body).toMatchObject({ paymentMethod: 'bank_transfer', paymentStatus: 'pending' });
+    expect(r2.body.payment.instructions).toContain('1000123456');
+    const bank = await h.prisma.payment.findFirstOrThrow({ where: { purposeId: r2.body.id } });
+    expect(bank).toMatchObject({ provider: 'bank', status: 'pending', reference: r2.body.shortCode, amountToea: 30000 });
+    expect(await h.prisma.notification.count({ where: { userId: customerId, template: 'order.pay_by_transfer' } })).toBeGreaterThan(0);
+
+    // The customer would rather pay by cell money (…1111 = paid at once).
+    const sw = await h.http().post(`/api/v1/driver/orders/${r2.body.id}/payment`).set(bearer(d.token)).set('Idempotency-Key', idem())
+      .send({ method: 'cellmoney', msisdn: '7333 1111' }).expect(200);
+    expect(sw.body.order).toMatchObject({ paymentMethod: 'cellmoney', paymentStatus: 'paid' });
+    expect((await h.prisma.payment.findUniqueOrThrow({ where: { id: bank.id } })).status).toBe('failed');
+    // Already paid: can't switch to cash now.
+    expect((await h.http().post(`/api/v1/driver/orders/${r2.body.id}/payment`).set(bearer(d.token)).set('Idempotency-Key', idem()).send({ method: 'cod' })).status).toBe(409);
+    await h.http().post(`/api/v1/admin/orders/${r2.body.id}/cancel`).set(bearer(admin)).send({ reason: 'test cleanup' });
+
+    // 3. Cell money request not answered: the driver takes cash instead.
+    await h.prisma.order.updateMany({ where: { driverId: d.driverId, status: { notIn: ['COMPLETED', 'CANCELLED'] } }, data: { status: 'CANCELLED' } });
+    const r3 = await book({ paymentMethod: 'cellmoney', msisdn: '7444 2222' });
+    expect(r3.status).toBe(201);
+    const cash = await h.http().post(`/api/v1/driver/orders/${r3.body.id}/payment`).set(bearer(d.token)).set('Idempotency-Key', idem()).send({ method: 'cod' }).expect(200);
+    expect(cash.body.order).toMatchObject({ paymentMethod: 'cod', paymentStatus: 'unpaid' });
+    expect((await h.prisma.payment.findFirstOrThrow({ where: { purposeId: r3.body.id } })).status).toBe('failed');
+  });
+
   it('one active order per driver', async () => {
     const d = await approvedDriver(h);
     const c = await customer(h);

@@ -46,8 +46,17 @@ skipped if a receipt was already sent by hand. Settings: `receipt.auto_send` (on
 Driver app → menu → **Book for a customer**. For a customer who phoned the driver or stopped the truck:
 enter the customer's phone number (the app shows whether it's a registered customer; a new number gets a
 customer account automatically), their name, the water (only packages matching the driver's truck size),
-the delivery address (type to search, or **Use my location**) and payment (cash, or company account when
-the customer belongs to a company). **Book and start the job** creates the order already assigned to that
+the delivery address (type to search, or **Use my location**) and payment:
+- **Cash on delivery** – the driver collects the cash.
+- **Cell money** – a payment request goes to the customer's phone (or another number the driver types).
+- **Bank transfer** – the customer gets an SMS with the bank details (Admin → Settings →
+  `payment.bank.instructions`, e.g. "BSP, Cooper Waters Ltd, account 1000123456") and the order code as the
+  reference. The office confirms it in **Admin → Payments** once the money is in the bank.
+- **Company account** – when the customer belongs to a company.
+
+For cell money and bank transfer the job goes ahead straight away; the job screen shows "Not paid yet" until
+the money is in, with **Send request again** / **Pay by cell money** and **Customer pays cash** buttons. The
+driver's earnings for such a job are credited once the payment is confirmed. **Book and start the job** creates the order already assigned to that
 driver — it is not offered to other drivers — and the customer gets the usual "driver accepted" SMS/push.
 The customer can later sign in with that phone number and see the order. The same rules apply as for
 accepting jobs: one job at a time and the wallet above the minimum. Admins see these orders like any other.

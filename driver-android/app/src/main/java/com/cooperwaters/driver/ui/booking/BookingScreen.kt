@@ -83,6 +83,8 @@ data class BookingUi(
     val results: List<GeoPlace> = emptyList(),
     val searching: Boolean = false,
     val paymentMethod: String = "cod",
+    val msisdn: String = "",
+    val transferReference: String = "",
     val submitting: Boolean = false,
     val error: UiText? = null,
     val bookedOrderId: String? = null,
@@ -129,7 +131,7 @@ class BookingViewModel(private val api: DriverApi) : ViewModel() {
                         lookingUp = false,
                         lookup = r.value,
                         name = if (s.name.isBlank()) r.value.name.orEmpty() else s.name,
-                        paymentMethod = if (r.value.company == null) "cod" else s.paymentMethod,
+                        paymentMethod = if (r.value.company == null && s.paymentMethod == "account") "cod" else s.paymentMethod,
                     )
                 }
                 is ApiResult.Failure -> _ui.update { it.copy(lookingUp = false, error = r.error.toUiText()) }
@@ -141,7 +143,9 @@ class BookingViewModel(private val api: DriverApi) : ViewModel() {
     fun onPackage(id: String) = _ui.update { it.copy(packageId = id) }
     fun onQuantity(delta: Int) = _ui.update { it.copy(quantity = (it.quantity + delta).coerceIn(1, it.options?.maxQuantity ?: 10)) }
     fun onNotes(v: String) = _ui.update { it.copy(notes = v.take(500)) }
-    fun onPayment(m: String) = _ui.update { it.copy(paymentMethod = m) }
+    fun onPayment(m: String) = _ui.update { it.copy(paymentMethod = m, error = null) }
+    fun onMsisdn(v: String) = _ui.update { it.copy(msisdn = v.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(20)) }
+    fun onTransferReference(v: String) = _ui.update { it.copy(transferReference = v.take(120)) }
 
     fun onAddress(v: String) {
         _ui.update { it.copy(address = v.take(300)) }
@@ -204,6 +208,8 @@ class BookingViewModel(private val api: DriverApi) : ViewModel() {
                 quantity = s.quantity,
                 location = DeliveryLocation(lat = lat, lng = lng, address = s.address.trim(), notes = s.notes.trim().ifBlank { null }),
                 paymentMethod = s.paymentMethod,
+                msisdn = if (s.paymentMethod == "cellmoney") s.msisdn.trim().ifBlank { null } else null,
+                transferReference = if (s.paymentMethod == "bank_transfer") s.transferReference.trim().ifBlank { null } else null,
             )
             when (val r = apiCall { api.book(idempotencyKey, body) }) {
                 is ApiResult.Success -> _ui.update { it.copy(submitting = false, bookedOrderId = r.value.id) }
@@ -335,15 +341,45 @@ fun BookingScreen(onBack: () -> Unit, onBooked: (String) -> Unit) {
             // ── Payment ──
             SectionTitle(stringResource(R.string.booking_payment))
             val company = ui.lookup?.company
-            val methods = if (company != null) listOf("cod", "account") else listOf("cod")
+            val methods = listOf("cod", "cellmoney", "bank_transfer") + if (company != null) listOf("account") else emptyList()
             for (m in methods) {
                 Row(
                     Modifier.fillMaxWidth().selectable(selected = ui.paymentMethod == m, onClick = { vm.onPayment(m) }).padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(selected = ui.paymentMethod == m, onClick = { vm.onPayment(m) })
-                    Text(if (m == "account") stringResource(R.string.booking_pay_account, company?.name.orEmpty()) else stringResource(R.string.booking_pay_cash))
+                    Text(
+                        when (m) {
+                            "account" -> stringResource(R.string.booking_pay_account, company?.name.orEmpty())
+                            "cellmoney" -> stringResource(R.string.booking_pay_cellmoney)
+                            "bank_transfer" -> stringResource(R.string.booking_pay_bank)
+                            else -> stringResource(R.string.booking_pay_cash)
+                        },
+                    )
                 }
+            }
+            if (ui.paymentMethod == "cellmoney") {
+                Text(stringResource(R.string.booking_pay_cellmoney_help), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    ui.msisdn,
+                    vm::onMsisdn,
+                    label = { Text(stringResource(R.string.booking_pay_cellmoney_number)) },
+                    placeholder = { Text(ui.phone) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (ui.paymentMethod == "bank_transfer") {
+                Text(stringResource(R.string.booking_pay_bank_help), style = MaterialTheme.typography.bodySmall)
+                options?.bankInstructions?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                OutlinedTextField(
+                    ui.transferReference,
+                    vm::onTransferReference,
+                    label = { Text(stringResource(R.string.booking_pay_bank_reference)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             ui.totalToea?.let {

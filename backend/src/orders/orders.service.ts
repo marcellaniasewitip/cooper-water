@@ -8,6 +8,7 @@ import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../storage/storage.service';
 import { LedgerService } from '../wallet/ledger.service';
 import { CompaniesService } from '../companies/companies.service';
+import { PaymentsService } from '../payments/payments.service';
 import { PromosService } from '../promos/promos.service';
 import { AfterCommit } from '../common/after-commit';
 import { Errors } from '../common/errors';
@@ -33,6 +34,7 @@ export class OrdersService implements OnModuleInit {
     private readonly transitions: OrderTransitionsService,
     private readonly promos: PromosService,
     private readonly companies: CompaniesService,
+    private readonly payments: PaymentsService,
   ) {}
 
   onModuleInit(): void {
@@ -282,7 +284,9 @@ export class OrdersService implements OnModuleInit {
       truck: truck ? { plate: truck.plate, capacityLitres: truck.capacityLitres } : null,
       packages: packages.map((p) => ({ id: p.id, name: p.name, volumeLitres: p.volumeLitres, priceToea: p.priceToea })),
       maxQuantity: await this.settings.get('order.max_quantity'),
-      paymentMethods: ['cod', 'account'],
+      paymentMethods: ['cod', 'cellmoney', 'bank_transfer', 'account'],
+      /** Shown to the driver (and sent to the customer) for bank transfers. */
+      bankInstructions: await this.settings.get('payment.bank.instructions'),
     };
   }
 
@@ -362,7 +366,7 @@ export class OrdersService implements OnModuleInit {
             deliveryAddress: dto.location.address,
             deliveryNotes: dto.location.notes ?? '',
             paymentMethod: dto.paymentMethod,
-            paymentStatus: onAccount ? 'paid' : 'unpaid',
+            paymentStatus: onAccount ? 'paid' : dto.paymentMethod === 'cod' ? 'unpaid' : 'pending',
             status: 'PENDING_PAYMENT',
           },
         });
@@ -378,7 +382,21 @@ export class OrdersService implements OnModuleInit {
       }),
     );
     await effects.run();
-    return this.getForDriver(driverId, order.id);
+
+    // Electronic payment for the booked order: the job is already the driver's, the payment follows.
+    let payment: unknown = null;
+    let paymentError: string | null = null;
+    try {
+      if (dto.paymentMethod === 'cellmoney') {
+        payment = await this.payments.startBookedOrderPayment(order.id, dto.msisdn?.trim() || phone, 'booking');
+      } else if (dto.paymentMethod === 'bank_transfer') {
+        payment = await this.payments.createBankTransferPayment(order.id, dto.transferReference?.trim() || undefined);
+      }
+    } catch (err: any) {
+      paymentError = err?.response?.error?.message ?? err?.message ?? 'The payment request could not be sent';
+      await this.prisma.order.updateMany({ where: { id: order.id, paymentStatus: 'pending' }, data: { paymentStatus: 'failed' } });
+    }
+    return { ...(await this.getForDriver(driverId, order.id)), payment, paymentError };
   }
 
   async decline(driverId: string, orderId: string) {

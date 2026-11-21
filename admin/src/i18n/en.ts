@@ -878,7 +878,7 @@ export const en = {
       FAILED: 'Failed',
       DISPUTED: 'Disputed',
     } as Record<string, string>,
-    paymentMethod: { cod: 'Cash on delivery', cellmoney: 'Cell money', wallet: 'Customer wallet', account: 'Company account' } as Record<string, string>,
+    paymentMethod: { cod: 'Cash on delivery', cellmoney: 'Cell money', wallet: 'Customer wallet', account: 'Company account', bank_transfer: 'Bank transfer' } as Record<string, string>,
     driverStatus: {
       pending_docs: 'Pending documents',
       pending_approval: 'Pending approval',

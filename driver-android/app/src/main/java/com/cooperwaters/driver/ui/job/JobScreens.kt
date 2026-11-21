@@ -62,6 +62,7 @@ import com.cooperwaters.core.android.ui.LoadingButton
 import com.cooperwaters.core.android.ui.MapCenter
 import com.cooperwaters.core.android.ui.MapMarker
 import com.cooperwaters.core.money.Money
+import com.cooperwaters.core.net.Order
 import com.cooperwaters.core.order.EtaFormat
 import com.cooperwaters.core.time.PomTime
 import com.cooperwaters.driver.R
@@ -267,6 +268,9 @@ fun JobScreen(orderId: String, onBack: () -> Unit, onReportIssue: () -> Unit, on
                         order.earningsToea?.let { LabelValue(stringResource(R.string.job_earnings), Money.format(it)) }
                         order.commissionToea?.let { LabelValue(stringResource(R.string.job_commission), Money.format(it)) }
                         LabelValue(stringResource(R.string.job_payment), stringResource(Labels.paymentMethod(order.paymentMethod)))
+                        if (order.paymentMethod == "cellmoney" || order.paymentMethod == "bank_transfer") {
+                            ElectronicPayment(order, busy = ui.busy, onRetry = { vm.changePayment("cellmoney", it) }, onCash = { vm.changePayment("cod") })
+                        }
                         if (order.paymentMethod == "cod") {
                             Text(stringResource(R.string.job_collect_cash, Money.format(order.payableToea)), fontWeight = FontWeight.SemiBold)
                             if (order.discountToea > 0) {
@@ -326,5 +330,39 @@ private fun SignatureSection(signature: SignatureState, name: String, onName: (S
     SignaturePad(signature, stringResource(R.string.signature_hint), Modifier.fillMaxWidth().height(170.dp))
     if (!signature.isEmpty) {
         TextButton(onClick = signature::clear) { Text(stringResource(R.string.signature_clear)) }
+    }
+}
+
+/** Booked order paid by cell money / bank transfer: show whether the money is in, and let the driver retry or take cash. */
+@Composable
+private fun ElectronicPayment(order: Order, busy: Boolean, onRetry: (String?) -> Unit, onCash: () -> Unit) {
+    val paid = order.paymentStatus == "paid"
+    val open = order.status !in listOf("COMPLETED", "CANCELLED", "EXPIRED", "FAILED")
+    Text(
+        when {
+            paid -> stringResource(R.string.job_pay_paid)
+            order.paymentMethod == "bank_transfer" -> stringResource(R.string.job_pay_bank_waiting, order.shortCode)
+            order.paymentStatus == "failed" -> stringResource(R.string.job_pay_cellmoney_failed)
+            else -> stringResource(R.string.job_pay_cellmoney_waiting)
+        },
+        fontWeight = FontWeight.SemiBold,
+        color = if (paid) androidx.compose.ui.graphics.Color(0xFF2E7D32) else MaterialTheme.colorScheme.error,
+    )
+    if (!paid && open) {
+        var number by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+        OutlinedTextField(
+            number,
+            { v -> number = v.filter { it.isDigit() || it == '+' || it == ' ' }.take(20) },
+            label = { Text(stringResource(R.string.job_pay_number)) },
+            singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { onRetry(number) }, enabled = !busy) {
+                Text(stringResource(if (order.paymentMethod == "bank_transfer") R.string.job_pay_use_cellmoney else R.string.job_pay_retry))
+            }
+            OutlinedButton(onClick = onCash, enabled = !busy) { Text(stringResource(R.string.job_pay_take_cash)) }
+        }
     }
 }

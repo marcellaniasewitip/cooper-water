@@ -22,6 +22,13 @@ export const DEFAULT_TEMPLATES: TemplateDef[] = [
     critical: false,
   },
   {
+    key: 'order.pay_by_transfer',
+    pushTitle: 'Pay by bank transfer',
+    pushBody: 'Transfer {{amount}} for order {{shortCode}}. Use {{shortCode}} as the reference.',
+    smsBody: 'Cooper Waters: transfer {{amount}} for order {{shortCode}}. {{instructions}} Reference: {{shortCode}}',
+    critical: true,
+  },
+  {
     key: 'order.searching',
     pushTitle: 'Finding a driver',
     pushBody: 'We are finding a water cart for order {{shortCode}}.',

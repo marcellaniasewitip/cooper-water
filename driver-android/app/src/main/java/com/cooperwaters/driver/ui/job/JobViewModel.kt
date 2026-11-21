@@ -11,6 +11,7 @@ import com.cooperwaters.core.net.Eta
 import com.cooperwaters.core.net.SendReceiptRequest
 import com.cooperwaters.core.net.SignatureRequest
 import com.cooperwaters.core.net.DisputeRequest
+import com.cooperwaters.core.net.DriverOrderPaymentRequest
 import com.cooperwaters.core.net.ErrorCodes
 import com.cooperwaters.core.net.OptionalPositionRequest
 import com.cooperwaters.core.net.Order
@@ -192,6 +193,26 @@ class JobViewModel(
         when (val r = apiCall { repo.api.order(orderId) }) {
             is ApiResult.Success -> apply(r.value)
             is ApiResult.Failure -> if (_ui.value.order == null) _ui.update { it.copy(error = r.error.toUiText()) }
+        }
+    }
+
+    /** Booked order not paid yet: send the cell money request again ("cellmoney") or take cash ("cod"). */
+    fun changePayment(method: String, msisdn: String? = null) {
+        _ui.update { it.copy(busy = true, error = null, info = null) }
+        viewModelScope.launch {
+            val key = java.util.UUID.randomUUID().toString()
+            when (val r = apiCall { repo.api.orderPayment(key, orderId, DriverOrderPaymentRequest(method, msisdn?.ifBlank { null })) }) {
+                is ApiResult.Success -> {
+                    apply(r.value.order)
+                    _ui.update {
+                        it.copy(
+                            busy = false,
+                            info = UiText.res(if (method == "cod") R.string.job_pay_switched_cash else R.string.job_pay_request_sent),
+                        )
+                    }
+                }
+                is ApiResult.Failure -> _ui.update { it.copy(busy = false, error = r.error.toUiText()) }
+            }
         }
     }
 

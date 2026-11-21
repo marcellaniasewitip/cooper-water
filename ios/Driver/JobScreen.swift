@@ -57,6 +57,8 @@ struct JobScreen: View {
     @State private var receiptBusy = false
     @State private var receiptInfo: String?
     @State private var receiptError: String?
+    @State private var payNumber = ""
+    @State private var payInfo: String?
     private let etaTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -76,8 +78,12 @@ struct JobScreen: View {
                             if let a = o.delivery?.address { Text(a) }
                             if let n = o.delivery?.notes, !n.isEmpty { Text("Landmark: \(n)").font(.caption).foregroundColor(.secondary) }
                             Text("\(o.quantity ?? 1) × \(o.package?.name ?? "") (\(o.package?.volumeLitres ?? 0) L)").font(.subheadline)
-                            Text(o.paymentMethod == "cod" ? "Collect \(Money.format(o.amountDueToea)) in cash" : "Paid: \(Labels.paymentMethod(o.paymentMethod))")
-                                .font(.subheadline.bold()).foregroundColor(o.paymentMethod == "cod" ? .orange : .cwGreen)
+                            if o.paymentMethod == "cellmoney" || o.paymentMethod == "bank_transfer" {
+                                electronicPayment(o)
+                            } else {
+                                Text(o.paymentMethod == "cod" ? "Collect \(Money.format(o.amountDueToea)) in cash" : "Paid: \(Labels.paymentMethod(o.paymentMethod))")
+                                    .font(.subheadline.bold()).foregroundColor(o.paymentMethod == "cod" ? .orange : .cwGreen)
+                            }
                             HStack(spacing: 10) {
                                 if let phone = o.customer?.phone { Button { Phone.dial(phone) } label: { Label("Call", systemImage: "phone.fill") }.buttonStyle(.bordered) }
                                 Button { router.go(.chat(orderId: orderId)) } label: { Label("Message", systemImage: "message.fill") }.buttonStyle(.bordered)
@@ -132,6 +138,47 @@ struct JobScreen: View {
         }
         .onReceive(etaTimer) { _ in Task { await loadEta() } }
         .sheet(isPresented: $showCamera) { PhotoPicker(image: $proof).ignoresSafeArea() }
+    }
+
+    /// Booked order paid by cell money / bank transfer: whether the money is in; retry or take cash.
+    @ViewBuilder
+    private func electronicPayment(_ o: Order) -> some View {
+        let paid = o.paymentStatus == "paid"
+        let open = !["COMPLETED", "CANCELLED", "EXPIRED", "FAILED"].contains(o.status)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(paid ? "Paid: \(Labels.paymentMethod(o.paymentMethod))"
+                 : o.paymentMethod == "bank_transfer" ? "Not paid yet: waiting for the office to confirm the bank transfer (reference \(o.code))."
+                 : o.paymentStatus == "failed" ? "The cell money payment did not go through."
+                 : "Not paid yet: waiting for the customer to approve the cell money request.")
+                .font(.subheadline.bold()).foregroundColor(paid ? .cwGreen : .orange)
+            if !paid && open {
+                TextField("Other cell money number (optional)", text: $payNumber).keyboardType(.phonePad).textFieldStyle(.roundedBorder)
+                HStack {
+                    Button(o.paymentMethod == "bank_transfer" ? "Pay by cell money" : "Send request again") { changePayment("cellmoney") }
+                        .buttonStyle(.bordered).disabled(busy)
+                    Button("Customer pays cash") { changePayment("cod") }
+                        .buttonStyle(.bordered).disabled(busy)
+                }
+            }
+            if let payInfo { Text(payInfo).font(.caption).foregroundColor(.secondary) }
+        }
+    }
+
+    private func changePayment(_ method: String) {
+        busy = true
+        error = nil
+        payInfo = nil
+        let number = payNumber.trimmingCharacters(in: .whitespaces)
+        Task {
+            do {
+                let r = try await state.api.orderPayment(orderId, method: method, msisdn: method == "cellmoney" && !number.isEmpty ? number : nil, key: newIdempotencyKey())
+                order = r.order
+                payInfo = method == "cod" ? "Changed to cash: collect the money from the customer." : "Cell money request sent to the customer."
+            } catch {
+                self.error = error.localizedDescription
+            }
+            busy = false
+        }
     }
 
     private func map(_ o: Order) -> some View {

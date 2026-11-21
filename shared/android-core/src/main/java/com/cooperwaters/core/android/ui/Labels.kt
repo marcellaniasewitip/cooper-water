@@ -28,6 +28,7 @@ object Labels {
         "cellmoney" -> R.string.cw_payment_cellmoney
         "wallet" -> R.string.cw_payment_wallet
         "account" -> R.string.cw_payment_account
+        "bank_transfer" -> R.string.cw_payment_bank
         else -> R.string.cw_payment_cod
     }
 

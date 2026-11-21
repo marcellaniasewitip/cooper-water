@@ -9,6 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { WalletService } from '../wallet/wallet.service';
 import { OrderTransitionsService } from '../orders/transitions.service';
 import { RefundsService } from './refunds.service';
+import { SettlementService } from '../orders/settlement.service';
 import { PaymentProvidersRegistry } from './providers.registry';
 import { PaymentProvider } from './payment-provider';
 import { AfterCommit } from '../common/after-commit';
@@ -38,6 +39,7 @@ export class PaymentsService implements OnModuleInit {
     private readonly transitions: OrderTransitionsService,
     private readonly refunds: RefundsService,
     private readonly registry: PaymentProvidersRegistry,
+    private readonly settlement: SettlementService,
   ) {}
 
   onModuleInit(): void {
@@ -71,6 +73,104 @@ export class PaymentsService implements OnModuleInit {
       idempotencyKey: `order:${order.id}:${idempotencyKey}`,
     });
     return this.view(p);
+  }
+
+  /**
+   * Driver booking paid by cell money: send the payment request to the customer (the job is already the
+   * driver's, so the order doesn't wait for it). Returns the open payment if there already is one.
+   */
+  async startBookedOrderPayment(orderId: string, msisdnInput: string, attemptKey: string) {
+    const order = await this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    if (order.paymentMethod !== 'cellmoney') throw Errors.badRequest('not_cellmoney', 'This order is not paid by cell money');
+    if (order.paymentStatus === 'paid') throw Errors.conflict('already_paid', 'This order is already paid');
+    const open = await this.prisma.payment.findFirst({ where: { purpose: 'order', purposeId: orderId, status: { in: OPEN } } });
+    if (open) return this.view(open);
+    const p = await this.initiate({
+      purpose: 'order',
+      purposeId: order.id,
+      baseAmountToea: order.priceToea - order.discountToea,
+      msisdn: normalisePhone(msisdnInput),
+      reference: order.shortCode,
+      idempotencyKey: `order:${order.id}:${attemptKey}`,
+    });
+    const v = await this.view(p);
+    if (p.status !== 'succeeded') {
+      await this.notifications.notify(order.customerId, 'order.payment_pending', {
+        orderId: order.id,
+        shortCode: order.shortCode,
+        amount: formatKina(p.amountToea),
+        instructions: v.instructions,
+      });
+    }
+    return v;
+  }
+
+  /**
+   * Driver booking paid by bank transfer: an incoming payment the office confirms (Admin → Payments) once the
+   * money is in the bank, matched by the order code. The customer is sent the bank details.
+   */
+  async createBankTransferPayment(orderId: string, transferReference?: string) {
+    const order = await this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    const instructions = await this.settings.get('payment.bank.instructions');
+    const p = await this.prisma.payment.upsert({
+      where: { idempotencyKey: `order:${order.id}:bank` },
+      create: {
+        provider: 'bank',
+        adapter: 'manual',
+        direction: 'in',
+        amountToea: order.priceToea - order.discountToea,
+        feeToea: 0,
+        feeBearer: 'platform',
+        status: 'pending',
+        reference: order.shortCode,
+        purpose: 'order',
+        purposeId: order.id,
+        idempotencyKey: `order:${order.id}:bank`,
+        rawPayload: transferReference ? { customerReference: transferReference } : undefined,
+      },
+      update: {},
+    });
+    await this.notifications.notify(order.customerId, 'order.pay_by_transfer', {
+      orderId: order.id,
+      shortCode: order.shortCode,
+      amount: formatKina(p.amountToea),
+      instructions: instructions || 'Ask your driver or Cooper Waters for the bank details.',
+    });
+    return this.view(p);
+  }
+
+  /** Driver: send the cell money request again, or switch an unpaid booked order to cash. */
+  async driverOrderPayment(driverId: string, orderId: string, method: 'cellmoney' | 'cod', msisdn: string | undefined, key: string) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId }, include: { customer: { select: { phone: true } } } });
+    if (!order || order.driverId !== driverId) throw Errors.notFound('Order');
+    if (order.paymentStatus === 'paid' || order.paymentStatus === 'refunded' || order.paymentStatus === 'refund_pending') {
+      throw Errors.conflict('already_paid', 'This order is already paid');
+    }
+    if (!['cod', 'cellmoney', 'bank_transfer'].includes(order.paymentMethod)) throw Errors.conflict('payment_locked', 'The payment for this order can\'t be changed');
+    if (['COMPLETED', 'CANCELLED', 'EXPIRED', 'FAILED'].includes(order.status)) throw Errors.conflict('order_closed', 'This order is closed');
+    if (method === 'cod') {
+      await this.prisma.tx(async (tx) => {
+        // Stop waiting for the electronic payment; a late success is refunded (see onOrderPayment).
+        await tx.payment.updateMany({
+          where: { purpose: 'order', purposeId: order.id, status: { in: OPEN } },
+          data: { status: 'failed', failureReason: 'Customer paid cash to the driver instead' },
+        });
+        await tx.order.update({ where: { id: order.id }, data: { paymentMethod: 'cod', paymentStatus: 'unpaid' } });
+      });
+      return { paymentMethod: 'cod', payment: null };
+    }
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: { paymentMethod: 'cellmoney', paymentStatus: 'pending' },
+    });
+    if (order.paymentMethod === 'bank_transfer') {
+      await this.prisma.payment.updateMany({
+        where: { purpose: 'order', purposeId: order.id, provider: 'bank', status: { in: OPEN } },
+        data: { status: 'failed', failureReason: 'Switched to cell money' },
+      });
+    }
+    const payment = await this.startBookedOrderPayment(order.id, msisdn || order.customer.phone, key);
+    return { paymentMethod: 'cellmoney', payment };
   }
 
   /** Driver: top up by cell money. With the manual adapter it lands in the admin approval queue. */
@@ -301,6 +401,15 @@ export class PaymentsService implements OnModuleInit {
     const order = await this.transitions.lock(tx, p.purposeId);
     const actor = meta.adminId ? { type: 'admin' as const, id: meta.adminId } : { type: 'system' as const, id: null };
     if (status === 'succeeded') {
+      // A driver-booked order is already under way when the money arrives: just mark it paid (and pay the
+      // driver if the delivery is already complete). Anything else after the order closed is refunded.
+      const methodMatches = (order.paymentMethod === 'cellmoney' && p.provider === 'cellmoney') || (order.paymentMethod === 'bank_transfer' && p.provider === 'bank');
+      const underway = !['PENDING_PAYMENT', 'CANCELLED', 'EXPIRED', 'FAILED'].includes(order.status);
+      if (underway && methodMatches && order.paymentStatus !== 'paid') {
+        const paidOrder = await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'paid' } });
+        if (paidOrder.status === 'COMPLETED' && !paidOrder.settledAt) await this.settlement.settle(tx, paidOrder, effects);
+        return;
+      }
       const paid = await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'paid' } });
       if (order.status === 'PENDING_PAYMENT') {
         await this.transitions.transition(tx, paid, 'SEARCHING', actor, effects, { metadata: { paymentId: p.id, via: meta.source } });
@@ -310,7 +419,12 @@ export class PaymentsService implements OnModuleInit {
       }
       return;
     }
-    if (order.status !== 'PENDING_PAYMENT') return;
+    if (order.status !== 'PENDING_PAYMENT') {
+      // Driver-booked order: the job goes on; show the driver that the payment didn't come through.
+      const stillOpen = await tx.payment.count({ where: { purpose: 'order', purposeId: order.id, status: { in: OPEN }, id: { not: p.id } } });
+      if (stillOpen === 0 && order.paymentStatus === 'pending') await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'failed' } });
+      return;
+    }
     const otherOpen = await tx.payment.count({ where: { purpose: 'order', purposeId: order.id, status: { in: OPEN }, id: { not: p.id } } });
     if (otherOpen > 0) return;
     const failed = await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'failed' } });
@@ -385,7 +499,9 @@ export class PaymentsService implements OnModuleInit {
       expiresAt: p.expiresAt,
       failureReason: p.failureReason,
       manual: provider.manual,
-      instructions: provider.manual
+      instructions: p.provider === 'bank'
+        ? `Transfer ${formatKina(p.amountToea)} to Cooper Waters with reference ${p.reference}. ${(await this.settings.get('payment.bank.instructions')) || ''}`.trim()
+        : provider.manual
         ? `Send ${formatKina(p.amountToea)} by cell money to ${merchant || 'the Cooper Waters merchant number'} with reference ${p.reference}.`
         : 'Approve the payment request on your phone.',
     };

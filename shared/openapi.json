@@ -1477,6 +1477,62 @@
         ]
       }
     },
+    "/api/v1/driver/orders/{id}/payment": {
+      "post": {
+        "operationId": "DriverController_orderPayment",
+        "summary": "",
+        "description": "Booked order not paid yet: send the cell money request again (optionally to another number), or take cash\ninstead (method = cod).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key per logical request (UUID recommended)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverOrderPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/driver/orders/active": {
       "get": {
         "operationId": "DriverController_active",
@@ -5970,11 +6026,24 @@
           },
           "paymentMethod": {
             "type": "string",
-            "description": "cod = customer pays the driver cash; account = charged to the customer's company account.",
+            "description": "cod = customer pays the driver cash; cellmoney = a payment request goes to [msisdn] (default: the customer's\nphone); bank_transfer = the customer transfers to Cooper Waters with the order code as reference (the office\nconfirms it); account = charged to the customer's company account.",
             "enum": [
               "cod",
+              "cellmoney",
+              "bank_transfer",
               "account"
             ]
+          },
+          "msisdn": {
+            "type": "string",
+            "description": "Cell money number to charge (defaults to the customer's phone).",
+            "minLength": 6,
+            "maxLength": 20
+          },
+          "transferReference": {
+            "type": "string",
+            "description": "Bank transfer: the customer's transfer reference / receipt number, if they already paid.",
+            "maxLength": 120
           }
         },
         "required": [
@@ -5983,6 +6052,26 @@
           "quantity",
           "location",
           "paymentMethod"
+        ]
+      },
+      "DriverOrderPaymentDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "cellmoney",
+              "cod"
+            ]
+          },
+          "msisdn": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "method"
         ]
       },
       "SignatureDto": {
