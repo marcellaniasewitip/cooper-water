@@ -699,3 +699,41 @@ data class GeoSearchResult(val items: List<GeoPlace> = emptyList())
 
 @Serializable
 data class GeoReverseResult(val place: GeoPlace? = null)
+
+// ── Manual booking (driver books water for a customer by phone) ──
+
+@Serializable
+data class BookingTruck(val plate: String = "", val capacityLitres: Int = 0)
+
+@Serializable
+data class BookingPackage(val id: String, val name: String, val volumeLitres: Int = 0, val priceToea: Long = 0)
+
+@Serializable
+data class BookingOptions(
+    val truck: BookingTruck? = null,
+    val packages: List<BookingPackage> = emptyList(),
+    val maxQuantity: Int = 10,
+    val paymentMethods: List<String> = listOf("cod"),
+)
+
+@Serializable
+data class CustomerLookupCompany(val name: String = "")
+
+@Serializable
+data class CustomerLookup(
+    val phone: String = "",
+    val exists: Boolean = false,
+    val name: String? = null,
+    val company: CustomerLookupCompany? = null,
+)
+
+@Serializable
+data class DriverBookingRequest(
+    val phone: String,
+    val customerName: String? = null,
+    val packageId: String,
+    val quantity: Int,
+    val location: DeliveryLocation,
+    /** "cod" | "account" */
+    val paymentMethod: String,
+)

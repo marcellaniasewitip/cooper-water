@@ -136,3 +136,10 @@ export class OptionalPositionDto {
 }
 
 export class DriverListQuery extends CursorQuery {}
+
+/** Manual booking: look a customer up by phone. */
+export class CustomerLookupQuery {
+  @IsString()
+  @Length(6, 20)
+  phone: string;
+}

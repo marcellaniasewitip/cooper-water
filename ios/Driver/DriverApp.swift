@@ -40,6 +40,7 @@ enum DriverRoute: Hashable {
     case announcements
     case profile
     case support
+    case book
 }
 
 @MainActor
@@ -135,6 +136,7 @@ struct DriverRoot: View {
         case .announcements: AnnouncementsScreen()
         case .profile: DriverProfileScreen(onboarding: false)
         case .support: DriverSupportScreen()
+        case .book: BookingScreen()
         }
     }
 }

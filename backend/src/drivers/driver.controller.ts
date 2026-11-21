@@ -15,8 +15,8 @@ import { DisputesService } from '../disputes/disputes.service';
 import { CustomersService } from '../customers/customers.service';
 import { SettingsService } from '../settings/settings.service';
 import { PushTokenDto, UpdateProfileDto } from '../customers/customer.dto';
-import { DeliveredDto, DisputeDto, PositionDto, SendReceiptDto, SignatureDto } from '../orders/orders.dto';
-import { EarningsQuery, LocationBatchDto, OptionalPositionDto, SubmitDocumentDto, TopupDto, TruckDto, UploadRequestDto, WithdrawalDto } from './driver.dto';
+import { DeliveredDto, DisputeDto, DriverBookingDto, PositionDto, SendReceiptDto, SignatureDto } from '../orders/orders.dto';
+import { CustomerLookupQuery, EarningsQuery, LocationBatchDto, OptionalPositionDto, SubmitDocumentDto, TopupDto, TruckDto, UploadRequestDto, WithdrawalDto } from './driver.dto';
 import { Errors } from '../common/errors';
 import { ChatService } from '../chat/chat.service';
 import { BROADCAST_TEMPLATE, NotificationsService } from '../notifications/notifications.service';
@@ -168,6 +168,29 @@ export class DriverController {
   @HttpCode(204)
   async decline(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     await this.orders.decline(await this.driverId(u), id);
+  }
+
+  /** Manual booking: what the driver can book (packages for their truck size, payment methods). */
+  @Get('booking-options')
+  async bookingOptions(@CurrentUser() u: UserPrincipal) {
+    return this.orders.bookingOptions(await this.driverId(u));
+  }
+
+  /** Manual booking: check who a phone number belongs to before booking. */
+  @Get('customers/lookup')
+  async lookupCustomer(@CurrentUser() u: UserPrincipal, @Query() q: CustomerLookupQuery) {
+    await this.driverId(u);
+    return this.orders.lookupCustomer(q.phone);
+  }
+
+  /**
+   * Manual booking: book water for a customer by their phone number (a new number gets a customer account).
+   * The job is assigned to this driver straight away; the customer gets an SMS/push with the order.
+   */
+  @Post('bookings')
+  @Idempotent()
+  async book(@CurrentUser() u: UserPrincipal, @Body() dto: DriverBookingDto) {
+    return this.orders.bookForCustomer(await this.driverId(u), dto);
   }
 
   @Get('orders/active')
