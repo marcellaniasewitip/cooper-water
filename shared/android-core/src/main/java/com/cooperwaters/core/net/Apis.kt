@@ -216,6 +216,26 @@ interface DriverApi {
     @GET("driver/vehicle-types")
     suspend fun vehicleTypes(): List<VehicleType>
 
+    // Manual booking: the driver books water for a customer by phone; the job is theirs straight away.
+    @GET("driver/booking-options")
+    suspend fun bookingOptions(): BookingOptions
+
+    @GET("driver/customers/lookup")
+    suspend fun lookupCustomer(@Query("phone") phone: String): CustomerLookup
+
+    /** Idempotent. Returns the new job (already accepted by this driver). */
+    @POST("driver/bookings")
+    suspend fun book(@Header(IDEMPOTENCY_HEADER) key: String, @Body body: DriverBookingRequest): Order
+
+    @GET("geo/status")
+    suspend fun geoStatus(): GeoStatus
+
+    @GET("geo/search")
+    suspend fun geoSearch(@Query("q") q: String, @Query("lat") lat: Double? = null, @Query("lng") lng: Double? = null): GeoSearchResult
+
+    @GET("geo/reverse")
+    suspend fun geoReverse(@Query("lat") lat: Double, @Query("lng") lng: Double): GeoReverseResult
+
     @POST("driver/orders/{id}/signature")
     suspend fun signature(@Path("id") id: String, @Body body: SignatureRequest): SignatureSaved
 

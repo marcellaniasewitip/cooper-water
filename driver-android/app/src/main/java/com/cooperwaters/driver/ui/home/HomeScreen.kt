@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
@@ -108,6 +109,7 @@ class HomeActions(
     val onAnnouncements: () -> Unit,
     val onProfile: () -> Unit,
     val onSupport: () -> Unit,
+    val onBook: () -> Unit = {},
 )
 
 /**
@@ -434,6 +436,7 @@ private fun DrawerContent(
                 )
             }
             DrawerItem(Icons.Filled.Notifications, stringResource(R.string.menu_live_requests)) { close(actions.onLiveRequests) }
+            DrawerItem(Icons.Filled.Add, stringResource(R.string.menu_book)) { close(actions.onBook) }
             DrawerItem(CwIcons.BarChart, stringResource(R.string.menu_earnings)) { close(actions.onEarnings) }
             DrawerItem(CwIcons.Wallet, stringResource(R.string.menu_wallet)) { close(actions.onWallet) }
             DrawerItem(Icons.AutoMirrored.Filled.List, stringResource(R.string.menu_history)) { close(actions.onHistory) }

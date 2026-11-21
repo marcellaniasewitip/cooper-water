@@ -17,7 +17,8 @@ import { CursorQuery, cursorWhere, pageLimit, pageOrder, toPage } from '../commo
 import { OrderTransitionsService, humanStatus } from './transitions.service';
 import { ACTIVE_DRIVER_STATUSES, customerMayCancel } from './state-machine';
 import { ORDER_INCLUDE, adminOrderView, customerOrderView, driverOrderView } from './order-views';
-import { AdminOrdersQuery, CreateOrderDto } from './orders.dto';
+import { AdminOrdersQuery, CreateOrderDto, DriverBookingDto } from './orders.dto';
+import { normalisePhone } from '../common/phone';
 
 @Injectable()
 export class OrdersService implements OnModuleInit {
@@ -265,6 +266,117 @@ export class OrdersService implements OnModuleInit {
       await tx.orderOffer.update({ where: { id: offer.id }, data: { response: 'accepted', respondedAt: new Date() } });
       return accepted;
     });
+    await effects.run();
+    return this.getForDriver(driverId, order.id);
+  }
+
+  /** Packages a driver can book for a customer: the ones their truck carries (exact size when matching is on). */
+  async bookingOptions(driverId: string) {
+    const truck = await this.prisma.truck.findFirst({ where: { driverId, active: true, deletedAt: null } });
+    const match = await this.settings.get('dispatch.match_vehicle_size');
+    const packages = await this.prisma.package.findMany({
+      where: { active: true, deletedAt: null, ...(match && truck ? { volumeLitres: truck.capacityLitres } : {}) },
+      orderBy: { volumeLitres: 'asc' },
+    });
+    return {
+      truck: truck ? { plate: truck.plate, capacityLitres: truck.capacityLitres } : null,
+      packages: packages.map((p) => ({ id: p.id, name: p.name, volumeLitres: p.volumeLitres, priceToea: p.priceToea })),
+      maxQuantity: await this.settings.get('order.max_quantity'),
+      paymentMethods: ['cod', 'account'],
+    };
+  }
+
+  /** Who a phone number belongs to, so the driver can confirm the customer before booking. */
+  async lookupCustomer(rawPhone: string) {
+    const phone = normalisePhone(rawPhone);
+    const user = await this.prisma.user.findUnique({ where: { phone }, include: { company: true } });
+    if (!user || user.deletedAt) return { phone, exists: false, name: null, company: null };
+    if (user.role !== 'customer') throw Errors.conflict('not_a_customer', 'This number belongs to a driver or staff account, not a customer');
+    return { phone, exists: true, name: user.name, company: user.company?.active ? { name: user.company.name } : null };
+  }
+
+  /**
+   * Manual booking: the driver books water for a customer by phone number (registered or not) and the job is
+   * assigned to that driver straight away (no dispatch). A new phone number gets a customer account, so the
+   * customer can later sign in with that number and see the order. The customer is told by SMS/push.
+   */
+  async bookForCustomer(driverId: string, dto: DriverBookingDto) {
+    const phone = normalisePhone(dto.phone);
+    const name = dto.customerName?.trim() || null;
+    const [minBalance, oneActive, match] = await Promise.all([
+      this.settings.get('wallet.min_balance_toea'),
+      this.settings.get('order.one_active_per_driver'),
+      this.settings.get('dispatch.match_vehicle_size'),
+    ]);
+    const driver = await this.prisma.driver.findUniqueOrThrow({ where: { id: driverId }, include: { trucks: { where: { active: true, deletedAt: null }, take: 1 } } });
+    const q = await this.quote(dto.packageId, dto.quantity);
+    const truck = driver.trucks[0];
+    if (match && truck && truck.capacityLitres !== q.package.volumeLitres) {
+      throw Errors.invalid('truck_size_mismatch', `Your truck carries ${truck.capacityLitres.toLocaleString('en-US')} L. Book a ${truck.capacityLitres.toLocaleString('en-US')} L package.`);
+    }
+
+    // Find or register the customer.
+    let customer = await this.prisma.user.findUnique({ where: { phone } });
+    if (customer && customer.role !== 'customer') throw Errors.conflict('not_a_customer', 'This number belongs to a driver or staff account, not a customer');
+    if (customer && (customer.deletedAt || customer.status !== 'active')) throw Errors.forbidden('This customer account is closed or blocked');
+    if (!customer) {
+      try {
+        customer = await this.prisma.user.create({ data: { phone, role: 'customer', name } });
+      } catch (err) {
+        if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err;
+        customer = await this.prisma.user.findUniqueOrThrow({ where: { phone } });
+      }
+    } else if (!customer.name && name) {
+      customer = await this.prisma.user.update({ where: { id: customer.id }, data: { name } });
+    }
+    const customerId = customer.id;
+
+    const [commissionType, commissionValue, deductAt] = await Promise.all([
+      this.settings.get('commission.type'),
+      this.settings.get('commission.value'),
+      this.settings.get('commission.deduct_at'),
+    ]);
+    const commissionToea = computeCommission(q.priceToea, commissionType, commissionValue);
+    const onAccount = dto.paymentMethod === 'account';
+    const effects = new AfterCommit();
+    const order = await this.withShortCodeRetry((shortCode) =>
+      this.prisma.tx(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM drivers WHERE id = ${driverId}::uuid FOR UPDATE`;
+        const locked = await tx.driver.findUniqueOrThrow({ where: { id: driverId } });
+        await this.assertCanWork(tx, locked, minBalance, oneActive, undefined, false);
+        const created = await tx.order.create({
+          data: {
+            shortCode,
+            customerId,
+            packageId: q.package.id,
+            quantity: q.quantity,
+            unitPriceToea: q.unitPriceToea,
+            priceToea: q.priceToea,
+            discountToea: 0,
+            commissionToea,
+            commissionType,
+            commissionValue,
+            commissionDeductAt: deductAt,
+            deliveryLat: dto.location.lat,
+            deliveryLng: dto.location.lng,
+            deliveryAddress: dto.location.address,
+            deliveryNotes: dto.location.notes ?? '',
+            paymentMethod: dto.paymentMethod,
+            paymentStatus: onAccount ? 'paid' : 'unpaid',
+            status: 'PENDING_PAYMENT',
+          },
+        });
+        let placed = created;
+        if (onAccount) {
+          const companyId = await this.companies.chargeOrder(tx, customerId, created.id, created.shortCode, q.priceToea);
+          placed = await tx.order.update({ where: { id: created.id }, data: { companyId } });
+        }
+        return this.transitions.transition(tx, placed, 'ACCEPTED', { type: 'driver', id: driverId }, effects, {
+          data: { driverId },
+          metadata: { created: true, bookedByDriver: driverId, paymentMethod: dto.paymentMethod, newCustomer: !customer!.phoneVerifiedAt },
+        });
+      }),
+    );
     await effects.run();
     return this.getForDriver(driverId, order.id);
   }

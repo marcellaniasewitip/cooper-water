@@ -355,6 +355,52 @@ describe('orders & dispatch (integration)', () => {
     expect(MockEmailProvider.outbox).toHaveLength(0);
   });
 
+  it('manual booking: a driver books water for a customer by phone and gets the job straight away', async () => {
+    const d = await approvedDriver(h);
+    const other = await approvedDriver(h);
+    const small = await h.prisma.package.create({ data: { name: 'Small (1,000 L)', volumeLitres: 1000, priceToea: 8000 } });
+    const opts = await h.http().get('/api/v1/driver/booking-options').set(bearer(d.token)).expect(200);
+    expect(opts.body.packages.map((p: { id: string }) => p.id)).toEqual([pkgId]); // only the truck's size
+    expect(opts.body.truck.capacityLitres).toBe(5000);
+
+    // An unknown number: no account yet.
+    const lookup = await h.http().get('/api/v1/driver/customers/lookup').query({ phone: '7123 4567' }).set(bearer(d.token)).expect(200);
+    expect(lookup.body).toMatchObject({ phone: '+67571234567', exists: false });
+    const driverPhone = (await h.prisma.user.findFirstOrThrow({ where: { driver: { id: other.driverId } } })).phone;
+    expect((await h.http().get('/api/v1/driver/customers/lookup').query({ phone: driverPhone }).set(bearer(d.token))).status).toBe(409);
+
+    const book = (body: object, token = d.token) =>
+      h.http().post('/api/v1/driver/bookings').set(bearer(token)).set('Idempotency-Key', idem())
+        .send({ phone: '7123 4567', customerName: 'Peter Wari', packageId: pkgId, quantity: 1, paymentMethod: 'cod', location: { ...CUSTOMER_POINT, address: 'Section 12, Gerehu', notes: 'Green house' }, ...body });
+    expect((await book({ packageId: small.id })).status).toBe(422); // wrong truck size
+
+    const r = await book({});
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ status: 'ACCEPTED', paymentMethod: 'cod' });
+    const order = await h.prisma.order.findUniqueOrThrow({ where: { id: r.body.id }, include: { customer: true, offers: true } });
+    expect(order.driverId).toBe(d.driverId);
+    expect(order.customer).toMatchObject({ phone: '+67571234567', name: 'Peter Wari', role: 'customer' });
+    expect(order.offers).toHaveLength(0); // never sent to other drivers
+    expect(await h.prisma.notification.count({ where: { userId: order.customerId, template: 'order.accepted' } })).toBeGreaterThan(0);
+
+    // One job at a time.
+    const busy = await book({});
+    expect(busy.status).toBe(409);
+    expect(busy.body.error.code).toBe('driver_busy');
+
+    // The customer can sign in later with that number and sees the order.
+    const { otpLogin } = await import('./harness');
+    const c = await otpLogin(h, '+67571234567', 'customer');
+    expect(c.userId).toBe(order.customerId);
+    const mine = await h.http().get(`/api/v1/customer/orders/${order.id}`).set(bearer(c.token)).expect(200);
+    expect(mine.body.status).toBe('ACCEPTED');
+
+    // The driver runs it like any other job.
+    await driveToDelivered(d.token, order.id);
+    const again = await h.http().get('/api/v1/driver/customers/lookup').query({ phone: '+67571234567' }).set(bearer(other.token)).expect(200);
+    expect(again.body).toMatchObject({ exists: true, name: 'Peter Wari' });
+  });
+
   it('one active order per driver', async () => {
     const d = await approvedDriver(h);
     const c = await customer(h);

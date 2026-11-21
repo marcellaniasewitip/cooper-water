@@ -12,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cooperwaters.driver.ui.announcements.AnnouncementsScreen
 import com.cooperwaters.driver.ui.auth.LoginScreen
+import com.cooperwaters.driver.ui.booking.BookingScreen
 import com.cooperwaters.driver.ui.chat.ChatListScreen
 import com.cooperwaters.driver.ui.chat.ChatScreen
 import com.cooperwaters.driver.ui.common.appContainer
@@ -52,6 +53,7 @@ object Routes {
     const val CHATS = "chats"
     const val SUPPORT = "support"
     const val ANNOUNCEMENTS = "announcements"
+    const val BOOK = "book"
 
     fun profile(onboarding: Boolean) = "profile?onboarding=$onboarding"
     fun job(id: String) = "job/$id"
@@ -122,6 +124,7 @@ fun DriverNavHost(openChat: MutableStateFlow<String?> = MutableStateFlow(null)) 
                     onAnnouncements = { nav.openFromMenu(Routes.ANNOUNCEMENTS) },
                     onProfile = { nav.openFromMenu(Routes.profile(onboarding = false)) },
                     onSupport = { nav.openFromMenu(Routes.SUPPORT) },
+                    onBook = { nav.openFromMenu(Routes.BOOK) },
                 ),
             )
         }
@@ -131,6 +134,9 @@ fun DriverNavHost(openChat: MutableStateFlow<String?> = MutableStateFlow(null)) 
         composable(Routes.CHATS) { ChatListScreen(onOpen = { nav.navigate(Routes.chat(it)) }, onBack = { nav.popBackStack() }) }
         composable(Routes.SUPPORT) { SupportScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(onBack = { nav.popBackStack() }) }
+        composable(Routes.BOOK) {
+            BookingScreen(onBack = { nav.popBackStack() }, onBooked = { nav.navigate(Routes.job(it)) { popUpTo(Routes.HOME) } })
+        }
         composable(Routes.JOB, arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
             val id = entry.arguments?.getString("orderId").orEmpty()
             JobScreen(

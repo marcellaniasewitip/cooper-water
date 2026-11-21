@@ -213,6 +213,7 @@ struct DriverSideMenu: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         item("bell.fill", "Live Requests") { go(.liveRequests) }
+                        item("plus.circle.fill", "Book for a customer") { go(.book) }
                         item("chart.bar.fill", "Earnings") { go(.earnings) }
                         item("creditcard.fill", "Wallet") { go(.wallet) }
                         item("list.bullet", "Job History") { go(.history) }

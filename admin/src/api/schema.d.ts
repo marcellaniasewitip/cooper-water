@@ -696,6 +696,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver/booking-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Manual booking: what the driver can book (packages for their truck size, payment methods). */
+        get: operations["DriverController_bookingOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/customers/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Manual booking: check who a phone number belongs to before booking. */
+        get: operations["DriverController_lookupCustomer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Manual booking: book water for a customer by their phone number (a new number gets a customer account).
+         *     The job is assigned to this driver straight away; the customer gets an SMS/push with the order.
+         */
+        post: operations["DriverController_book"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver/orders/active": {
         parameters: {
             query?: never;
@@ -2527,6 +2581,20 @@ export interface components {
         LocationBatchDto: {
             points: components["schemas"]["LocationPointDto"][];
         };
+        DriverBookingDto: {
+            /** @description The customer's phone. A new customer account is created if the number isn't registered yet. */
+            phone: string;
+            /** @description Customer's name (used for a new customer, or to fill in a missing name). */
+            customerName?: string;
+            packageId: string;
+            quantity: number;
+            location: components["schemas"]["DeliveryLocationDto"];
+            /**
+             * @description cod = customer pays the driver cash; account = charged to the customer's company account.
+             * @enum {string}
+             */
+            paymentMethod: "cod" | "account";
+        };
         SignatureDto: {
             imagePng: string;
             /** @description Name of the person who received the water and signed. */
@@ -3790,6 +3858,66 @@ export interface operations {
         requestBody?: never;
         responses: {
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DriverController_bookingOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DriverController_lookupCustomer: {
+        parameters: {
+            query: {
+                phone: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DriverController_book: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Unique key per logical request (UUID recommended) */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DriverBookingDto"];
+            };
+        };
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

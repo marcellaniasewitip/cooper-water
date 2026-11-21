@@ -10,6 +10,7 @@ const ACTORS: ActorType[] = ['customer', 'driver', 'admin', 'system'];
  */
 const ALLOWED: [OrderStatus, OrderStatus, ActorType[]][] = [
   ['PENDING_PAYMENT', 'SEARCHING', ['system', 'admin']],
+  ['PENDING_PAYMENT', 'ACCEPTED', ['driver']],
   ['PENDING_PAYMENT', 'FAILED', ['system', 'admin']],
   ['PENDING_PAYMENT', 'CANCELLED', ['customer', 'admin']],
   ['SEARCHING', 'ACCEPTED', ['driver', 'admin']],

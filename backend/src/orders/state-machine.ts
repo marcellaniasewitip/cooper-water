@@ -14,6 +14,8 @@ export const TRANSITIONS: Record<OrderStatus, Rule[]> = {
   PENDING_PAYMENT: [
     // payment succeeded (admin = manual match); system also moves a new COD order straight to dispatch
     { to: 'SEARCHING', actors: ['system', 'admin'] },
+    // manual booking: a driver books the order for a customer (by phone) and takes it straight away
+    { to: 'ACCEPTED', actors: ['driver'] },
     { to: 'FAILED', actors: ['system', 'admin'] }, // payment failed / timed out
     { to: 'CANCELLED', actors: ['customer', 'admin'] },
   ],

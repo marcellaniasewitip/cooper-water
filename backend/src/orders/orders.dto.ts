@@ -190,3 +190,32 @@ export class SendReceiptDto {
   @IsBoolean()
   saveEmail?: boolean;
 }
+
+/** Manual booking: the driver books water for a customer (e.g. who phoned or waved them down). */
+export class DriverBookingDto {
+  /** The customer's phone. A new customer account is created if the number isn't registered yet. */
+  @IsString()
+  @Length(6, 20)
+  phone: string;
+
+  /** Customer's name (used for a new customer, or to fill in a missing name). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  customerName?: string;
+
+  @IsUUID()
+  packageId: string;
+
+  @IsInt()
+  @Min(1)
+  quantity: number;
+
+  @ValidateNested()
+  @Type(() => DeliveryLocationDto)
+  location: DeliveryLocationDto;
+
+  /** cod = customer pays the driver cash; account = charged to the customer's company account. */
+  @IsIn(['cod', 'account'])
+  paymentMethod: 'cod' | 'account';
+}

@@ -1383,6 +1383,100 @@
         ]
       }
     },
+    "/api/v1/driver/booking-options": {
+      "get": {
+        "operationId": "DriverController_bookingOptions",
+        "summary": "",
+        "description": "Manual booking: what the driver can book (packages for their truck size, payment methods).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/driver/customers/lookup": {
+      "get": {
+        "operationId": "DriverController_lookupCustomer",
+        "summary": "",
+        "description": "Manual booking: check who a phone number belongs to before booking.",
+        "parameters": [
+          {
+            "name": "phone",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 6,
+              "maxLength": 20,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/driver/bookings": {
+      "post": {
+        "operationId": "DriverController_book",
+        "summary": "",
+        "description": "Manual booking: book water for a customer by their phone number (a new number gets a customer account).\nThe job is assigned to this driver straight away; the customer gets an SMS/push with the order.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique key per logical request (UUID recommended)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverBookingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "driver"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/driver/orders/active": {
       "get": {
         "operationId": "DriverController_active",
@@ -5848,6 +5942,47 @@
         },
         "required": [
           "points"
+        ]
+      },
+      "DriverBookingDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "The customer's phone. A new customer account is created if the number isn't registered yet.",
+            "minLength": 6,
+            "maxLength": 20
+          },
+          "customerName": {
+            "type": "string",
+            "description": "Customer's name (used for a new customer, or to fill in a missing name).",
+            "maxLength": 80
+          },
+          "packageId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          },
+          "location": {
+            "$ref": "#/components/schemas/DeliveryLocationDto"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "description": "cod = customer pays the driver cash; account = charged to the customer's company account.",
+            "enum": [
+              "cod",
+              "account"
+            ]
+          }
+        },
+        "required": [
+          "phone",
+          "packageId",
+          "quantity",
+          "location",
+          "paymentMethod"
         ]
       },
       "SignatureDto": {
