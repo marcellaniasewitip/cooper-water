@@ -750,6 +750,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver/orders/{id}/payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Booked order not paid yet: send the cell money request again (optionally to another number), or take cash
+         *     instead (method = cod).
+         */
+        post: operations["DriverController_orderPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver/orders/active": {
         parameters: {
             query?: never;
@@ -2590,10 +2610,21 @@ export interface components {
             quantity: number;
             location: components["schemas"]["DeliveryLocationDto"];
             /**
-             * @description cod = customer pays the driver cash; account = charged to the customer's company account.
+             * @description cod = customer pays the driver cash; cellmoney = a payment request goes to [msisdn] (default: the customer's
+             *     phone); bank_transfer = the customer transfers to Cooper Waters with the order code as reference (the office
+             *     confirms it); account = charged to the customer's company account.
              * @enum {string}
              */
-            paymentMethod: "cod" | "account";
+            paymentMethod: "cod" | "cellmoney" | "bank_transfer" | "account";
+            /** @description Cell money number to charge (defaults to the customer's phone). */
+            msisdn?: string;
+            /** @description Bank transfer: the customer's transfer reference / receipt number, if they already paid. */
+            transferReference?: string;
+        };
+        DriverOrderPaymentDto: {
+            /** @enum {string} */
+            method: "cellmoney" | "cod";
+            msisdn?: string;
         };
         SignatureDto: {
             imagePng: string;
@@ -3922,6 +3953,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    DriverController_orderPayment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Unique key per logical request (UUID recommended) */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DriverOrderPaymentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };

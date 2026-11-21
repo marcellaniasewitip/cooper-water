@@ -227,6 +227,10 @@ interface DriverApi {
     @POST("driver/bookings")
     suspend fun book(@Header(IDEMPOTENCY_HEADER) key: String, @Body body: DriverBookingRequest): Order
 
+    /** Booked order not paid yet: send the cell money request again, or take cash instead. */
+    @POST("driver/orders/{id}/payment")
+    suspend fun orderPayment(@Header(IDEMPOTENCY_HEADER) key: String, @Path("id") id: String, @Body body: DriverOrderPaymentRequest): DriverOrderPaymentResult
+
     @GET("geo/status")
     suspend fun geoStatus(): GeoStatus
 

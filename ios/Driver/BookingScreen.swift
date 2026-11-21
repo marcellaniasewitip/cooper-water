@@ -9,6 +9,7 @@ struct BookingOptions: Decodable {
     let truck: BookingTruck?
     let packages: [BookingPackage]
     let maxQuantity: Int?
+    let bankInstructions: String?
 }
 struct CustomerLookupCompany: Decodable { let name: String }
 struct CustomerLookup: Decodable {
@@ -24,7 +25,11 @@ struct DriverBookingRequest: Encodable {
     let quantity: Int
     let location: DeliveryLocation
     let paymentMethod: String
+    let msisdn: String?
+    let transferReference: String?
 }
+struct DriverOrderPaymentRequest: Encodable { let method: String; let msisdn: String? }
+struct DriverOrderPaymentResult: Decodable { let paymentMethod: String; let order: Order }
 struct DriverGeoStatus: Decodable { let search: Bool }
 struct DriverGeoPlace: Decodable, Identifiable {
     let placeId: String?
@@ -41,6 +46,10 @@ extension DriverAPI {
     func bookingOptions() async throws -> BookingOptions { try await api.get("driver/booking-options") }
     func lookupCustomer(_ phone: String) async throws -> CustomerLookup { try await api.get("driver/customers/lookup", query: ["phone": phone]) }
     func book(_ r: DriverBookingRequest, key: String) async throws -> Order { try await api.post("driver/bookings", r, idempotencyKey: key) }
+    /// Booked order not paid yet: method "cellmoney" sends the request again, "cod" = the customer pays cash.
+    func orderPayment(_ orderId: String, method: String, msisdn: String?, key: String) async throws -> DriverOrderPaymentResult {
+        try await api.post("driver/orders/\(orderId)/payment", DriverOrderPaymentRequest(method: method, msisdn: msisdn), idempotencyKey: key)
+    }
     func geoStatus() async throws -> DriverGeoStatus { try await api.get("geo/status") }
     func geoSearch(_ q: String, lat: Double?, lng: Double?) async throws -> DriverGeoSearchResult {
         try await api.get("geo/search", query: ["q": q, "lat": lat.map { String($0) }, "lng": lng.map { String($0) }])
@@ -74,6 +83,8 @@ struct BookingScreen: View {
     @State private var pinSource: String?
     @State private var results: [DriverGeoPlace] = []
     @State private var paymentMethod = "cod"
+    @State private var msisdn = ""
+    @State private var transferReference = ""
     @State private var busy = false
     @State private var error: String?
     @State private var key = newIdempotencyKey()
@@ -139,10 +150,22 @@ struct BookingScreen: View {
                 Section {
                     Picker("Payment", selection: $paymentMethod) {
                         Text("Cash on delivery").tag("cod")
+                        Text("Cell money").tag("cellmoney")
+                        Text("Bank transfer").tag("bank_transfer")
                         if let c = lookup?.company { Text("Company account (\(c.name))").tag("account") }
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
+                    if paymentMethod == "cellmoney" {
+                        Text("A payment request goes to this number. Leave empty to use the customer's phone.").font(.footnote).foregroundColor(.secondary)
+                        TextField("Cell money number (optional)", text: $msisdn).keyboardType(.phonePad)
+                    }
+                    if paymentMethod == "bank_transfer" {
+                        Text("The customer transfers to Cooper Waters with the order code as reference. The bank details are sent to them by SMS.")
+                            .font(.footnote).foregroundColor(.secondary)
+                        if let b = options?.bankInstructions, !b.isEmpty { Text(b).font(.subheadline) }
+                        TextField("Customer's transfer reference (if already paid)", text: $transferReference)
+                    }
                 } header: { Text("Payment") }
 
                 if let p = selected {
@@ -201,7 +224,7 @@ struct BookingScreen: View {
                 if Task.isCancelled { return }
                 lookup = l
                 if name.trimmingCharacters(in: .whitespaces).isEmpty, let n = l.name { name = n }
-                if l.company == nil { paymentMethod = "cod" }
+                if l.company == nil && paymentMethod == "account" { paymentMethod = "cod" }
                 error = nil
             } catch {
                 if !Task.isCancelled { self.error = error.localizedDescription }
@@ -271,7 +294,9 @@ struct BookingScreen: View {
             packageId: packageId,
             quantity: quantity,
             location: DeliveryLocation(lat: lat, lng: lng, address: trimmedAddress, notes: notesText.isEmpty ? nil : notesText),
-            paymentMethod: paymentMethod
+            paymentMethod: paymentMethod,
+            msisdn: paymentMethod == "cellmoney" && !msisdn.trimmingCharacters(in: .whitespaces).isEmpty ? msisdn.trimmingCharacters(in: .whitespaces) : nil,
+            transferReference: paymentMethod == "bank_transfer" && !transferReference.trimmingCharacters(in: .whitespaces).isEmpty ? transferReference.trimmingCharacters(in: .whitespaces) : nil
         )
         Task {
             do {

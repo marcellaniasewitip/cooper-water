@@ -17,7 +17,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const pomTime = (d: Date | null | undefined) =>
   d ? d.toLocaleString('en-GB', { timeZone: 'Pacific/Port_Moresby', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-const PAYMENT: Record<string, string> = { cod: 'Cash on delivery', cellmoney: 'Cell money', wallet: 'Cooper Waters wallet', account: 'Company account' };
+const PAYMENT: Record<string, string> = { cod: 'Cash on delivery', cellmoney: 'Cell money', wallet: 'Cooper Waters wallet', account: 'Company account', bank_transfer: 'Bank transfer' };
 
 /**
  * Proof of delivery: the customer signs on the driver's phone, and a receipt (with the signature) can be

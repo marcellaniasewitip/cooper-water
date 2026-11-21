@@ -714,6 +714,8 @@ data class BookingOptions(
     val packages: List<BookingPackage> = emptyList(),
     val maxQuantity: Int = 10,
     val paymentMethods: List<String> = listOf("cod"),
+    /** Bank details for bank-transfer bookings (set by the office). */
+    val bankInstructions: String = "",
 )
 
 @Serializable
@@ -734,6 +736,20 @@ data class DriverBookingRequest(
     val packageId: String,
     val quantity: Int,
     val location: DeliveryLocation,
-    /** "cod" | "account" */
+    /** "cod" | "cellmoney" | "bank_transfer" | "account" */
     val paymentMethod: String,
+    /** Cell money number to charge (defaults to the customer's phone). */
+    val msisdn: String? = null,
+    /** Bank transfer: the customer's transfer reference, if they already paid. */
+    val transferReference: String? = null,
 )
+
+@Serializable
+data class DriverOrderPaymentRequest(
+    /** "cellmoney" = send the payment request again; "cod" = the customer pays cash instead. */
+    val method: String,
+    val msisdn: String? = null,
+)
+
+@Serializable
+data class DriverOrderPaymentResult(val paymentMethod: String = "", val order: Order)

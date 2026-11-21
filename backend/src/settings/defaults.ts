@@ -32,6 +32,11 @@ export const SETTING_DEFAULTS = {
   /** Shown to customers/drivers by the manual adapter: "Pay to <merchant_number> with reference <code>". */
   'payment.cellmoney.merchant_number': '',
   'payment.cellmoney.poll_interval_sec': 30,
+  /**
+   * Bank details for orders paid by bank transfer (driver bookings), e.g.
+   * "BSP, Cooper Waters Ltd, account 1000123456". Sent to the customer with the order code as reference.
+   */
+  'payment.bank.instructions': '',
 
   'depot.geofence_radius_m': 150,
   /** [CONFIRM] Driver can only go online inside a depot geofence. */

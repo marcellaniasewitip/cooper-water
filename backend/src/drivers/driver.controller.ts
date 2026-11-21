@@ -15,7 +15,7 @@ import { DisputesService } from '../disputes/disputes.service';
 import { CustomersService } from '../customers/customers.service';
 import { SettingsService } from '../settings/settings.service';
 import { PushTokenDto, UpdateProfileDto } from '../customers/customer.dto';
-import { DeliveredDto, DisputeDto, DriverBookingDto, PositionDto, SendReceiptDto, SignatureDto } from '../orders/orders.dto';
+import { DeliveredDto, DisputeDto, DriverBookingDto, DriverOrderPaymentDto, PositionDto, SendReceiptDto, SignatureDto } from '../orders/orders.dto';
 import { CustomerLookupQuery, EarningsQuery, LocationBatchDto, OptionalPositionDto, SubmitDocumentDto, TopupDto, TruckDto, UploadRequestDto, WithdrawalDto } from './driver.dto';
 import { Errors } from '../common/errors';
 import { ChatService } from '../chat/chat.service';
@@ -191,6 +191,19 @@ export class DriverController {
   @Idempotent()
   async book(@CurrentUser() u: UserPrincipal, @Body() dto: DriverBookingDto) {
     return this.orders.bookForCustomer(await this.driverId(u), dto);
+  }
+
+  /**
+   * Booked order not paid yet: send the cell money request again (optionally to another number), or take cash
+   * instead (method = cod).
+   */
+  @Post('orders/:id/payment')
+  @HttpCode(200)
+  @Idempotent()
+  async orderPayment(@CurrentUser() u: UserPrincipal, @Param('id', ParseUUIDPipe) id: string, @Body() dto: DriverOrderPaymentDto, @IdempotencyKey() key: string) {
+    const driverId = await this.driverId(u);
+    const r = await this.payments.driverOrderPayment(driverId, id, dto.method, dto.msisdn, key);
+    return { ...r, order: await this.orders.getForDriver(driverId, id) };
   }
 
   @Get('orders/active')

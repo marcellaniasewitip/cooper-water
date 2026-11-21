@@ -63,6 +63,7 @@ enum PaymentMethod {
   cellmoney
   wallet
   account
+  bank_transfer
 }
 
 enum OrderPaymentStatus {

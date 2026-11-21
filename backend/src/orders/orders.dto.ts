@@ -215,7 +215,34 @@ export class DriverBookingDto {
   @Type(() => DeliveryLocationDto)
   location: DeliveryLocationDto;
 
-  /** cod = customer pays the driver cash; account = charged to the customer's company account. */
-  @IsIn(['cod', 'account'])
-  paymentMethod: 'cod' | 'account';
+  /**
+   * cod = customer pays the driver cash; cellmoney = a payment request goes to [msisdn] (default: the customer's
+   * phone); bank_transfer = the customer transfers to Cooper Waters with the order code as reference (the office
+   * confirms it); account = charged to the customer's company account.
+   */
+  @IsIn(['cod', 'cellmoney', 'bank_transfer', 'account'])
+  paymentMethod: 'cod' | 'cellmoney' | 'bank_transfer' | 'account';
+
+  /** Cell money number to charge (defaults to the customer's phone). */
+  @IsOptional()
+  @IsString()
+  @Length(6, 20)
+  msisdn?: string;
+
+  /** Bank transfer: the customer's transfer reference / receipt number, if they already paid. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  transferReference?: string;
+}
+
+/** Driver: retry the cell money request for a booked order, or take cash instead. */
+export class DriverOrderPaymentDto {
+  @IsIn(['cellmoney', 'cod'])
+  method: 'cellmoney' | 'cod';
+
+  @IsOptional()
+  @IsString()
+  @Length(6, 20)
+  msisdn?: string;
 }
