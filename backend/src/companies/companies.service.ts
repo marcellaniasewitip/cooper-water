@@ -295,18 +295,22 @@ export class CompaniesService implements OnModuleInit {
    * and email it to the company's contact. Idempotent thanks to the (companyId, month) unique key.
    */
   async closeMonths(now = new Date()): Promise<number> {
-    const month = monthKey(now, -1);
-    const { to } = monthRange(month);
-    const due = await this.prisma.company.findMany({ where: { createdAt: { lt: to }, statements: { none: { month } } }, take: 50 });
+    // Last month, plus any earlier month that was missed (e.g. the server was down over a month end), up to 12 back.
+    const months = Array.from({ length: 12 }, (_, i) => monthKey(now, -12 + i));
     let written = 0;
-    for (const c of due) {
-      const s = await this.monthSummary(c.id, month);
-      try {
-        const st = await this.prisma.companyStatement.create({ data: { companyId: c.id, ...s } });
-        written++;
-        if (c.contactEmail) await this.emailStatement(c, st.id);
-      } catch (err: any) {
-        if (err?.code !== 'P2002') logger.warn({ companyId: c.id, month, err: String(err?.message ?? err) }, 'statement failed');
+    for (const month of months) {
+      const { to } = monthRange(month);
+      const due = await this.prisma.company.findMany({ where: { createdAt: { lt: to }, statements: { none: { month } } }, take: 50 });
+      for (const c of due) {
+        const s = await this.monthSummary(c.id, month);
+        try {
+          const st = await this.prisma.companyStatement.create({ data: { companyId: c.id, ...s } });
+          written++;
+          // Only the most recent month is emailed; catch-up months are just recorded.
+          if (c.contactEmail && month === monthKey(now, -1)) await this.emailStatement(c, st.id);
+        } catch (err: any) {
+          if (err?.code !== 'P2002') logger.warn({ companyId: c.id, month, err: String(err?.message ?? err) }, 'statement failed');
+        }
       }
     }
     return written;

@@ -290,17 +290,22 @@ describe('orders & dispatch (integration)', () => {
     expect(csv.text).toContain(o1.shortCode);
     expect(csv.text.split('\r\n').filter(Boolean)).toHaveLength(3); // header + delivered + cancelled
 
-    // Month end: the sweeper writes the statement once.
-    const nextMonth = new Date(Date.now() + 40 * 24 * 3600_000);
+    // Month end: the sweeper writes the statement once (2nd of next month, Port Moresby time).
+    const [yy, mm] = month.split('-').map(Number);
+    const nextMonth = new Date(Date.UTC(yy, mm, 2) - 10 * 3600_000);
     await h.jobs.run('companies.close_months', { at: nextMonth.toISOString() });
     await h.jobs.run('companies.close_months', { at: nextMonth.toISOString() });
     const st = await h.prisma.companyStatement.findMany({ where: { companyId } });
     expect(st).toHaveLength(1);
     expect(st[0]).toMatchObject({ month, orderCount: 1, chargedToea: 30000, closingBalanceToea: -10000 });
+    // A month missed while the server was down is caught up later, without a second copy of this one.
+    const later = new Date(Date.UTC(yy, mm + 1, 2) - 10 * 3600_000);
+    await h.jobs.run('companies.close_months', { at: later.toISOString() });
+    expect((await h.prisma.companyStatement.findMany({ where: { companyId }, orderBy: { month: 'asc' } })).map((x) => x.month)).toHaveLength(2);
 
     const detail = await h.http().get(`/api/v1/admin/companies/${companyId}`).set(bearer(admin)).expect(200);
     expect(detail.body).toMatchObject({ owedToea: 10000, availableToea: 40000, employeeCount: 1 });
-    expect(detail.body.statements).toHaveLength(1);
+    expect(detail.body.statements).toHaveLength(2);
     expect(detail.body.payments[0]).toMatchObject({ amountToea: 20000 });
     await h.http().delete(`/api/v1/admin/companies/${companyId}/employees/${emp.userId}`).set(bearer(admin)).expect(204);
     expect((await place(emp.token)).status).toBe(422);
@@ -464,6 +469,27 @@ describe('orders & dispatch (integration)', () => {
     const cash = await h.http().post(`/api/v1/driver/orders/${r3.body.id}/payment`).set(bearer(d.token)).set('Idempotency-Key', idem()).send({ method: 'cod' }).expect(200);
     expect(cash.body.order).toMatchObject({ paymentMethod: 'cod', paymentStatus: 'unpaid' });
     expect((await h.prisma.payment.findFirstOrThrow({ where: { purposeId: r3.body.id } })).status).toBe('failed');
+  });
+
+  it('live requests: the customer\'s exact position is kept and admins are told about new requests', async () => {
+    const admin = await adminLogin(h);
+    const c = await customer(h);
+    const r = await h.http().post('/api/v1/customer/orders').set(bearer(c.token)).set('Idempotency-Key', idem())
+      .send({ packageId: pkgId, quantity: 1, paymentMethod: 'cod', location: { ...CUSTOMER_POINT, address: 'Lot 5, Boroko' }, requestedFrom: { lat: -9.44812, lng: 147.18633, accuracyM: 12 } })
+      .expect(201);
+    const id = r.body.order.id;
+    const detail = await h.http().get(`/api/v1/admin/orders/${id}`).set(bearer(admin)).expect(200);
+    expect(detail.body.requestedFrom).toEqual({ lat: -9.44812, lng: 147.18633, accuracyM: 12 });
+    expect(detail.body.delivery).toMatchObject({ lat: CUSTOMER_POINT.lat, lng: CUSTOMER_POINT.lng, address: 'Lot 5, Boroko' });
+    const list = await h.http().get('/api/v1/admin/orders').query({ status: 'SEARCHING,PENDING_PAYMENT' }).set(bearer(admin)).expect(200);
+    expect(list.body.items.find((o: { id: string }) => o.id === id).requestedFrom).toMatchObject({ lat: -9.44812 });
+    // Without location permission the request still goes through.
+    const r2 = await h.http().post('/api/v1/customer/orders').set(bearer(c.token)).set('Idempotency-Key', idem())
+      .send({ packageId: pkgId, quantity: 1, paymentMethod: 'cod', location: { ...CUSTOMER_POINT, address: 'Lot 5' } }).expect(201);
+    expect((await h.http().get(`/api/v1/admin/orders/${r2.body.order.id}`).set(bearer(admin)).expect(200)).body.requestedFrom).toBeNull();
+    // Bad coordinates are rejected.
+    expect((await h.http().post('/api/v1/customer/orders').set(bearer(c.token)).set('Idempotency-Key', idem())
+      .send({ packageId: pkgId, quantity: 1, paymentMethod: 'cod', location: { ...CUSTOMER_POINT, address: 'x' }, requestedFrom: { lat: 200, lng: 0 } })).status).not.toBe(201);
   });
 
   it('one active order per driver', async () => {

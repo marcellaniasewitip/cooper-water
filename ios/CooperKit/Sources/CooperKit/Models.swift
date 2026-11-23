@@ -287,6 +287,18 @@ public struct Quote: Decodable {
     public let promo: AppliedPromo?
 }
 
+/// Where the customer's phone is when placing the order (shown to the office on Live requests).
+public struct RequestPosition: Codable, Hashable {
+    public let lat: Double
+    public let lng: Double
+    public let accuracyM: Int?
+    public init(lat: Double, lng: Double, accuracyM: Int?) {
+        self.lat = lat
+        self.lng = lng
+        self.accuracyM = accuracyM
+    }
+}
+
 public struct CreateOrderRequest: Codable, Equatable {
     public let packageId: String
     public let quantity: Int
@@ -294,13 +306,21 @@ public struct CreateOrderRequest: Codable, Equatable {
     public let paymentMethod: String
     public let msisdn: String?
     public let promoCode: String?
-    public init(packageId: String, quantity: Int, locationId: String?, paymentMethod: String, msisdn: String?, promoCode: String?) {
+    public let requestedFrom: RequestPosition?
+    public init(packageId: String, quantity: Int, locationId: String?, paymentMethod: String, msisdn: String?, promoCode: String?, requestedFrom: RequestPosition? = nil) {
         self.packageId = packageId
         self.quantity = quantity
         self.locationId = locationId
         self.paymentMethod = paymentMethod
         self.msisdn = msisdn
         self.promoCode = promoCode
+        self.requestedFrom = requestedFrom
+    }
+
+    /// The phone position doesn't make it a different order (a retry keeps the same Idempotency-Key).
+    public static func == (a: CreateOrderRequest, b: CreateOrderRequest) -> Bool {
+        a.packageId == b.packageId && a.quantity == b.quantity && a.locationId == b.locationId
+            && a.paymentMethod == b.paymentMethod && a.msisdn == b.msisdn && a.promoCode == b.promoCode
     }
 }
 public struct CreateOrderResponse: Decodable {

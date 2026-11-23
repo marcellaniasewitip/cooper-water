@@ -448,6 +448,10 @@ model Order {
   deliveryLng         Float              @map("delivery_lng")
   deliveryAddress     String             @map("delivery_address")
   deliveryNotes       String             @default("") @map("delivery_notes")
+  /** Where the customer's phone was when they placed the request (GPS), if the app could tell. */
+  requestLat          Float?             @map("request_lat")
+  requestLng          Float?             @map("request_lng")
+  requestAccuracyM    Int?               @map("request_accuracy_m")
   paymentMethod       PaymentMethod      @map("payment_method")
   paymentStatus       OrderPaymentStatus @default(unpaid) @map("payment_status")
   status              OrderStatus

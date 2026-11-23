@@ -1,5 +1,7 @@
 package com.cooperwaters.customer.ui.order
 
+import com.cooperwaters.core.android.LocationHelper
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -63,6 +65,14 @@ fun NewOrderScreen(
     onResumedElsewhere: () -> Unit,
 ) {
     val vm = containerViewModel { c -> NewOrderViewModel(c.repository, c.tokenStore.user()?.phone.orEmpty(), initialLocationId, c.promoStore.selected, locationFirst) }
+    // Remember where the phone is when ordering (only if location is already allowed; never asks here).
+    val locContext = LocalContext.current
+    LaunchedEffect(Unit) {
+        if (LocationHelper.hasPermission(locContext)) {
+            val loc = LocationHelper.lastKnown(locContext, 10 * 60_000L) ?: LocationHelper.currentLocation(locContext, 8_000L)
+            loc?.let { vm.setRequestPosition(it.latitude, it.longitude, if (it.hasAccuracy()) it.accuracy.toInt() else null) }
+        }
+    }
     val state by vm.state.collectAsStateWithLifecycle()
 
     val container = appContainer()

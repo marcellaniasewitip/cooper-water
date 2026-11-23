@@ -5,6 +5,7 @@ import { http, tokenStore, type AdminOrder, type FleetDriver, type FleetLocation
 import { useAuth } from '@/auth/AuthContext';
 import { config } from '@/config';
 import { notifySuccess } from '@/lib/notify';
+import { announceNewRequest } from './requestAlerts';
 import { applyFleetEvent } from './fleet';
 
 interface RealtimeState {
@@ -70,6 +71,13 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       void qc.invalidateQueries({ queryKey: ['orders'] });
       void qc.invalidateQueries({ queryKey: ['overview'] });
       void qc.invalidateQueries({ queryKey: ['fleet'] });
+    });
+
+    // Live requests: a customer just placed a request (or a driver booked one for a customer).
+    socket.on('order.created', (e: { order?: AdminOrder; bookedByDriver?: boolean }) => {
+      if (e?.order) announceNewRequest(e.order, !!e.bookedByDriver);
+      void qc.invalidateQueries({ queryKey: ['orders'] });
+      void qc.invalidateQueries({ queryKey: ['overview'] });
     });
 
     // Auto-assign: "Order CW-1234 is placed to John".

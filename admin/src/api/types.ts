@@ -92,6 +92,8 @@ export interface AdminOrder {
   paymentMethod: PaymentMethod;
   paymentStatus: OrderPaymentStatus;
   delivery: { lat: number; lng: number; address: string; notes: string | null };
+  /** Where the customer's phone was when they placed the request (null if the app couldn't tell). */
+  requestedFrom?: { lat: number; lng: number; accuracyM: number | null } | null;
   /** Proof of delivery: signature and the last emailed receipt. */
   receipt?: { signed: boolean; signedByName: string | null; signedAt: ISO | null; email: string | null; sentAt: ISO | null };
   cancelReason: string | null;

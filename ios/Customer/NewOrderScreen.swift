@@ -175,11 +175,20 @@ final class NewOrderModel: ObservableObject {
         return true
     }
 
+    /// The phone's last known position, only if location is already allowed (never prompts here).
+    private func currentRequestPosition() -> RequestPosition? {
+        let lp = LocationProvider.shared
+        guard lp.authorized, let loc = lp.lastKnown, loc.horizontalAccuracy >= 0,
+              abs(loc.timestamp.timeIntervalSinceNow) < 600 else { return nil }
+        return RequestPosition(lat: loc.coordinate.latitude, lng: loc.coordinate.longitude, accuracyM: Int(loc.horizontalAccuracy.rounded()))
+    }
+
     func place(_ s: AppSession) async -> CreateOrderResponse? {
         guard let pid = packageId, let lid = locationId else { return nil }
         let req = CreateOrderRequest(packageId: pid, quantity: quantity, locationId: lid, paymentMethod: paymentMethod,
                                      msisdn: paymentMethod == "cellmoney" ? msisdn.filter { $0.isNumber || $0 == "+" } : nil,
-                                     promoCode: appliedPromo)
+                                     promoCode: appliedPromo,
+                                     requestedFrom: currentRequestPosition())
         if req != lastRequest {
             orderKey = newIdempotencyKey()
             lastRequest = req

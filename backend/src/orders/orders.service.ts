@@ -9,6 +9,7 @@ import { StorageService } from '../storage/storage.service';
 import { LedgerService } from '../wallet/ledger.service';
 import { CompaniesService } from '../companies/companies.service';
 import { PaymentsService } from '../payments/payments.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PromosService } from '../promos/promos.service';
 import { AfterCommit } from '../common/after-commit';
 import { Errors } from '../common/errors';
@@ -35,6 +36,7 @@ export class OrdersService implements OnModuleInit {
     private readonly promos: PromosService,
     private readonly companies: CompaniesService,
     private readonly payments: PaymentsService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   onModuleInit(): void {
@@ -117,6 +119,9 @@ export class OrdersService implements OnModuleInit {
             deliveryLng: loc.lng,
             deliveryAddress: loc.address,
             deliveryNotes: loc.notes,
+            requestLat: dto.requestedFrom?.lat ?? null,
+            requestLng: dto.requestedFrom?.lng ?? null,
+            requestAccuracyM: dto.requestedFrom?.accuracyM ?? null,
             paymentMethod: dto.paymentMethod,
             paymentStatus: dto.paymentMethod === 'cellmoney' ? 'pending' : paidFromWallet || onAccount ? 'paid' : 'unpaid',
             status: 'PENDING_PAYMENT',
@@ -143,7 +148,14 @@ export class OrdersService implements OnModuleInit {
       }),
     );
     await effects.run();
+    await this.announceNewRequest(order.id, false);
     return order;
+  }
+
+  /** Live requests (admin): a new customer request just came in. */
+  private async announceNewRequest(orderId: string, bookedByDriver: boolean): Promise<void> {
+    const o = await this.prisma.order.findUnique({ where: { id: orderId }, include: ORDER_INCLUDE });
+    if (o) this.realtime.toAdmins('order.created', { order: adminOrderView(o), bookedByDriver });
   }
 
   /** Debit the customer's wallet for an order (inside the creating transaction). */
@@ -382,6 +394,7 @@ export class OrdersService implements OnModuleInit {
       }),
     );
     await effects.run();
+    await this.announceNewRequest(order.id, true);
 
     // Electronic payment for the booked order: the job is already the driver's, the payment follows.
     let payment: unknown = null;

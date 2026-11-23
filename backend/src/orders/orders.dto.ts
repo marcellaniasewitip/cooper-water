@@ -51,6 +51,22 @@ export class QuoteDto {
   promoCode?: string;
 }
 
+/** The customer's own position when placing the order (phone GPS), for monitoring. */
+export class RequestPositionDto {
+  @IsLatitude()
+  lat: number;
+
+  @IsLongitude()
+  lng: number;
+
+  /** GPS accuracy in metres. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100000)
+  accuracyM?: number;
+}
+
 export class CreateOrderDto extends QuoteDto {
   /** A saved location; or send `location` instead. */
   @IsOptional()
@@ -61,6 +77,12 @@ export class CreateOrderDto extends QuoteDto {
   @ValidateNested()
   @Type(() => DeliveryLocationDto)
   location?: DeliveryLocationDto;
+
+  /** Where the customer is right now (phone GPS), if they allow location. Shown to admins. */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RequestPositionDto)
+  requestedFrom?: RequestPositionDto;
 
   /** account = charge the employee's company (corporate account). */
   @IsIn(['cod', 'cellmoney', 'wallet', 'account'])
@@ -154,8 +176,8 @@ export class AdminOrdersQuery extends CursorQuery {
   customerId?: string;
 
   @IsOptional()
-  @IsIn(['cod', 'cellmoney'])
-  paymentMethod?: 'cod' | 'cellmoney';
+  @IsIn(['cod', 'cellmoney', 'wallet', 'account', 'bank_transfer'])
+  paymentMethod?: 'cod' | 'cellmoney' | 'wallet' | 'account' | 'bank_transfer';
 
   /** ISO date-time, inclusive. */
   @IsOptional()
