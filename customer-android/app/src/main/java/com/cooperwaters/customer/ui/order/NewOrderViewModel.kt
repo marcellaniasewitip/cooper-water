@@ -10,6 +10,7 @@ import com.cooperwaters.core.net.AppliedPromo
 import com.cooperwaters.core.net.CompanyAccount
 import com.cooperwaters.core.net.CreateOrderRequest
 import com.cooperwaters.core.net.QuoteRequest
+import com.cooperwaters.core.net.RequestPosition
 import com.cooperwaters.core.net.ReferralApplyRequest
 import com.cooperwaters.core.net.SavedLocation
 import com.cooperwaters.core.net.WaterPackage
@@ -54,6 +55,8 @@ data class NewOrderState(
     val walletBalanceToea: Long? = null,
     /** The customer's company when they can order on account (corporate account). */
     val company: CompanyAccount? = null,
+    /** The phone's position when ordering, if location is allowed (for the office's Live requests map). */
+    val requestPosition: RequestPosition? = null,
     /** Offers: code typed or picked on the Offers screen, and the one the server accepted. */
     val promoInput: String = "",
     val appliedPromo: AppliedPromo? = null,
@@ -312,7 +315,12 @@ class NewOrderViewModel(
             paymentMethod = s.paymentMethod,
             msisdn = if (s.paymentMethod == "cellmoney") s.msisdn.ifBlank { null } else null,
             promoCode = s.appliedPromo?.code,
+            requestedFrom = s.requestPosition,
         )
+    }
+
+    fun setRequestPosition(lat: Double, lng: Double, accuracyM: Int?) {
+        _state.update { it.copy(requestPosition = RequestPosition(lat, lng, accuracyM)) }
     }
 
     fun placeOrder() {

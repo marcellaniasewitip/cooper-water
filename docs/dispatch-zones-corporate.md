@@ -60,3 +60,14 @@ driver's earnings for such a job are credited once the payment is confirmed. **B
 driver — it is not offered to other drivers — and the customer gets the usual "driver accepted" SMS/push.
 The customer can later sign in with that phone number and see the order. The same rules apply as for
 accepting jobs: one job at a time and the wallet above the minimum. Admins see these orders like any other.
+
+## Live requests (admin)
+Admin → **Live requests**: every customer request as it comes in, on a map at the exact spot.
+- **Red pin** – the delivery pin the customer chose; **blue dot** – where the customer's phone was when they
+  placed the request (if location is allowed on their phone), joined by a dashed line. The list shows how far
+  apart they are ("Phone 350 m from the pin").
+- Click a request (list or map) for the exact coordinates of both, the customer's name and phone, the address
+  and directions, and an **Open in Google Maps** link. The order page shows the same coordinates.
+- **Waiting for a driver** shows open requests; **All today** shows every request since midnight.
+- A pop-up and a short beep announce each new request on any admin page (switch "Alert me on new requests"
+  off on this page to silence it).

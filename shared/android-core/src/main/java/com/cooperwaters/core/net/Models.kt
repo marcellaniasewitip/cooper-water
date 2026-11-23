@@ -307,7 +307,12 @@ data class CreateOrderRequest(
     val paymentMethod: String,
     val msisdn: String? = null,
     val promoCode: String? = null,
+    /** Where the customer's phone is when placing the order (shown to admins on Live requests). */
+    val requestedFrom: RequestPosition? = null,
 )
+
+@Serializable
+data class RequestPosition(val lat: Double, val lng: Double, val accuracyM: Int? = null)
 
 @Serializable
 data class CreateOrderResponse(

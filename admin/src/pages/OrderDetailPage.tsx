@@ -352,8 +352,22 @@ export default function OrderDetailPage() {
                           <Tooltip>{o.driver.name ?? m.common.driver}</Tooltip>
                         </CircleMarker>
                       )}
+                      {o.requestedFrom && (
+                        <CircleMarker center={[o.requestedFrom.lat, o.requestedFrom.lng]} radius={6} pathOptions={{ color: '#fff', weight: 2, fillColor: '#1c7ed6', fillOpacity: 0.95 }}>
+                          <Tooltip>{m.liveRequests.requestedFrom}</Tooltip>
+                        </CircleMarker>
+                      )}
                     </MapBase>
                   </div>
+                  <Text size="xs" c="dimmed" mt={6}>
+                    {m.liveRequests.deliveryPin}: {o.delivery.lat.toFixed(6)}, {o.delivery.lng.toFixed(6)}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {m.liveRequests.requestedFrom}:{' '}
+                    {o.requestedFrom
+                      ? `${o.requestedFrom.lat.toFixed(6)}, ${o.requestedFrom.lng.toFixed(6)}${o.requestedFrom.accuracyM != null ? ` (±${o.requestedFrom.accuracyM} m)` : ''}`
+                      : m.liveRequests.noGps}
+                  </Text>
                 </Card>
                 <Card withBorder>
                   <Title order={5} mb="xs">

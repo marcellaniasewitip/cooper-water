@@ -2294,7 +2294,10 @@
             "schema": {
               "enum": [
                 "cod",
-                "cellmoney"
+                "cellmoney",
+                "wallet",
+                "account",
+                "bank_transfer"
               ],
               "type": "string"
             }
@@ -5678,6 +5681,27 @@
           "address"
         ]
       },
+      "RequestPositionDto": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "accuracyM": {
+            "type": "number",
+            "description": "GPS accuracy in metres.",
+            "minimum": 0,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ]
+      },
       "CreateOrderDto": {
         "type": "object",
         "properties": {
@@ -5701,6 +5725,14 @@
           },
           "location": {
             "$ref": "#/components/schemas/DeliveryLocationDto"
+          },
+          "requestedFrom": {
+            "description": "Where the customer is right now (phone GPS), if they allow location. Shown to admins.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RequestPositionDto"
+              }
+            ]
           },
           "paymentMethod": {
             "type": "string",

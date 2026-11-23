@@ -24,6 +24,7 @@ const DriverDetailPage = lazy(() => import('@/pages/DriverDetailPage'));
 const TrucksPage = lazy(() => import('@/pages/TrucksPage'));
 const DepotsPage = lazy(() => import('@/pages/DepotsPage'));
 const ZonesPage = lazy(() => import('@/pages/ZonesPage'));
+const LiveRequestsPage = lazy(() => import('@/pages/LiveRequestsPage'));
 const CompaniesPage = lazy(() => import('@/pages/CompaniesPage'));
 const PackagesPage = lazy(() => import('@/pages/PackagesPage'));
 const PromosPage = lazy(() => import('@/pages/PromosPage'));
@@ -121,6 +122,7 @@ export function App() {
                   >
                     <Route index element={<Home />} />
                     <Route path="fleet" element={<P perm="dashboard.view"><FleetPage /></P>} />
+                    <Route path="requests" element={<P perm="orders.view"><LiveRequestsPage /></P>} />
                     <Route path="orders" element={<P perm="orders.view"><OrdersPage /></P>} />
                     <Route path="orders/:id" element={<P perm="orders.view"><OrderDetailPage /></P>} />
                     <Route path="customers" element={<P perm="customers.view"><CustomersPage /></P>} />

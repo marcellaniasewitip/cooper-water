@@ -11,6 +11,7 @@ import {
   IconFileText,
   IconListDetails,
   IconMap2,
+  IconMapPin,
   IconMessage,
   IconSpeakerphone,
   IconPackage,
@@ -40,6 +41,7 @@ export interface NavItem {
 export const NAV: NavItem[] = [
   { label: m.nav.overview, to: '/', icon: IconDashboard, permission: 'dashboard.view' },
   { label: m.nav.fleet, to: '/fleet', icon: IconMap2, permission: 'dashboard.view' },
+  { label: m.nav.liveRequests, to: '/requests', icon: IconMapPin, permission: 'orders.view' },
   {
     label: m.nav.operations,
     children: [

@@ -101,6 +101,8 @@ export function adminOrderView(o: WithRelations) {
     commissionDeducted: o.commissionDeducted,
     settledAt: o.settledAt,
     dispatchRound: o.dispatchRound,
+    /** Customer's phone position when they placed the request (null if the app couldn't tell). */
+    requestedFrom: o.requestLat !== null && o.requestLng !== null ? { lat: o.requestLat, lng: o.requestLng, accuracyM: o.requestAccuracyM } : null,
     statusBeforeDispute: o.statusBeforeDispute,
     proofPhotoKey: o.proofPhotoKey,
     customer: o.customer ? { id: o.customer.id, name: o.customer.name, phone: o.customer.phone } : { id: o.customerId },

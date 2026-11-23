@@ -2516,6 +2516,12 @@ export interface components {
             /** @description Landmark directions — most PNG addresses are landmark-based. */
             notes?: string;
         };
+        RequestPositionDto: {
+            lat: number;
+            lng: number;
+            /** @description GPS accuracy in metres. */
+            accuracyM?: number;
+        };
         CreateOrderDto: {
             packageId: string;
             quantity: number;
@@ -2524,6 +2530,8 @@ export interface components {
             /** @description A saved location; or send `location` instead. */
             locationId?: string;
             location?: components["schemas"]["DeliveryLocationDto"];
+            /** @description Where the customer is right now (phone GPS), if they allow location. Shown to admins. */
+            requestedFrom?: components["schemas"]["RequestPositionDto"];
             /**
              * @description account = charge the employee's company (corporate account).
              * @enum {string}
@@ -4476,7 +4484,7 @@ export interface operations {
                 q?: string;
                 driverId?: string;
                 customerId?: string;
-                paymentMethod?: "cod" | "cellmoney";
+                paymentMethod?: "cod" | "cellmoney" | "wallet" | "account" | "bank_transfer";
                 /** @description ISO date-time, inclusive. */
                 from?: string;
                 to?: string;
